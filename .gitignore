@@ -1,0 +1,9 @@
+*.pyc
+*.csv
+*.mp4
+*.h5
+*.npy
+*.png
+*.pdf
+!**/worldInfo/*.npy
+!**/textures/*.png
