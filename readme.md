@@ -26,5 +26,5 @@ Alternatively if you are working from the institute activate the provided virtua
 > source /groups/cns/venv/cobel_rl/venv/bin/activate
 
 * make sure that your 'PYTHONPATH' environment variable includes **'mySimulatorFolder/CoBel-RL'**.
-* go to **.../mySimulatorFolder/CoBel-RL/demo/simplGridGraphDemo/**
+* go to **.../mySimulatorFolder/CoBel-RL/demo/simpleGridGraphDemo/**
 * start the demo project: **python3 simpleGridGraphDemo.py**
