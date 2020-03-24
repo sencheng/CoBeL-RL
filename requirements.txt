@@ -25,7 +25,6 @@ keras-rl==0.4.2
 kiwisolver==1.1.0
 Markdown==3.2.1
 matplotlib==3.2.1
-MeshPy==2018.2.1
 more-itertools==8.2.0
 numpy==1.14.2
 oauthlib==3.1.0
@@ -38,13 +37,14 @@ py==1.8.1
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
 pybind11==2.4.3
+MeshPy==2018.2.1
 pyglet==1.5.2
 PyOpenGL==3.1.5
 pyparsing==2.4.6
 PyQt5==5.14.0
 PyQt5-sip==12.7.1
 pyqtgraph==0.10.0
-pytest==5.4.1
+pytest==5.4.1gi
 python-dateutil==2.8.1
 pytools==2020.1
 PyYAML==5.3.1
