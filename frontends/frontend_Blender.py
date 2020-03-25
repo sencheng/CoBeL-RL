@@ -29,7 +29,9 @@ class WORLD_BlenderInterface():
     def __init__(self, scenarioName):
         
         
-        self.BLENDER_EXECUTABLE='/opt/blender2.79b/blender'
+        path=os.environ['BLENDER_EXECUTABLE_PATH']
+        
+        self.BLENDER_EXECUTABLE=path+'blender'
         
         paths=os.environ['PYTHONPATH'].split(':')
         path=None
