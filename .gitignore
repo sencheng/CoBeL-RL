@@ -7,3 +7,4 @@
 *.pdf
 !**/worldInfo/*.npy
 !**/textures/*.png
+venv
