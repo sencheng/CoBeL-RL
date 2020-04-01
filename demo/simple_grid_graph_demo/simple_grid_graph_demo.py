@@ -106,7 +106,7 @@ def singleRun():
     
     
     
-    modules['world']=WORLD_BlenderInterface('simpleGridGraphEnv/simpleGridGraphMaze.blend')
+    modules['world']=WORLD_BlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
     modules['observations']=imageObservation_Baseline(modules['world'],mainWindow,visualOutput)
     modules['topologyGraph']=manualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
     modules['interfaceOAI']=openAIGymInterface(modules,visualOutput,rewardCallback)

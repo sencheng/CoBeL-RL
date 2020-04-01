@@ -39,7 +39,7 @@ class WORLD_BlenderInterface():
             if 'CoBeL-RL' in p:
                 path=p
         
-        scenarioName=path+'/environments/BlenderEnvironments/'+scenarioName
+        scenarioName=path+'/environments/environments_blender/'+scenarioName
         
         subprocess.Popen([self.BLENDER_EXECUTABLE,scenarioName,'--window-border','--window-geometry','1320','480','600','600','--enable-autoexec'])
         self.controlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
