@@ -14,7 +14,7 @@ from pathlib import Path
 from numpy import random
 from keras import backend
 
-from frontends.frontend_Blender import WORLD_BlenderInterface
+from frontends.frontends_blender import FrontendBlenderInterface
 from topologies.manualTopology import manualTopologyGraph
 from agents.dqn_agents import DQNAgentBaseline
 from observations.imageObservations import imageObservation_Baseline
@@ -106,7 +106,7 @@ def singleRun():
     
     
     
-    modules['world']=WORLD_BlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
+    modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
     modules['observations']=imageObservation_Baseline(modules['world'],mainWindow,visualOutput)
     modules['topologyGraph']=manualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
     modules['interfaceOAI']=openAIGymInterface(modules,visualOutput,rewardCallback)
