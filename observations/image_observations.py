@@ -1,30 +1,21 @@
 
 
-import PyQt5 as qt
-from PyQt5 import QtGui
-from PyQt5.QtCore import QRectF
 import numpy as np
 import math
 import gym
-from gym import spaces
-
-import time
 import pyqtgraph as qg
-import pyqtgraph.functions
-
-from pyqtgraph.Point import Point
-
-from PyQt5 import QtGui,QtCore
-from PyQt5.QtGui import QGraphicsLineItem
-from PyQt5.QtGui import QPen
-
 import cv2
+
+
+from gym import spaces
+from PyQt5.QtCore import QRectF
+
 
 
 
 
 ### This module computes an observation based on the current camera image acquired by the robot/agent.
-class imageObservation_Baseline():
+class ImageObservationBaseline():
     
     # The constructor.
     # 

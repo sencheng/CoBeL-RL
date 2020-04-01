@@ -17,7 +17,7 @@ from keras import backend
 from frontends.frontends_blender import FrontendBlenderInterface
 from topologies.manualTopology import manualTopologyGraph
 from agents.dqn_agents import DQNAgentBaseline
-from observations.imageObservations import imageObservation_Baseline
+from observations.image_observations import ImageObservationBaseline
 from interfaces.oai_gym_interface import OAIGymInterface
 from analysis.rl_monitoring.rl_performance_monitors import RLPerformanceMonitorBaseline
 
@@ -107,7 +107,7 @@ def singleRun():
     
     
     modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
-    modules['observations']=imageObservation_Baseline(modules['world'],mainWindow,visualOutput)
+    modules['observations']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
     modules['topologyGraph']=manualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
     modules['interfaceOAI']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
