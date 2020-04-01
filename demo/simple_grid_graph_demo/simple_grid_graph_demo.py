@@ -19,7 +19,7 @@ from topologies.manualTopology import manualTopologyGraph
 from agents.dqn_agents import DQNAgentBaseline
 from observations.imageObservations import imageObservation_Baseline
 from interfaces.interfaceOAI import openAIGymInterface
-from analysis.rl_monitoring.rl_performanceMonitors import RLPerformanceMonitorBaseline
+from analysis.rl_monitoring.rl_performance_monitors import RLPerformanceMonitorBaseline
 
 
 # shall the system provide visual output while performing the experiments? NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'! 
@@ -118,7 +118,7 @@ def singleRun():
     # set the experimental parameters
     rlAgent.trialNumber=100
     
-    perfMon=performanceMonitor_Baseline(rlAgent,mainWindow,True)
+    perfMon=RLPerformanceMonitorBaseline(rlAgent,mainWindow,True)
     rlAgent.performanceMonitor=perfMon
     
     # eventually, allow the OAI class to access the robotic agent class
