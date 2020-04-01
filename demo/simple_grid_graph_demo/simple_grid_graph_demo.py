@@ -19,7 +19,7 @@ from topologies.manualTopology import manualTopologyGraph
 from agents.dqn_agents import DQNAgentBaseline
 from observations.imageObservations import imageObservation_Baseline
 from interfaces.interfaceOAI import openAIGymInterface
-from analysis.rlMonitoring.rlPerformanceMonitors import performanceMonitor_Baseline
+from analysis.rl_monitoring.rl_performanceMonitors import RLPerformanceMonitorBaseline
 
 
 # shall the system provide visual output while performing the experiments? NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'! 

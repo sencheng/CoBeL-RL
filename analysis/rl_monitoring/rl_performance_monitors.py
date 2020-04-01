@@ -4,7 +4,7 @@ import numpy as np
 import pyqtgraph as pg
 
 
-class performanceMonitor_Baseline():
+class RLPerformanceMonitorBaseline():
     def __init__(self,rlAgent,guiParent,visualOutput):
         
         # store the rlAgent
