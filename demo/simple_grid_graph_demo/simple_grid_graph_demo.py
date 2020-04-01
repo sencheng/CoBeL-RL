@@ -4,34 +4,19 @@ import sys
 import shutil
 import os
 import multiprocessing as mp
-from multiprocessing import Pool, Process
-import time
-from pathlib import Path
-
-
 import numpy as np
-from numpy import random
-
-
-from tqdm import tqdm
-
-from shapely.geometry import Point
-from shapely.geometry import Polygon
-
-import PyQt5     as qt
-from PyQt5 import QtGui,QtCore
+import time
 
 import pyqtgraph as qg
 
-from keras.models import Model
+from multiprocessing import Pool, Process
+from pathlib import Path
+from numpy import random
 from keras import backend
 
-from termcolor import colored
-
-# imports from Hippocampus system
 from frontends.frontend_Blender import WORLD_BlenderInterface
 from topologies.manualTopology import manualTopologyGraph
-from agents.DQNAgents import DQNAgent_Baseline
+from agents.dqn_agents import DQNAgentBaseline
 from observations.imageObservations import imageObservation_Baseline
 from interfaces.interfaceOAI import openAIGymInterface
 from analysis.rlMonitoring.rlPerformanceMonitors import performanceMonitor_Baseline
@@ -127,7 +112,7 @@ def singleRun():
     modules['interfaceOAI']=openAIGymInterface(modules,visualOutput,rewardCallback)
     
     
-    rlAgent=DQNAgent_Baseline(modules['interfaceOAI'],5000,0.3,trialBeginCallback,trialEndCallback)
+    rlAgent=DQNAgentBaseline(modules['interfaceOAI'],5000,0.3,trialBeginCallback,trialEndCallback)
     
     
     # set the experimental parameters
