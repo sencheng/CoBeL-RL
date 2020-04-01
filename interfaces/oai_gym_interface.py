@@ -3,22 +3,16 @@
 
 import numpy as np
 import gym
+import PyQt5 as qt
+
+
 from gym import spaces
 
-
-import math
-
-import PyQt5 as qt
-import pyqtgraph as qg
-from numpy.linalg import norm
-import time
-
-import cv2
 
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
-class openAIGymInterface(gym.Env):
+class OAIGymInterface(gym.Env):
     
     
     # The constructor.

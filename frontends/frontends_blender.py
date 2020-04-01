@@ -1,28 +1,21 @@
 
 
-import numpy as np
 
 
 import sys
 import socket
 import os
-from os.path import expanduser
-
 import subprocess
+import numpy as np
 
-from shapely.geometry import Point
+
 from shapely.geometry import Polygon
 
-import math
-import cv2
-from pathlib import Path
-
-import os
 
 
 ### The Blender interface class. This class connects to the Blender environment and controls the flow of commands/data that goes to/comes from the Blender environment.
 ### 
-class WORLD_BlenderInterface():
+class FrontendBlenderInterface():
 
     ### Constructor
     ### scenarioName: the FULL path to the scenario that should be processed
@@ -39,7 +32,7 @@ class WORLD_BlenderInterface():
             if 'CoBeL-RL' in p:
                 path=p
         
-        scenarioName=path+'/environments/BlenderEnvironments/'+scenarioName
+        scenarioName=path+'/environments/environments_blender/'+scenarioName
         
         subprocess.Popen([self.BLENDER_EXECUTABLE,scenarioName,'--window-border','--window-geometry','1320','480','600','600','--enable-autoexec'])
         self.controlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
