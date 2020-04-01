@@ -4,23 +4,18 @@
 
 
 import PyQt5 as qt
-from PyQt5 import QtGui
 import pyqtgraph as qg
 import pyqtgraph.functions
-
 import numpy as np
 
-import meshpy.triangle as triangle
-from scipy.spatial.distance import cdist
+from PyQt5 import QtGui
 
-from shapely.geometry import Point
-from shapely.geometry import Polygon
 
 
 
 ### Helper class for the visualization of the topology graph
 ### Constructs a centered arrow pointing in a dedicated direction, inherits from 'ArrowItem'
-class cogArrow(qg.ArrowItem):
+class CogArrow(qg.ArrowItem):
     # set the position and direction of the arrow
     # x: x position of the arrow's center
     # y: y position of the arrow's center
@@ -59,7 +54,7 @@ class cogArrow(qg.ArrowItem):
             
 
 ### This class defines a single node of the topology graph.
-class topologyNode():
+class TopologyNode():
     def __init__(self,index,x,y):
         # the node's global index
         self.index=index
@@ -75,7 +70,7 @@ class topologyNode():
         self.neighbors=[]
         
         # an indicator arrow that points in the direction of the most probable next neighbor (as planned by the RL system)
-        self.qIndicator=cogArrow()
+        self.qIndicator=CogArrow()
 
         # if not otherwise defined or inhibited, each node is also a starting node
         self.startNode=False
@@ -88,7 +83,7 @@ class topologyNode():
 
 
 
-class manualTopologyGraph():
+class ManualTopologyGraph():
     
     def __init__(self, world, guiParent, graphInfo,visualOutput=True):
     
@@ -144,7 +139,7 @@ class manualTopologyGraph():
         indexCounter=0
         for n in nodes:
             # create the corresponding node, where i is the running index of the mesh_points/corresponding nodes
-            node=topologyNode(indexCounter,float(n[1]),float(n[2]))
+            node=TopologyNode(indexCounter,float(n[1]),float(n[2]))
             self.nodes=self.nodes+[node]
             indexCounter+=1
         
@@ -156,7 +151,7 @@ class manualTopologyGraph():
             
             
         # define a dedicated 'noneNode' that acts as a placeholder for neighborhood construction
-        noneNode=topologyNode(-1,0.0,0.0)
+        noneNode=TopologyNode(-1,0.0,0.0)
         
         # comstruct the neighborhoods of each node in the graph
         for edge in self.edges:
@@ -206,7 +201,7 @@ class manualTopologyGraph():
             # set up indicator arrows for each node, except the goal node, and all nodes in active shock zones iff shock zones exist
             for node in self.nodes:
                 if not node.goalNode:
-                    node.qIndicator=cogArrow(angle=0.0,headLen=20.0,tipAngle=25.0,tailLen=0.0,brush=(255,255,0))
+                    node.qIndicator=CogArrow(angle=0.0,headLen=20.0,tipAngle=25.0,tailLen=0.0,brush=(255,255,0))
                     self.plot.addItem(node.qIndicator)
             
             
@@ -254,7 +249,7 @@ class manualTopologyGraph():
             
             
             # eventually, overlay robot marker
-            self.posMarker=cogArrow(angle=0.0,headLen=20.0,tipAngle=25.0,tailLen=0.0,brush=(255,0,0))
+            self.posMarker=CogArrow(angle=0.0,headLen=20.0,tipAngle=25.0,tailLen=0.0,brush=(255,0,0))
             self.plot.addItem(self.posMarker)
             # initial position to center, this has to be worked over later!
             self.posMarker.setData(0.0,0.0,0.0)
