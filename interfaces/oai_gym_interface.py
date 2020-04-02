@@ -35,12 +35,6 @@ class OAIGymInterface(gym.Env):
         self.observations=self.modules['observations']
 
         
-        
-        # first: pose space
-        self.pose_space = gym.spaces.Box   (low=np.array([self.modules['world'].minX, self.modules['world'].minY, 0.]),
-                                           high=np.array([self.modules['world'].maxX, self.modules['world'].maxY, 360.]))
-        
-        
         # second: action space
         self.action_space = gym.spaces.Discrete(modules['topologyGraph'].cliqueSize)
         
