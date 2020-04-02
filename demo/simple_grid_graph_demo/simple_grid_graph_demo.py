@@ -4,37 +4,22 @@ import sys
 import shutil
 import os
 import multiprocessing as mp
-from multiprocessing import Pool, Process
-import time
-from pathlib import Path
-
-
 import numpy as np
-from numpy import random
-
-
-from tqdm import tqdm
-
-from shapely.geometry import Point
-from shapely.geometry import Polygon
-
-import PyQt5     as qt
-from PyQt5 import QtGui,QtCore
+import time
 
 import pyqtgraph as qg
 
-from keras.models import Model
+from multiprocessing import Pool, Process
+from pathlib import Path
+from numpy import random
 from keras import backend
 
-from termcolor import colored
-
-# imports from Hippocampus system
-from frontends.frontend_Blender import WORLD_BlenderInterface
-from topologies.manualTopology import manualTopologyGraph
-from agents.DQNAgents import DQNAgent_Baseline
-from observations.imageObservations import imageObservation_Baseline
-from interfaces.interfaceOAI import openAIGymInterface
-from analysis.rlMonitoring.rlPerformanceMonitors import performanceMonitor_Baseline
+from frontends.frontends_blender import FrontendBlenderInterface
+from topologies.manual_topology import ManualTopologyGraph
+from agents.dqn_agents import DQNAgentBaseline
+from observations.image_observations import ImageObservationBaseline
+from interfaces.oai_gym_interface import OAIGymInterface
+from analysis.rl_monitoring.rl_performance_monitors import RLPerformanceMonitorBaseline
 
 
 # shall the system provide visual output while performing the experiments? NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'! 
@@ -121,19 +106,19 @@ def singleRun():
     
     
     
-    modules['world']=WORLD_BlenderInterface('simpleGridGraphEnv/simpleGridGraphMaze.blend')
-    modules['observations']=imageObservation_Baseline(modules['world'],mainWindow,visualOutput)
-    modules['topologyGraph']=manualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
-    modules['interfaceOAI']=openAIGymInterface(modules,visualOutput,rewardCallback)
+    modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
+    modules['observations']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
+    modules['topologyGraph']=ManualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
+    modules['interfaceOAI']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
     
-    rlAgent=DQNAgent_Baseline(modules['interfaceOAI'],5000,0.3,trialBeginCallback,trialEndCallback)
+    rlAgent=DQNAgentBaseline(modules['interfaceOAI'],5000,0.3,trialBeginCallback,trialEndCallback)
     
     
     # set the experimental parameters
     rlAgent.trialNumber=100
     
-    perfMon=performanceMonitor_Baseline(rlAgent,mainWindow,True)
+    perfMon=RLPerformanceMonitorBaseline(rlAgent,mainWindow,True)
     rlAgent.performanceMonitor=perfMon
     
     # eventually, allow the OAI class to access the robotic agent class

@@ -8,18 +8,14 @@ from keras import callbacks
 from keras.models import Sequential, Model
 from keras.layers import Dense, Activation, Flatten, Input
 from keras.optimizers import Adam
-
-
 from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 
-
-            
             
 
 ### The reinforcement learing class. It wraps all functionality required to set up a RL agent.        
-class DQNAgent_Baseline():
+class DQNAgentBaseline():
     
     
     ### The nested visualization class that is required by 'KERAS-RL' to visualize the training success (by means of episode reward)
@@ -34,7 +30,7 @@ class DQNAgent_Baseline():
         # trialEndFcn:  the callback function called at the end of each trial, defined for more flexibility in scenario control
         def __init__(self,rlParent,trialBeginFcn=None,trialEndFcn=None):
             
-            super(DQNAgent_Baseline.callbacks,self).__init__()
+            super(DQNAgentBaseline.callbacks,self).__init__()
             
             # store the hosting class
             self.rlParent=rlParent

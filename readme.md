@@ -28,6 +28,7 @@ terminal: (you can change the path name to whatever you want)
 Alternatively if you are working from the institute you can activate the provided virtual environment with 
 > source /groups/cns/venv/cobel_rl/venv/bin/activate
 
+<<<<<<< HEAD
 
 * make sure that your 'PYTHONPATH' environment variable includes the project's root directory.
 
@@ -36,12 +37,13 @@ With the virtual environment activated, navigate to your project folder
 
 Add the project's directory to the PYTHONPATH enviroment variable
 >export PYTHONPATH="$PWD"
-
 Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g.
 
->export BLENDER_EXECUTABLE_PATH='/opt/blender2.79b/'
 
-(to make it **permanent** you have to edit the ~/.bash_profile file and add both variables  there)
+>export BLENDER_EXECUTABLE_PATH='/usr/bin/'
+
+To make it **permanent** you have to edit the ~/.bash_profile file and add both variables  there)
+(The $PWD gives the current directory, here you would have set it manually yourself)
 
 * go to the demo folder
 > cd ~/CoBeL-RL/demo/simpleGridGraphDemo/
@@ -49,3 +51,6 @@ Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path con
 * start the demo project: 
 >python3 simpleGridGraphDemo.py
 
+* If you want to work with a GUI editor you will need to add the environment variable manually.
+In Pycharm this can be done by adding the environment variable to the Run configuration
+(Run -> Run... -> Edit Configurations... -> Environment variables)
