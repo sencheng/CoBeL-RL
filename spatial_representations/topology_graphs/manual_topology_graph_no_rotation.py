@@ -9,81 +9,14 @@ import pyqtgraph.functions
 import numpy as np
 
 from PyQt5 import QtGui
-
-
-
-
-### Helper class for the visualization of the topology graph
-### Constructs a centered arrow pointing in a dedicated direction, inherits from 'ArrowItem'
-class CogArrow(qg.ArrowItem):
-    # set the position and direction of the arrow
-    # x: x position of the arrow's center
-    # y: y position of the arrow's center
-    # angle: the orientation of the arrow
-    
-    def setData(self,x,y,angle):
-        
-        # the angle has to be modified to suit the demands of the environment(?)
-        angle=-angle/np.pi*180.0+180.0
-        
-        # assemble a new temporary dict that is used for path construction
-        tempOpts=dict()
-        tempOpts['headLen']=self.opts['headLen']
-        tempOpts['tipAngle']=self.opts['tipAngle']
-        tempOpts['baseAngle']=self.opts['baseAngle']
-        tempOpts['tailLen']=self.opts['tailLen']
-        tempOpts['tailWidth']=self.opts['tailWidth']
-        
-        
-        # create the path
-        arrowPath=qg.functions.makeArrowPath(**tempOpts)
-        # identify boundaries of the arrows, required to shif the arrow
-        bounds=arrowPath.boundingRect()
-        # prepare a transform
-        transform=QtGui.QTransform()
-        # shift and rotate the path (arrow)
-        transform.rotate(angle)
-        transform.translate(int(-float(bounds.x())-float(bounds.width())/10.0*7.0),int(float(-bounds.y())-float(bounds.height())/2.0))
-        # 'remap' the path
-        self.path=transform.map(arrowPath)
-        self.setPath(self.path)
-        # set position of the arrow
-        self.setPos(x,y)
-            
-            
-            
-
-### This class defines a single node of the topology graph.
-class TopologyNode():
-    def __init__(self,index,x,y):
-        # the node's global index
-        self.index=index
-        
-        # the node's global position
-        self.x=x
-        self.y=y
-        
-        # is this node the requested goal node?
-        self.goalNode=False
-        
-        # the clique of the node's neighboring nodes
-        self.neighbors=[]
-        
-        # an indicator arrow that points in the direction of the most probable next neighbor (as planned by the RL system)
-        self.qIndicator=CogArrow()
-
-        # if not otherwise defined or inhibited, each node is also a starting node
-        self.startNode=False
-        
-        # this reward bias is assigned to the node as standard (0.0), and can be changed dynamically to reflect environmental reconfigurations of rewards
-        self.nodeRewardBias=0.0
-        
+from .misc.topology_node import TopologyNode
+from .misc.cog_arrow import CogArrow
 
 
 
 
 
-class ManualTopologyGraph():
+class ManualTopologyGraphNoRotation():
     
     def __init__(self, world, guiParent, graphInfo,visualOutput=True):
     
