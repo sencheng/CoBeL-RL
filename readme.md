@@ -28,7 +28,6 @@ terminal: (you can change the path name to whatever you want)
 Alternatively if you are working from the institute you can activate the provided virtual environment with 
 > source /groups/cns/venv/cobel_rl/venv/bin/activate
 
-<<<<<<< HEAD
 
 * make sure that your 'PYTHONPATH' environment variable includes the project's root directory.
 
