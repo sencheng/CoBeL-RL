@@ -16,27 +16,26 @@ from spatial_representations.spatial_representation import SpatialRepresentation
 
 
 
+
+
 class ManualTopologyGraphNoRotation(SpatialRepresentation):
     
-    def __init__(self, world, guiParent, graphInfo,visualOutput=True):
+    def __init__(self, modules, graph_info):
         
         # call the base class init
         super(ManualTopologyGraphNoRotation,self).__init__()
         
-        # extract the world module and the observation module
-        self.world=world
+        
+        # normally, the topology graph is not shown in gui_parent
+        self.visual_output=False
+        self.gui_parent=None
         
         
-        # memorize the output window
-        self.guiParent=guiParent
+        #store the graph parameters
+        self.graph_info=graph_info
         
-        # store the graphInfo structure
-        self.graphInfo=graphInfo
-        
-        # store the reinforcement learning agent
-        self.rlAgent=None
-        # shall the module produce visual output?
-        self.visualOutput=visualOutput
+        # extract the world module
+        self.world=modules['world']
         
         # get the limits of the given environment
         self.world_limits = self.world.getLimits()
@@ -60,7 +59,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
         
         
-        self.cliqueSize=graphInfo['cliqueSize']
+        self.cliqueSize=graph_info['cliqueSize']
         # set up a manually constructed topology graph
         
         # read topology structure from world module
@@ -105,25 +104,35 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
                 node.neighbors=node.neighbors+[noneNode]
         
         # assign start nodes
-        for nodeIndex in self.graphInfo['startNodes']:
+        for nodeIndex in self.graph_info['startNodes']:
             self.nodes[nodeIndex].startNode=True
             
         # assign goal nodes
-        for nodeIndex in self.graphInfo['goalNodes']:
+        for nodeIndex in self.graph_info['goalNodes']:
             self.nodes[nodeIndex].goalNode=True
         
         
         
+        
+
+
+
+    def set_visual_debugging(self,visual_output,gui_parent):
+        
+        self.gui_parent=gui_parent
+        self.visual_output=visual_output
         self.initVisualElements()
+        
+
 
 
     def initVisualElements(self):
         # do basic visualization
         # iff visualOutput is set to True!
-        if self.visualOutput:
+        if self.visual_output:
 
             # add the graph plot to the GUI widget
-            self.plot = self.guiParent.addPlot(title='Topology graph')
+            self.plot = self.gui_parent.addPlot(title='Topology graph')
             # set extension of the plot, lock aspect ratio
             self.plot.setXRange( self.world_limits[0,0], self.world_limits[0,1] )
             self.plot.setYRange( self.world_limits[1,0], self.world_limits[1,1] )
@@ -235,7 +244,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
     # 
     # pose: the agent's pose to visualize
     def updateRobotPose(self,pose):
-        if self.visualOutput:
+        if self.visual_output:
             self.posMarker.setData(pose[0],pose[1],np.arctan2(pose[3],pose[2]))
 
 
