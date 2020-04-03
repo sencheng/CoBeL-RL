@@ -12,15 +12,16 @@ from PyQt5 import QtGui
 from .misc.topology_node import TopologyNode
 from .misc.cog_arrow import CogArrow
 
+from spatial_representations.spatial_representation import SpatialRepresentation
 
 
 
-
-class ManualTopologyGraphNoRotation():
+class ManualTopologyGraphNoRotation(SpatialRepresentation):
     
     def __init__(self, world, guiParent, graphInfo,visualOutput=True):
-    
         
+        # call the base class init
+        super(ManualTopologyGraphNoRotation,self).__init__()
         
         # extract the world module and the observation module
         self.world=world
@@ -236,3 +237,9 @@ class ManualTopologyGraphNoRotation():
     def updateRobotPose(self,pose):
         if self.visualOutput:
             self.posMarker.setData(pose[0],pose[1],np.arctan2(pose[3],pose[2]))
+
+
+
+    def sample_state_space(self):
+        return
+
