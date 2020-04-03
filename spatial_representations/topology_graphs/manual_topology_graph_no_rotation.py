@@ -269,8 +269,8 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         for node_index in range(len(self.nodes)):
             node=self.nodes[node_index]
             # set agent to x/y-position of 'node'
-            world_module.step_simulation_without_physics(node.x,node.y,0.0)
-            world_module.step_simulation_without_physics(node.x,node.y,0.0)
+            world_module.step_simulation_without_physics(node.x,node.y,90.0)
+            world_module.step_simulation_without_physics(node.x,node.y,90.0)
             observation_module.update()
             observation=observation_module.observation
             self.state_space+=[observation]
