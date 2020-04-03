@@ -32,7 +32,7 @@ class OAIGymInterface(gym.Env):
         self.rewardCallback=rewardCallback
         
         self.world=self.modules['world']
-        self.observations=self.modules['observations']
+        self.observations=self.modules['observation']
 
         
         # second: action space
@@ -40,7 +40,7 @@ class OAIGymInterface(gym.Env):
         
         
         # third: observation space
-        self.observation_space=modules['observations'].getObservationSpace()
+        self.observation_space=modules['observation'].getObservationSpace()
         
         # all OAI spaces have been initialized!
         
@@ -82,7 +82,7 @@ class OAIGymInterface(gym.Env):
         
         # reset the 'goal reached' indicator of the environment
         
-        self.modules['observations'].update()
+        self.modules['observation'].update()
         self.modules['topologyGraph'].updateRobotPose([goalPosition[0],goalPosition[1],0.0,1.0])
     
         
@@ -134,7 +134,7 @@ class OAIGymInterface(gym.Env):
         callbackValue['previousNode']=self.modules['topologyGraph'].nodes[previousNode]
         reward,stopEpisode=self.rewardCallback(callbackValue)
         
-        return self.modules['observations'].observation, reward, stopEpisode, {}
+        return self.modules['observation'].observation, reward, stopEpisode, {}
         
         
     # This function restarts the RL agent's learning cycle by initiating a new episode.
@@ -159,4 +159,4 @@ class OAIGymInterface(gym.Env):
         self.modules['topologyGraph'].currentNode=nextNode
         
         # return the observation
-        return self.modules['observations'].observation
+        return self.modules['observation'].observation

@@ -8,6 +8,7 @@ import pyqtgraph as qg
 import pyqtgraph.functions
 import numpy as np
 
+
 from PyQt5 import QtGui
 from .misc.topology_node import TopologyNode
 from .misc.cog_arrow import CogArrow
@@ -35,13 +36,16 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         self.graph_info=graph_info
         
         # extract the world module
-        self.world=modules['world']
+        self.modules=modules
+        
+        # the world module is required here
+        world_module=modules['world']
         
         # get the limits of the given environment
-        self.world_limits = self.world.getLimits()
+        self.world_limits = world_module.getLimits()
         
         # retrieve all boundary information from the environment
-        self.world_nodes, self.world_edges = self.world.getWallGraph()
+        self.world_nodes, self.world_edges = world_module.getWallGraph()
         
             
         
@@ -63,9 +67,9 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         # set up a manually constructed topology graph
         
         # read topology structure from world module
-        nodes=np.array(self.world.getManuallyDefinedTopologyNodes())
+        nodes=np.array(world_module.getManuallyDefinedTopologyNodes())
         nodes=nodes[nodes[:,0].argsort()]
-        edges=np.array(self.world.getManuallyDefinedTopologyEdges())
+        edges=np.array(world_module.getManuallyDefinedTopologyEdges())
         edges=edges[edges[:,0].argsort()]
         
         # transfer the node points into the self.nodes list
@@ -112,7 +116,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             self.nodes[nodeIndex].goalNode=True
         
         
-        
+        self.sample_state_space()
         
 
 
@@ -203,42 +207,41 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
                             
             
             
-            ## overlay the policy arrows
+            # overlay the policy arrows
             
-            #if self.visualOutput:
-                ## for all nodes in the topology graph
-                #for node in self.nodes:
+            if self.visual_output:
+                # for all nodes in the topology graph
+                for node in self.nodes:
                     
                     
-                    ## query the model at each node's position
-                    ## only for valid nodes!
-                    #if node.index!=-1:
-                        #observation=self.observationModule.observationFromNodeIndex(node.index)
-                        #data=np.array([[observation]])
-                        ## get the q-values at the queried node's position
-                        #q_values = self.rlAgent.agent.model.predict_on_batch(data)[0]
+                    # query the model at each node's position
+                    # only for valid nodes!
+                    if node.index!=-1:
+                        observation=self.state_space[node.index]
+                        data=np.array([[observation]])
+                        # get the q-values at the queried node's position
+                        q_values = self.rlAgent.agent.model.predict_on_batch(data)[0]
                         
-                        ## find all neighbors that are actually valid (index != -1)
-                        #validIndex=0
-                        #for n_index in range(len(node.neighbors)):
-                            #if node.neighbors[n_index].index!=-1:
-                                #validIndex=n_index
+                        # find all neighbors that are actually valid (index != -1)
+                        validIndex=0
+                        for n_index in range(len(node.neighbors)):
+                            if node.neighbors[n_index].index!=-1:
+                                validIndex=n_index
                         
-                        ## find the index of the neighboring node that is 'pointed to' by the highest q-value, AND is valid!
-                        #maxNeighNode=node.neighbors[np.argmax(q_values[0:validIndex+1])]
-                        ## find the direction of the selected neighboring node
-                        ## to node: maxNeighNode
-                        #toNode=np.array([maxNeighNode.x,maxNeighNode.y])
-                        ## from node: node
-                        #fromNode=np.array([node.x,node.y])
-                        ## the difference vector between to and from
-                        #vec=toNode-fromNode
-                        ## normalize the direction vector
-                        #l=np.linalg.norm(vec)
-                        #vec=vec/l
-                        ## make the corresponding indicator point in the direction of the difference vector
-                        #node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
-            pass
+                        # find the index of the neighboring node that is 'pointed to' by the highest q-value, AND is valid!
+                        maxNeighNode=node.neighbors[np.argmax(q_values[0:validIndex+1])]
+                        # find the direction of the selected neighboring node
+                        # to node: maxNeighNode
+                        toNode=np.array([maxNeighNode.x,maxNeighNode.y])
+                        # from node: node
+                        fromNode=np.array([node.x,node.y])
+                        # the difference vector between to and from
+                        vec=toNode-fromNode
+                        # normalize the direction vector
+                        l=np.linalg.norm(vec)
+                        vec=vec/l
+                        # make the corresponding indicator point in the direction of the difference vector
+                        node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
 
     # This function updates the visual depiction of the agent(robot).
     # 
@@ -250,5 +253,26 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
 
 
     def sample_state_space(self):
+        print('sampling state space')
+        
+        
+        # the world module is required here
+        world_module=self.modules['world']
+        
+        # the observation module is required here
+        observation_module=self.modules['observation']
+        
+        # In this specific topology graph, a state is an image sampled from a specific node of the graph. There
+        # is no rotation, so one image per node is sufficient.
+        
+        self.state_space=[]
+        for node_index in range(len(self.nodes)):
+            node=self.nodes[node_index]
+            # set agent to x/y-position of 'node'
+            world_module.step_simulation_without_physics(node.x,node.y,0.0)
+            world_module.step_simulation_without_physics(node.x,node.y,0.0)
+            observation_module.update()
+            observation=observation_module.observation
+            self.state_space+=[observation]
         return
 
