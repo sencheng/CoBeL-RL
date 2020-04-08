@@ -483,9 +483,6 @@ class FrontendBlenderInterface():
         except:
             print(sys.exc_info()[1])
 
-    # This function triggers Blender shutdown when the WORLD_BlenderInterface is 'cleaned up'
-    def __del__(self):
-        self.stopBlender()
         
         
         

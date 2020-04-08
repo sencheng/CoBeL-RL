@@ -132,7 +132,7 @@ def singleRun():
     rlAgent.train(100000)
     
     backend.clear_session()
-
+    modules['world'].stopBlender()
 
 
 
