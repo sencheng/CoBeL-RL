@@ -15,7 +15,7 @@ from numpy import random
 from keras import backend
 
 from frontends.frontends_blender import FrontendBlenderInterface
-from topologies.manual_topology import ManualTopologyGraph
+from spatial_representations.topology_graphs.manual_topology_graph_no_rotation import ManualTopologyGraphNoRotation
 from agents.dqn_agents import DQNAgentBaseline
 from observations.image_observations import ImageObservationBaseline
 from interfaces.oai_gym_interface import OAIGymInterface
@@ -107,8 +107,9 @@ def singleRun():
     
     
     modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
-    modules['observations']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
-    modules['topologyGraph']=ManualTopologyGraph(modules['world'],mainWindow,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4},visualOutput)
+    modules['observation']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
+    modules['topologyGraph']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
+    modules['topologyGraph'].set_visual_debugging(True,mainWindow)
     modules['interfaceOAI']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
     
