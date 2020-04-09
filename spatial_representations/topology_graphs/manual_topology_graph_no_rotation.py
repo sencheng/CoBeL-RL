@@ -7,7 +7,7 @@ import PyQt5 as qt
 import pyqtgraph as qg
 import pyqtgraph.functions
 import numpy as np
-import time
+import gym
 
 from PyQt5 import QtGui
 from .misc.topology_node import TopologyNode
@@ -344,3 +344,9 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             qt.QtGui.QApplication.instance().processEvents()
         
         return callback_value
+
+
+
+    def get_action_space(self):
+        # for this spatial representation type, the clique size of the topology graph defines the action space
+        return gym.spaces.Discrete(self.cliqueSize)

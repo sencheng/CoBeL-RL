@@ -36,7 +36,7 @@ class OAIGymInterface(gym.Env):
 
         
         # second: action space
-        self.action_space = gym.spaces.Discrete(modules['spatial_representation'].cliqueSize)
+        self.action_space = modules['spatial_representation'].get_action_space()
         
         
         # third: observation space
