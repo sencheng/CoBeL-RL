@@ -79,7 +79,7 @@ def trialEndCallback(trial,rlAgent,logs):
 
     if visualOutput:
         # update the visual elements if required
-        rlAgent.interfaceOAI.modules['topologyGraph'].updateVisualElements()
+        rlAgent.interfaceOAI.modules['spatial_representation'].updateVisualElements()
         rlAgent.performanceMonitor.update(trial,logs)
 
 '''
@@ -108,25 +108,25 @@ def singleRun():
     
     modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
     modules['observation']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
-    modules['topologyGraph']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
-    modules['topologyGraph'].set_visual_debugging(True,mainWindow)
-    modules['interfaceOAI']=OAIGymInterface(modules,visualOutput,rewardCallback)
+    modules['spatial_representation']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
+    modules['spatial_representation'].set_visual_debugging(visualOutput,mainWindow)
+    modules['rl_interface']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
     
-    rlAgent=DQNAgentBaseline(modules['interfaceOAI'],5000,0.3,trialBeginCallback,trialEndCallback)
+    rlAgent=DQNAgentBaseline(modules['rl_interface'],5000,0.3,trialBeginCallback,trialEndCallback)
     
     
     # set the experimental parameters
     rlAgent.trialNumber=100
     
-    perfMon=RLPerformanceMonitorBaseline(rlAgent,mainWindow,True)
+    perfMon=RLPerformanceMonitorBaseline(rlAgent,mainWindow,visualOutput)
     rlAgent.performanceMonitor=perfMon
     
     # eventually, allow the OAI class to access the robotic agent class
-    modules['interfaceOAI'].rlAgent=rlAgent
+    modules['rl_interface'].rlAgent=rlAgent
     
     # and allow the topology class to access the rlAgent
-    modules['topologyGraph'].rlAgent=rlAgent
+    modules['spatial_representation'].rlAgent=rlAgent
     
     # let the agent learn, with extremely large number of allowed maximum steps
     rlAgent.train(100000)

@@ -7,7 +7,7 @@ import PyQt5 as qt
 import pyqtgraph as qg
 import pyqtgraph.functions
 import numpy as np
-
+import time
 
 from PyQt5 import QtGui
 from .misc.topology_node import TopologyNode
@@ -253,8 +253,6 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
 
 
     def sample_state_space(self):
-        print('sampling state space')
-        
         
         # the world module is required here
         world_module=self.modules['world']
@@ -276,3 +274,73 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             self.state_space+=[observation]
         return
 
+
+
+
+    
+        
+
+
+
+
+    def generate_behavior_from_action(self,action):
+        
+        
+        
+        nextNodePos=np.array([0.0,0.0])
+        callback_value=dict()
+        
+        # if a standard action is performed
+        if action!='reset':
+        
+        
+            previousNode=self.modules['spatial_representation'].currentNode
+            # with action given, the next node can be computed
+            self.modules['spatial_representation'].nextNode=self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].neighbors[action].index
+            # array to store the next node's coordinates
+                
+            if self.modules['spatial_representation'].nextNode!=-1:
+                # compute the next node's coordinates
+                nextNodePos=np.array([self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode].x,self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode].y])
+            else:
+                # if the next node corresponds to an invalid node, the agent stays in place
+                self.modules['spatial_representation'].nextNode=self.modules['spatial_representation'].currentNode
+                # prevent the agent from starting any motion pattern
+                self.modules['world'].goalReached=True
+                nextNodePos=np.array([self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].x,self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].y])
+            
+            
+            
+            # here, next node is already set and the current node is set to this next node.
+            callback_value['currentNode']=self.nodes[self.nextNode]
+            
+            
+        # if a reset is performed
+        else:
+            # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
+            nextNode=-1
+            while True:
+                nrNodes=len(self.modules['spatial_representation'].nodes)
+                nextNode=np.random.random_integers(0,nrNodes-1)
+                if self.modules['spatial_representation'].nodes[nextNode].startNode:
+                    break
+            
+            nextNodePos=np.array([self.modules['spatial_representation'].nodes[nextNode].x,self.modules['spatial_representation'].nodes[nextNode].y])
+            self.modules['spatial_representation'].nextNode=nextNode
+            
+        # actually move the robot to the node
+        self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],90.0])) 
+        self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],90.0])) 
+        
+        
+        # make the current node the one the agent travelled to
+        self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
+        
+        self.modules['observation'].update()
+        self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],0.0,1.0])
+        
+        # if possible try to update the visual debugging display
+        if qt.QtGui.QApplication.instance() is not None:
+            qt.QtGui.QApplication.instance().processEvents()
+        
+        return callback_value

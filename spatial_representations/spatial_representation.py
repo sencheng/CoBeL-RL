@@ -19,3 +19,10 @@ class SpatialRepresentation(ABC):
     @abc.abstractmethod
     def sample_state_space(self):
         return
+
+
+    @abc.abstractmethod
+    def generate_behavior_from_action(self,action):
+        return
+
+    
