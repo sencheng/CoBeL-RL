@@ -153,7 +153,7 @@ class FrontendBlenderInterface():
         
         # propel the simulation for 10 timesteps to finish initialization of the simulation framework
         for i in range(10):
-            self.stepSimNoPhysics(0.0,0.0,0.0)
+            self.step_simulation_without_physics(0.0,0.0,0.0)
     
     
     ### This function reads all manually defined topology nodes from the environment (if such nodes are defined)
@@ -336,7 +336,7 @@ class FrontendBlenderInterface():
     # y:       the global y position to teleport to
     # yaw:     the global yaw value to teleport to
     # 
-    def stepSimNoPhysics(self,newX,newY,newYaw):
+    def step_simulation_without_physics(self,newX,newY,newYaw):
         
         # the basic capture image size for the images taken by the robot's omnicam, the width of the omnicam image is actually 4*capAreaWidth 
         capAreaWidth=64
@@ -415,7 +415,7 @@ class FrontendBlenderInterface():
         if actuatorCommand.shape[0]>2:
             
             # call the teleportation routine
-            [timeData,poseData,sensorData,imageData]=self.stepSimNoPhysics(actuatorCommand[0],actuatorCommand[1],90.0)
+            [timeData,poseData,sensorData,imageData]=self.step_simulation_without_physics(actuatorCommand[0],actuatorCommand[1],90.0)
             
             # flag if the robot reached the goal (should always be the case after a teleportation)
             if self.goalPosition is not None:
@@ -486,9 +486,6 @@ class FrontendBlenderInterface():
         except:
             print(sys.exc_info()[1])
 
-    # This function triggers Blender shutdown when the WORLD_BlenderInterface is 'cleaned up'
-    def __del__(self):
-        self.stopBlender()
         
         
         

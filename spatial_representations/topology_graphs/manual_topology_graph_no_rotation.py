@@ -8,107 +8,44 @@ import pyqtgraph as qg
 import pyqtgraph.functions
 import numpy as np
 
+
 from PyQt5 import QtGui
+from .misc.topology_node import TopologyNode
+from .misc.cog_arrow import CogArrow
+
+from spatial_representations.spatial_representation import SpatialRepresentation
 
 
 
 
-### Helper class for the visualization of the topology graph
-### Constructs a centered arrow pointing in a dedicated direction, inherits from 'ArrowItem'
-class CogArrow(qg.ArrowItem):
-    # set the position and direction of the arrow
-    # x: x position of the arrow's center
-    # y: y position of the arrow's center
-    # angle: the orientation of the arrow
+
+class ManualTopologyGraphNoRotation(SpatialRepresentation):
     
-    def setData(self,x,y,angle):
+    def __init__(self, modules, graph_info):
         
-        # the angle has to be modified to suit the demands of the environment(?)
-        angle=-angle/np.pi*180.0+180.0
-        
-        # assemble a new temporary dict that is used for path construction
-        tempOpts=dict()
-        tempOpts['headLen']=self.opts['headLen']
-        tempOpts['tipAngle']=self.opts['tipAngle']
-        tempOpts['baseAngle']=self.opts['baseAngle']
-        tempOpts['tailLen']=self.opts['tailLen']
-        tempOpts['tailWidth']=self.opts['tailWidth']
+        # call the base class init
+        super(ManualTopologyGraphNoRotation,self).__init__()
         
         
-        # create the path
-        arrowPath=qg.functions.makeArrowPath(**tempOpts)
-        # identify boundaries of the arrows, required to shif the arrow
-        bounds=arrowPath.boundingRect()
-        # prepare a transform
-        transform=QtGui.QTransform()
-        # shift and rotate the path (arrow)
-        transform.rotate(angle)
-        transform.translate(int(-float(bounds.x())-float(bounds.width())/10.0*7.0),int(float(-bounds.y())-float(bounds.height())/2.0))
-        # 'remap' the path
-        self.path=transform.map(arrowPath)
-        self.setPath(self.path)
-        # set position of the arrow
-        self.setPos(x,y)
-            
-            
-            
-
-### This class defines a single node of the topology graph.
-class TopologyNode():
-    def __init__(self,index,x,y):
-        # the node's global index
-        self.index=index
-        
-        # the node's global position
-        self.x=x
-        self.y=y
-        
-        # is this node the requested goal node?
-        self.goalNode=False
-        
-        # the clique of the node's neighboring nodes
-        self.neighbors=[]
-        
-        # an indicator arrow that points in the direction of the most probable next neighbor (as planned by the RL system)
-        self.qIndicator=CogArrow()
-
-        # if not otherwise defined or inhibited, each node is also a starting node
-        self.startNode=False
-        
-        # this reward bias is assigned to the node as standard (0.0), and can be changed dynamically to reflect environmental reconfigurations of rewards
-        self.nodeRewardBias=0.0
-        
-
-
-
-
-
-class ManualTopologyGraph():
-    
-    def __init__(self, world, guiParent, graphInfo,visualOutput=True):
-    
+        # normally, the topology graph is not shown in gui_parent
+        self.visual_output=False
+        self.gui_parent=None
         
         
-        # extract the world module and the observation module
-        self.world=world
+        #store the graph parameters
+        self.graph_info=graph_info
         
+        # extract the world module
+        self.modules=modules
         
-        # memorize the output window
-        self.guiParent=guiParent
-        
-        # store the graphInfo structure
-        self.graphInfo=graphInfo
-        
-        # store the reinforcement learning agent
-        self.rlAgent=None
-        # shall the module produce visual output?
-        self.visualOutput=visualOutput
+        # the world module is required here
+        world_module=modules['world']
         
         # get the limits of the given environment
-        self.world_limits = self.world.getLimits()
+        self.world_limits = world_module.getLimits()
         
         # retrieve all boundary information from the environment
-        self.world_nodes, self.world_edges = self.world.getWallGraph()
+        self.world_nodes, self.world_edges = world_module.getWallGraph()
         
             
         
@@ -126,13 +63,13 @@ class ManualTopologyGraph():
         
         
         
-        self.cliqueSize=graphInfo['cliqueSize']
+        self.cliqueSize=graph_info['cliqueSize']
         # set up a manually constructed topology graph
         
         # read topology structure from world module
-        nodes=np.array(self.world.getManuallyDefinedTopologyNodes())
+        nodes=np.array(world_module.getManuallyDefinedTopologyNodes())
         nodes=nodes[nodes[:,0].argsort()]
-        edges=np.array(self.world.getManuallyDefinedTopologyEdges())
+        edges=np.array(world_module.getManuallyDefinedTopologyEdges())
         edges=edges[edges[:,0].argsort()]
         
         # transfer the node points into the self.nodes list
@@ -171,25 +108,35 @@ class ManualTopologyGraph():
                 node.neighbors=node.neighbors+[noneNode]
         
         # assign start nodes
-        for nodeIndex in self.graphInfo['startNodes']:
+        for nodeIndex in self.graph_info['startNodes']:
             self.nodes[nodeIndex].startNode=True
             
         # assign goal nodes
-        for nodeIndex in self.graphInfo['goalNodes']:
+        for nodeIndex in self.graph_info['goalNodes']:
             self.nodes[nodeIndex].goalNode=True
         
         
+        self.sample_state_space()
         
+
+
+
+    def set_visual_debugging(self,visual_output,gui_parent):
+        
+        self.gui_parent=gui_parent
+        self.visual_output=visual_output
         self.initVisualElements()
+        
+
 
 
     def initVisualElements(self):
         # do basic visualization
         # iff visualOutput is set to True!
-        if self.visualOutput:
+        if self.visual_output:
 
             # add the graph plot to the GUI widget
-            self.plot = self.guiParent.addPlot(title='Topology graph')
+            self.plot = self.gui_parent.addPlot(title='Topology graph')
             # set extension of the plot, lock aspect ratio
             self.plot.setXRange( self.world_limits[0,0], self.world_limits[0,1] )
             self.plot.setYRange( self.world_limits[1,0], self.world_limits[1,1] )
@@ -260,46 +207,72 @@ class ManualTopologyGraph():
                             
             
             
-            ## overlay the policy arrows
+            # overlay the policy arrows
             
-            #if self.visualOutput:
-                ## for all nodes in the topology graph
-                #for node in self.nodes:
+            if self.visual_output:
+                # for all nodes in the topology graph
+                for node in self.nodes:
                     
                     
-                    ## query the model at each node's position
-                    ## only for valid nodes!
-                    #if node.index!=-1:
-                        #observation=self.observationModule.observationFromNodeIndex(node.index)
-                        #data=np.array([[observation]])
-                        ## get the q-values at the queried node's position
-                        #q_values = self.rlAgent.agent.model.predict_on_batch(data)[0]
+                    # query the model at each node's position
+                    # only for valid nodes!
+                    if node.index!=-1:
+                        observation=self.state_space[node.index]
+                        data=np.array([[observation]])
+                        # get the q-values at the queried node's position
+                        q_values = self.rlAgent.agent.model.predict_on_batch(data)[0]
                         
-                        ## find all neighbors that are actually valid (index != -1)
-                        #validIndex=0
-                        #for n_index in range(len(node.neighbors)):
-                            #if node.neighbors[n_index].index!=-1:
-                                #validIndex=n_index
+                        # find all neighbors that are actually valid (index != -1)
+                        validIndex=0
+                        for n_index in range(len(node.neighbors)):
+                            if node.neighbors[n_index].index!=-1:
+                                validIndex=n_index
                         
-                        ## find the index of the neighboring node that is 'pointed to' by the highest q-value, AND is valid!
-                        #maxNeighNode=node.neighbors[np.argmax(q_values[0:validIndex+1])]
-                        ## find the direction of the selected neighboring node
-                        ## to node: maxNeighNode
-                        #toNode=np.array([maxNeighNode.x,maxNeighNode.y])
-                        ## from node: node
-                        #fromNode=np.array([node.x,node.y])
-                        ## the difference vector between to and from
-                        #vec=toNode-fromNode
-                        ## normalize the direction vector
-                        #l=np.linalg.norm(vec)
-                        #vec=vec/l
-                        ## make the corresponding indicator point in the direction of the difference vector
-                        #node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
-            pass
+                        # find the index of the neighboring node that is 'pointed to' by the highest q-value, AND is valid!
+                        maxNeighNode=node.neighbors[np.argmax(q_values[0:validIndex+1])]
+                        # find the direction of the selected neighboring node
+                        # to node: maxNeighNode
+                        toNode=np.array([maxNeighNode.x,maxNeighNode.y])
+                        # from node: node
+                        fromNode=np.array([node.x,node.y])
+                        # the difference vector between to and from
+                        vec=toNode-fromNode
+                        # normalize the direction vector
+                        l=np.linalg.norm(vec)
+                        vec=vec/l
+                        # make the corresponding indicator point in the direction of the difference vector
+                        node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
 
     # This function updates the visual depiction of the agent(robot).
     # 
     # pose: the agent's pose to visualize
     def updateRobotPose(self,pose):
-        if self.visualOutput:
+        if self.visual_output:
             self.posMarker.setData(pose[0],pose[1],np.arctan2(pose[3],pose[2]))
+
+
+
+    def sample_state_space(self):
+        print('sampling state space')
+        
+        
+        # the world module is required here
+        world_module=self.modules['world']
+        
+        # the observation module is required here
+        observation_module=self.modules['observation']
+        
+        # In this specific topology graph, a state is an image sampled from a specific node of the graph. There
+        # is no rotation, so one image per node is sufficient.
+        
+        self.state_space=[]
+        for node_index in range(len(self.nodes)):
+            node=self.nodes[node_index]
+            # set agent to x/y-position of 'node'
+            world_module.step_simulation_without_physics(node.x,node.y,90.0)
+            world_module.step_simulation_without_physics(node.x,node.y,90.0)
+            observation_module.update()
+            observation=observation_module.observation
+            self.state_space+=[observation]
+        return
+
