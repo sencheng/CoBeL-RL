@@ -1,14 +1,10 @@
-
-
-
 import numpy as np
 import gym
 import PyQt5 as qt
-
-
 from gym import spaces
-
-
+from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
+from mlagents_envs.environment import UnityEnvironment
+import time
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
@@ -160,3 +156,240 @@ class OAIGymInterface(gym.Env):
         
         # return the observation
         return self.modules['observation'].observation
+
+
+class unity2cobelRL(gym.Env):
+    """
+    Wrapper for Unity with ML-agents
+    """
+    class emptyClass():
+        pass
+
+    def __init__(self, env_path, modules, withGUI=True, rewardCallback=None, worker_id=None,
+                 seed=42, timeout_wait=60, side_channels=None, time_scale=1.0):
+        '''
+        :param env_path: full path to compiled unity executable
+        :param modules: the old CoBeL-RL modules. Currently unnecessary
+        :param withGUI: graphics, bool
+        :param rewardCallback: TODO: implement
+        :param worker_id: Port used to communicate with Unity
+        :param seed: Random seed. Keep at 42 for good luck. 
+        :param timeout_wait: Time until Unity is declared ded
+        :param side_channels: possible channels to talk with the academy (to adjust environmental settings, e.g. light)
+        :param time_scale: Speed of the simulation
+        '''''
+        # store the modules
+        #self.modules = modules
+
+        if worker_id is None:
+            # There is an issue in Linux where the worker id becomes available only after some time has passed since the
+            # last usage. In order to mitigate the issue, a (hopefully) new worker id is automatically selected unless
+            # specifically instructed not to.
+            # Implementation note: two consecutive samples between 0 and 1200 have an immediate 1/1200 chance of
+            # being the same. By using the modulo of unix time we arrive to that likelihood only after an hour, by when
+            # the port has hopefully been released.
+            # Additional notes: The ML-agents framework adds 5005 to the worker_id internally.
+            worker_id = round(time.time()) % 1200 + 5005  # np.random.randint(0, 1200)
+
+        # memorize the reward callback function
+        self.rewardCallback = rewardCallback
+
+        # The world and observations modules are deprecated. Interfacing is handled by Unity. If you need to
+        # perform changes on the world that are not RL-agent actions now you can use a side channel.
+
+        # setup engine channel
+        self.engine_configuration_channel = EngineConfigurationChannel()
+        if side_channels is None:
+            side_channels = []
+
+        side_channels.append(self.engine_configuration_channel)
+
+        # connect python to executable environment
+        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, timeout_wait=timeout_wait,
+                               side_channels=side_channels, no_graphics=not withGUI)
+
+        # Reset the environment
+        env.reset()
+
+        # Set the default "brain" to work with
+        group_name = env.get_agent_groups()[0]
+        group_spec = env.get_agent_group_spec(group_name)
+
+        # Set the time scale of the engine
+        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale)
+
+        # Action and observation spaces are determined inside the Unity environment. See the
+        # "Making a Unity environment" tutorial.
+
+        # self.action_space = gym.spaces.Discrete(modules['topologyGraph'].cliqueSize)
+        # self.observation_space = modules['observation'].getObservationSpace()
+
+        # all OAI spaces have been initialized!
+
+        # this observation variable is now fulfilled by the Unity interfacing
+        self.observation = None
+
+        # a variable that allows the OAI class to access the robotic agent class
+        self.rlAgent = None
+
+        # save environment variables
+        self.env = env
+        self.group_name=group_name
+        self.group_spec=group_spec
+
+        # extract environment information
+        observation_space = group_spec.observation_shapes[0]
+        action_shape = group_spec.action_shape
+        action_type = "discrete" if 'DISCRETE' in str(group_spec.action_type) else "continuous"
+
+
+        # make gym
+        self.action_space = self.emptyClass()  # a hack to give this variable the ability to hold other variables
+        # continuous actions in Unity also take negative values, so if we are using a softmax activation we have to
+        # double the action space to account for them
+        # TODO: figure out whether all actions are accounted for
+        self.action_space.n = group_spec.action_size
+        self.observation_space = np.zeros(shape=observation_space)
+
+        self.action_shape = action_shape
+        self.action_type = action_type
+
+        print('action shape is {}'.format(action_shape))
+        print('action type is {}'.format(action_type))
+        print('action space is {}'.format(group_spec.action_size))
+
+        # debugging stuff
+        self.env.reset()
+        step_result = self.env.get_step_result(self.group_name)
+        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
+        self.observation_shape = observation.shape
+        self.n_step = 0
+
+    # The step function that propels the simulation.
+    def _step(self, action, *args, **kwargs):
+        """
+        :param action: integer
+        :return: (observation, reward, done, info), necessary to function as a gym
+        """
+
+        if self.action_type is 'continuous':
+            action = self.id2continuous(action)
+        elif self.action_type is 'discrete':
+            action = self.id2discrete(action)
+        else:
+            raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
+
+        # print('Received action of shape {0} and value {1} for step {2}'.format(action.shape, action,str(self.n_step)))
+        self.n_step +=1
+
+        # setup action in the Unity environment
+        self.env.set_actions(self.group_name, action)
+
+        # forward the simulation by a timestep (and execute action)
+        self.env.step()
+
+        # get results
+        step_result = self.env.get_step_result(self.group_name)
+        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
+        reward = step_result.reward[0]
+        done = step_result.done[0]
+
+        # currently unused, but required by gym/core.py. At some point, useful information could be stored here and
+        # passed to the callbacks to increase CoBeL-RL's interoperability with other ML frameworks
+        info = self.emptyClass()
+        info.items = lambda : iter({})
+
+        # print("step obs shape = {}".format(observation.shape))
+        if not self.observation_shape == observation.shape:
+            # Unity seems to throw extra sets of observations in a seemingly random fashion. When this happens,
+            # only the first observation is taken into account.
+            # ATTENTION: If you want to implement multi-agent RL this is going to need to be fixed.
+            observation=observation[0]
+
+        # print('Received action of shape {0} and value {1} for step {2}'.format(action.shape, action, str(self.n_step)))
+        if done:
+            print('Reward = {0}, step obs shape = {1}, step = {2}'.format(
+                round(reward,2),observation.shape, self.n_step))
+
+        return observation, reward, done, info
+
+    # This function restarts the RL agent's learning cycle by initiating a new episode.
+    def _reset(self):
+        self.env.reset()
+        step_result = self.env.get_step_result(self.group_name)
+        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
+        # print('_reset obs shape = {}'.format(observation.shape))
+        return observation
+
+    def _close(self):
+        self.env.close()
+
+    def format_observation(self, obs):
+        """
+        :param obs:
+        :return:
+        """
+        raise NotImplementedError
+
+    def id2continuous(self, action_id):
+        """
+        Take an action represented by a positive integer and turn it into a representation suitable for continuous
+        unity environments
+
+        TODO: Find a dumber way to do this
+        :param action_id: a positive value integer from 0 to N
+        :return: an array with the correct format and range to be used by the ML-Agents framework
+
+        :Reason of existence: The DQN outputs values that are integers. However, the ML-agents framework takes as
+        inputs actions that also have negative values. Take for example an action space of 4 and an integer action id,
+        for example the DQN outputs action 0 from possible actions [0,1,2,3].
+        This would normally correspond to an one-hot array
+        a=[1,0,0,0]
+        But since the ML-agents framework makes use of negative values in continuous inputs, the correct array should be
+        a=[1,0]
+        (and for action 1 -> [-1,0], for action 2 -> [0,1], and for action 3 -> [0,-1]
+
+        :High-level view of implementation: Take an integer alpha. If alpha is odd, it has a negative value. If it
+         is even, the value is positive. Its index in the actions array is alpha divided by two and rounded down.
+
+        :Future: This method will likely need to be extended, and perhaps moved inside the individual agent scripts
+        inside Unity. Also, if you can think of an easier way to do this, you should probably rewrite this function.
+        """
+        assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
+        assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
+
+        # check if odd
+        value = action_id % 2
+
+        # spread range from 0,1 to 0,2
+        value = value * 2
+
+        # adjust range to -1, 1
+        value -= 1
+
+        # flip signs so that evens corresponds to positive and odds corresponds to negative
+        value = -value
+
+        # get the rounded down index by using the old python division
+        index = action_id//2
+
+        # make new action
+        new_action = np.zeros(self.action_shape)
+        new_action[index] = value
+
+        return np.array([new_action])
+
+    def id2discrete(self, action_id):
+        # """
+        # Encodes positive integers into Unity-acceptable format
+        # :param action_id: a positive integer in the range of 0, N
+        # :return:
+        # """
+        # assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
+        # assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
+        #
+        # new_action = np.zeros(self.action_shape)
+        # index = action_id
+        # new_action[index] = 1
+        new_action = np.array([[action_id]])
+        return new_action
