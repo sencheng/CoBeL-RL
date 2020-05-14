@@ -3,6 +3,8 @@
 
 
 import numpy     as np
+import tensorflow as tf
+import datetime
 
 from keras import callbacks
 from keras.models import Sequential, Model
@@ -123,9 +125,17 @@ class DQNAgentBaseline():
     
     ### The following function is called to train the agent.
     def train(self,steps):
-        # call the fit method to start the RL learning process
         self.maxSteps=steps
-        self.agent.fit(self.interfaceOAI, nb_steps=steps, verbose=0,callbacks=[self.engagedCallbacks],nb_max_episode_steps=100,visualize=False)
+
+        # setup Tensorboard for logging
+        log_dir = "logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S")
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
+
+        # call the fit method to start the RL learning process
+
+        self.agent.fit(self.interfaceOAI, nb_steps=steps, verbose=0,
+                       callbacks=[tensorboard_callback,self.engagedCallbacks],nb_max_episode_steps=100,visualize=False,
+                       )
         
     
     

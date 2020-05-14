@@ -44,7 +44,7 @@ pyparsing==2.4.6
 PyQt5==5.14.0
 PyQt5-sip==12.7.1
 pyqtgraph==0.10.0
-pytest==5.4.1gi
+pytest==5.4.1
 python-dateutil==2.8.1
 pytools==2020.1
 PyYAML==5.3.1

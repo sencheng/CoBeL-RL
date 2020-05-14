@@ -162,7 +162,7 @@ class unity2cobelRL(gym.Env):
     """
     Wrapper for Unity with ML-agents
     """
-    class emptyClass():
+    class EmptyClass:
         pass
 
     def __init__(self, env_path, modules, withGUI=True, rewardCallback=None, worker_id=None,
@@ -242,13 +242,19 @@ class unity2cobelRL(gym.Env):
         action_shape = group_spec.action_shape
         action_type = "discrete" if 'DISCRETE' in str(group_spec.action_type) else "continuous"
 
-
+        if action_type is "discrete":
+            self.action_space = gym.spaces.Discrete(n=action_shape[0])
+        elif action_type is "continuous":
+            self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+            self.action_space.n = action_shape*2
+        else:
+            raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
         # make gym
-        self.action_space = self.emptyClass()  # a hack to give this variable the ability to hold other variables
+        #  self.EmptyClass = self.EmptyClass
+        # self.action_space = self.EmptyClass()  # a hack to give this variable the ability to hold other variables
         # continuous actions in Unity also take negative values, so if we are using a softmax activation we have to
         # double the action space to account for them
-        # TODO: figure out whether all actions are accounted for
-        self.action_space.n = group_spec.action_size
+
         self.observation_space = np.zeros(shape=observation_space)
 
         self.action_shape = action_shape
@@ -257,6 +263,7 @@ class unity2cobelRL(gym.Env):
         print('action shape is {}'.format(action_shape))
         print('action type is {}'.format(action_type))
         print('action space is {}'.format(group_spec.action_size))
+        print('action size is {}'.format(self.action_space.n))
 
         # debugging stuff
         self.env.reset()
@@ -296,7 +303,7 @@ class unity2cobelRL(gym.Env):
 
         # currently unused, but required by gym/core.py. At some point, useful information could be stored here and
         # passed to the callbacks to increase CoBeL-RL's interoperability with other ML frameworks
-        info = self.emptyClass()
+        info = self.EmptyClass()
         info.items = lambda : iter({})
 
         # print("step obs shape = {}".format(observation.shape))
@@ -370,11 +377,13 @@ class unity2cobelRL(gym.Env):
         # flip signs so that evens corresponds to positive and odds corresponds to negative
         value = -value
 
-        # get the rounded down index by using the old python division
+        # get the correct bin by rounding down via the old python division
         index = action_id//2
 
         # make new action
         new_action = np.zeros(self.action_shape)
+
+        # put the new action in the correct bin
         new_action[index] = value
 
         return np.array([new_action])
@@ -392,4 +401,5 @@ class unity2cobelRL(gym.Env):
         # index = action_id
         # new_action[index] = 1
         new_action = np.array([[action_id]])
+        # print(new_action)
         return new_action
