@@ -165,22 +165,21 @@ class unity2cobelRL(gym.Env):
     class EmptyClass:
         pass
 
-    def __init__(self, env_path, modules, withGUI=True, rewardCallback=None, worker_id=None,
-                 seed=42, timeout_wait=60, side_channels=None, time_scale=1.0):
-        '''
+    def __init__(self, env_path, modules, withGUI=True, worker_id=None,
+                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0):
+        """
         :param env_path: full path to compiled unity executable
         :param modules: the old CoBeL-RL modules. Currently unnecessary
         :param withGUI: graphics, bool
-        :param rewardCallback: TODO: implement
+        :param rewardCallback: TODO: implement if needed
         :param worker_id: Port used to communicate with Unity
         :param seed: Random seed. Keep at 42 for good luck. 
         :param timeout_wait: Time until Unity is declared ded
         :param side_channels: possible channels to talk with the academy (to adjust environmental settings, e.g. light)
         :param time_scale: Speed of the simulation
-        '''''
-        # store the modules
-        #self.modules = modules
+        """
 
+        # setup communication port
         if worker_id is None:
             # There is an issue in Linux where the worker id becomes available only after some time has passed since the
             # last usage. In order to mitigate the issue, a (hopefully) new worker id is automatically selected unless
@@ -188,17 +187,14 @@ class unity2cobelRL(gym.Env):
             # Implementation note: two consecutive samples between 0 and 1200 have an immediate 1/1200 chance of
             # being the same. By using the modulo of unix time we arrive to that likelihood only after an hour, by when
             # the port has hopefully been released.
-            # Additional notes: The ML-agents framework adds 5005 to the worker_id internally.
-            worker_id = round(time.time()) % 1200 + 5005  # np.random.randint(0, 1200)
-
-        # memorize the reward callback function
-        self.rewardCallback = rewardCallback
-
-        # The world and observations modules are deprecated. Interfacing is handled by Unity. If you need to
-        # perform changes on the world that are not RL-agent actions now you can use a side channel.
+            # Additional notes: The ML-agents framework adds 5005 to the worker_id internally, so no need to worry about
+            # port collision with the OS.
+            worker_id = round(time.time()) % 1200
 
         # setup engine channel
         self.engine_configuration_channel = EngineConfigurationChannel()
+
+        # setup side channels
         if side_channels is None:
             side_channels = []
 
@@ -211,59 +207,36 @@ class unity2cobelRL(gym.Env):
         # Reset the environment
         env.reset()
 
-        # Set the default "brain" to work with
-        group_name = env.get_agent_groups()[0]
-        group_spec = env.get_agent_group_spec(group_name)
-
         # Set the time scale of the engine
         self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale)
 
-        # Action and observation spaces are determined inside the Unity environment. See the
-        # "Making a Unity environment" tutorial.
+        # receive environment information from environment
+        group_name = env.get_agent_groups()[0]             # get agent ID
+        group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
 
-        # self.action_space = gym.spaces.Discrete(modules['topologyGraph'].cliqueSize)
-        # self.observation_space = modules['observation'].getObservationSpace()
-
-        # all OAI spaces have been initialized!
-
-        # this observation variable is now fulfilled by the Unity interfacing
-        self.observation = None
-
-        # a variable that allows the OAI class to access the robotic agent class
-        self.rlAgent = None
-
-        # save environment variables
-        self.env = env
-        self.group_name=group_name
-        self.group_spec=group_spec
-
-        # extract environment information
+        # refine information
         observation_space = group_spec.observation_shapes[0]
         action_shape = group_spec.action_shape
         action_type = "discrete" if 'DISCRETE' in str(group_spec.action_type) else "continuous"
 
+        # instantiate action space
         if action_type is "discrete":
             self.action_space = gym.spaces.Discrete(n=action_shape[0])
         elif action_type is "continuous":
             self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            self.action_space.n = action_shape*2
+            self.action_space.n = action_shape*2 # continuous actions in Unity are bidirectional
         else:
             raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
-        # make gym
-        #  self.EmptyClass = self.EmptyClass
-        # self.action_space = self.EmptyClass()  # a hack to give this variable the ability to hold other variables
-        # continuous actions in Unity also take negative values, so if we are using a softmax activation we have to
-        # double the action space to account for them
+
+        # save environment variables
+        self.env = env
+        self.group_name = group_name
+        self.group_spec = group_spec
 
         self.observation_space = np.zeros(shape=observation_space)
 
         self.action_shape = action_shape
         self.action_type = action_type
-
-        print('action shape is {}'.format(action_shape))
-        print('action type is {}'.format(action_type))
-        print('action space is {}'.format(group_spec.action_size))
-        print('action size is {}'.format(self.action_space.n))
 
         # debugging stuff
         self.env.reset()
@@ -272,13 +245,14 @@ class unity2cobelRL(gym.Env):
         self.observation_shape = observation.shape
         self.n_step = 0
 
-    # The step function that propels the simulation.
     def _step(self, action, *args, **kwargs):
         """
+        Make the simulation move forward one tick.
         :param action: integer
         :return: (observation, reward, done, info), necessary to function as a gym
         """
 
+        # format action
         if self.action_type is 'continuous':
             action = self.id2continuous(action)
         elif self.action_type is 'discrete':
@@ -286,61 +260,70 @@ class unity2cobelRL(gym.Env):
         else:
             raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
 
-        # print('Received action of shape {0} and value {1} for step {2}'.format(action.shape, action,str(self.n_step)))
+        # accumulate steps
         self.n_step +=1
 
         # setup action in the Unity environment
         self.env.set_actions(self.group_name, action)
 
-        # forward the simulation by a timestep (and execute action)
+        # forward the simulation by a tick (and execute action)
         self.env.step()
 
         # get results
         step_result = self.env.get_step_result(self.group_name)
-        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
+        observation = step_result.obs[0].squeeze()  # removes singleton dimensions
         reward = step_result.reward[0]
         done = step_result.done[0]
 
-        # currently unused, but required by gym/core.py. At some point, useful information could be stored here and
-        # passed to the callbacks to increase CoBeL-RL's interoperability with other ML frameworks
+        # Instantiate info var
+        # This is currently unused, but required by gym/core.py. At some point, useful information could be stored here
+        # and passed to the callbacks to increase CoBeL-RL's interoperability with other ML frameworks
         info = self.EmptyClass()
-        info.items = lambda : iter({})
+        info.items = lambda: iter({})  # don't ask why :/
 
-        # print("step obs shape = {}".format(observation.shape))
+        # correct for extra observations
         if not self.observation_shape == observation.shape:
             # Unity seems to throw extra sets of observations in a seemingly random fashion. When this happens,
             # only the first observation is taken into account.
-            # ATTENTION: If you want to implement multi-agent RL this is going to need to be fixed.
-            observation=observation[0]
+            # Attention: If you want to implement MULTI-AGENT RL this is going to need to be fixed.
+            observation = observation[0]
 
-        # print('Received action of shape {0} and value {1} for step {2}'.format(action.shape, action, str(self.n_step)))
         if done:
+            # print episode debug info
             print('Reward = {0}, step obs shape = {1}, step = {2}'.format(
                 round(reward,2),observation.shape, self.n_step))
 
         return observation, reward, done, info
 
-    # This function restarts the RL agent's learning cycle by initiating a new episode.
     def _reset(self):
+        """
+        Resets the environment to prepare for the start of a new episode (if environment calls for it)
+        :return: the agent observation
+        """
         self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
-        # print('_reset obs shape = {}'.format(observation.shape))
+
         return observation
 
     def _close(self):
+        """
+        Closes the environment
+        :return:
+        """
         self.env.close()
 
     def format_observation(self, obs):
         """
-        :param obs:
+        Currently unused. Can be used to perform manipulations on the observation.
+        :param obs: the observation received from env.step or env.reset
         :return:
         """
         raise NotImplementedError
 
     def id2continuous(self, action_id):
         """
-        Take an action represented by a positive integer and turn it into a representation suitable for continuous
+        Takes an action represented by a positive integer and turns it into a representation suitable for continuous
         unity environments
 
         TODO: Find a dumber way to do this
@@ -392,14 +375,11 @@ class unity2cobelRL(gym.Env):
         # """
         # Encodes positive integers into Unity-acceptable format
         # :param action_id: a positive integer in the range of 0, N
-        # :return:
+        # :return: correctly formatted action.
         # """
-        # assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
-        # assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
-        #
-        # new_action = np.zeros(self.action_shape)
-        # index = action_id
-        # new_action[index] = 1
+        assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
+        assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
+
         new_action = np.array([[action_id]])
-        # print(new_action)
+
         return new_action

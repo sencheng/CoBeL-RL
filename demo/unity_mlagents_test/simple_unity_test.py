@@ -1,21 +1,12 @@
-import numpy as np
-import pyqtgraph as qg
-from numpy import random
 from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
-from observations.image_observations import ImageObservationBaseline
 from interfaces.oai_gym_interface import unity2cobelRL
-from analysis.rl_monitoring.rl_performance_monitors import RLPerformanceMonitorBaseline
 import os
 
-# ~~~---------------------!!!---------------------~~~ #
-#                    custom imports                   #
-# ~~~---------------------___---------------------~~~ #
-from mlagents_envs.environment import UnityEnvironment
+visualOutput = True
 
-visualOutput = True  # shall the system provide visual output while performing the experiments?
 
-def rewardCallback(*args, **kwargs):
+def reward_callback(*args, **kwargs):
     """
     ATTENTION: This function is deprecated.
     These changes should be encoded in the Academy object of the environment, and triggered via a side channel.
@@ -25,32 +16,34 @@ def rewardCallback(*args, **kwargs):
     raise NotImplementedError('This function is deprecated. These changes should be encoded in the Academy '
                               'object of the environment, and triggered via a side channel.')
 
-def trialBeginCallback(trial, rlAgent):
+
+def trial_begin_callback(trial, rl_agent):
     """
     This is a callback function that is called in the beginning of each trial. Here, experimental behavior can be
     defined (ABA renewal and the like).
     :param trial: the number of the finished trial
-    :param rlAgent: the employed reinforcement learning agent
+    :param rl_agent: the employed reinforcement learning agent
     :return: None
     """
 
-    if trial == rlAgent.trialNumber - 1:
+    if trial == rl_agent.trialNumber - 1:
         # end the experiment by setting the number of steps to a excessively large value, this stops the 'fit' routine
-        rlAgent.agent.step = rlAgent.maxSteps + 1
+        rl_agent.agent.step = rl_agent.maxSteps + 1
 
 
-def trialEndCallback(trial, rlAgent, logs):
+def trial_end_callback(trial, rl_agent, logs):
     """
     This is a callback routine that is called when a single trial ends. Here, functionality for performance evaluation
     can be introduced.
     :param trial: the number of the finished trial
-    :param rlAgent: the employed reinforcement learning agent
+    :param rl_agent: the employed reinforcement learning agent
     :param logs: output of the reinforcement learning subsystem
     :return:
     """
     pass
 
-def singleRun(environment_filename, n_train=1):
+
+def single_run(environment_filename, n_train=1):
     """
     :param environment_filename: full path to a Unity executable
     :param n_train: amount of RL steps
@@ -61,25 +54,22 @@ def singleRun(environment_filename, n_train=1):
     """
 
     # set random seed
-    seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If nothing works, try 13.
+    seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in.
 
     # a dictionary that contains all employed modules
     modules = dict()
 
     modules['interfaceOAI'] = unity2cobelRL(env_path=environment_filename, modules=modules, withGUI=visualOutput,
-                                            rewardCallback=rewardCallback, seed=seed)
+                                            seed=seed)
 
-    rlAgent = DQNAgentBaseline(modules['interfaceOAI'],memoryCapacity=5000,epsilon=0.3,
-                               trialBeginFcn=trialBeginCallback,trialEndFcn=trialEndCallback)
+    rl_agent = DQNAgentBaseline(modules['interfaceOAI'], memoryCapacity=5000, epsilon=0.3,
+                                trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
     # set the experimental parameters
-    rlAgent.trialNumber = 1000
-
-    # eventually, allow the OAI class to access the robotic agent class
-    modules['interfaceOAI'].rlAgent = rlAgent
+    rl_agent.trialNumber = 1000
 
     # let the agent learn, with extremely large number of allowed maximum steps
-    rlAgent.train(n_train)
+    rl_agent.train(n_train)
 
     backend.clear_session()
     modules['interfaceOAI'].close()
@@ -102,9 +92,8 @@ if __name__ == "__main__":
 
     project = get_cobel_rl_path()
     print('Testing 3DBall environment')
-    singleRun(environment_filename=project+'/envs/3DBall_single_agent', n_train=10000)
+    single_run(environment_filename=project+'/envs/3DBall_single_agent', n_train=1000)
     print('Testing GridWorld environment')
-    singleRun(environment_filename=project+'/envs/GridWorld_single_agent.bak', n_train=10000)
+    single_run(environment_filename=project+'/envs/GridWorld_single_agent.bak', n_train=1000)
     print('Testing concluded: No program breaking bugs detected.')
-    print('Start tensorboard from unity_mlagents_test/logs/ to see that the environments are learnable.')
-
+    print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
