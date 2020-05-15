@@ -8,6 +8,7 @@ from keras import Model
 import numpy as np
 import scipy.stats
 
+#Pass
 class Actor:
     def __init__(self,state_size, action_size, seed, hidden_size=32, init_w=3e-3, log_std_min=-20, log_std_max=2):
         self.state_size = state_size
@@ -19,6 +20,7 @@ class Actor:
         self.log_std_max = log_std_max
 
         self.LR_CRITIC = float(5e-4)
+        self.epsilon = 1e-6
         self.model = self.build_actor_network()
 
     def clamp_layer(self,input):
@@ -47,17 +49,17 @@ class Actor:
         return model
 
     def get_action(self, state):
-        mu, log_std = self.model.predict(state)
+        mu, log_std = self.model.predict(state)#(batchsize,actionsize)
         std = np.exp(log_std)
         e = np.random.normal(0,1)
         action = np.tanh(mu + e * std)
         return action[0]
     
     def evaluate(self, state):
-        mu, log_std = self.model.predict(state)
+        mu, log_std = self.model.predict(state)#(batchsize,actionsize)
         std = np.exp(log_std)
         e = np.random.normal(0,1)
         action = np.tanh(mu + e * std)
         
-        log_prob = np.log(scipy.stats.norm.pdf(mu + e * std,mu,std)) - np.log(1 - action[0]**2 + epsilon)
-        return action[0], log_prob
+        log_prob = np.log(scipy.stats.norm.pdf(mu + e * std,mu,std)) - np.log(1 - action[0]**2 + self.epsilon)
+        return action, log_prob
