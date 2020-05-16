@@ -226,7 +226,8 @@ class unity2cobelRL(gym.Env):
             self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
             self.action_space.n = action_shape*2 # continuous actions in Unity are bidirectional
         else:
-            raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
+            raise NotImplementedError('Action type is not recognized. Check action_type definition.')
+
 
         # save environment variables
         self.env = env
@@ -238,11 +239,16 @@ class unity2cobelRL(gym.Env):
         self.action_shape = action_shape
         self.action_type = action_type
 
-        # debugging stuff
+        # debug stuff
+
+        # start evnironment
         self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
+
+        # extract observation shape
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
-        self.observation_shape = observation.shape
+        self.observation_shape = observation.shape  # store to check incoming observations againts
+
         self.n_step = 0
 
     def _step(self, action, *args, **kwargs):

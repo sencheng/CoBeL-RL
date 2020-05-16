@@ -8,3 +8,8 @@
 !**/worldInfo/*.npy
 !**/textures/*.png
 venv
+*.json
+CoBeL_RL.egg-info
+build
+dist
+demo/unity_mlagents_test/logsfreeze
