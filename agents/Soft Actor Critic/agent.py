@@ -115,7 +115,7 @@ class Agent():
             a_grad = a_loss(self.adam.param,log_pis) 
 
             #Backward Pass
-            self.adam.backward_pass(alpha_loss)
+            self.adam.backward_pass(a_grad)
             self.alpha = alpha
 
             # policy_prior_log_probs = 0.0
