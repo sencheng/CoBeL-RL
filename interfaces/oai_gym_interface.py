@@ -158,18 +158,18 @@ class OAIGymInterface(gym.Env):
         return self.modules['observation'].observation
 
 
-class unity2cobelRL(gym.Env):
+class unity_wrapper(gym.Env):
     """
-    Wrapper for Unity with ML-agents
+    Wrapper for Unity 3D with ML-agents
     """
     class EmptyClass:
         pass
 
-    def __init__(self, env_path, modules, withGUI=True, worker_id=None,
+    def __init__(self, env_path, modules=None, withGUI=True, worker_id=None,
                  seed=42, timeout_wait=60, side_channels=None, time_scale=5.0):
         """
         :param env_path: full path to compiled unity executable
-        :param modules: the old CoBeL-RL modules. Currently unnecessary
+        :param modules: the old CoBeL-RL modules. Currently unnecessary.
         :param withGUI: graphics, bool
         :param rewardCallback: TODO: implement if needed
         :param worker_id: Port used to communicate with Unity
