@@ -1,10 +1,9 @@
-from keras.models import Sequential
-from keras.layers import Dense, Lambda, Input
+from tensorflow import keras
+from tensorflow.keras import layers
 from keras.optimizers import Adam
 from keras.initializers import RandomUniform
 from keras.losses import mean_squared_error
 from keras.backend import clip
-from keras import Model
 import numpy as np
 import scipy.stats
 
@@ -32,31 +31,29 @@ class Actor:
         hid_init = RandomUniform(minval=-lim, maxval=lim, seed=None)
         out_init = RandomUniform(minval=self.log_std_min, maxval=self.log_std_max, seed=None)
     
-        input_layer = Input(shape=(self.state_size,))
-        d1 = Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(input_layer)
-        d2 = Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(d1)
+        input_layer = keras.Input(shape=(self.state_size,))
+        d1 = layers.Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(input_layer)
+        d2 = layers.Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(d1)
 
-        mu_d = Dense(self.hidden_size)(d2)
-        mu_out = Dense(self.action_size)(mu_d)
+        mu_d = layers.Dense(self.hidden_size)(d2)
+        mu_out = layers.Dense(self.action_size)(mu_d)
 
-        log_std_d = Dense(self.hidden_size)(d2)
-        log_std = Dense(self.action_size)(log_std_d)
-        log_std_out = Lambda(self.clamp_layer)(log_std)
+        log_std_d = layers.Dense(self.hidden_size)(d2)
+        log_std = layers.Dense(self.action_size)(log_std_d)
+        log_std_out = layers.Lambda(self.clamp_layer)(log_std)
 
-        model = Model(input_layer, [mu_out,log_std_out])
-        model.compile(loss=mean_squared_error, optimizer=Adam(lr=self.LR_CRITIC))
-        #model.summary()
+        model = keras.Model(input_layer, [mu_out,log_std_out])
         return model
 
     def get_action(self, state):
-        mu, log_std = self.model.predict(state)#(batchsize,actionsize)
+        mu, log_std = self.model.predict(state)
         std = np.exp(log_std)
         e = np.random.normal(0,1)
         action = np.tanh(mu + e * std)
         return action[0]
     
     def evaluate(self, state):
-        mu, log_std = self.model.predict(state)#(batchsize,actionsize)
+        mu, log_std = self.model.predict(state)
         std = np.exp(log_std)
         e = np.random.normal(0,1)
         action = np.tanh(mu + e * std)

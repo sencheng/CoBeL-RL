@@ -1,14 +1,18 @@
-import torch
 import random
 import numpy as np
 
 from actor import Actor
 from critic import Critic
 from buffers import ReplayBuffer
-from adam import Adam
 
 import autograd.numpy as np
 from autograd import grad
+
+import os
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
+
+import tensorflow as tf
+import tensorflow.keras.backend as K
 
 LR_ACTOR = float(5e-4)
 LR_CRITIC = float(5e-4)
@@ -25,12 +29,17 @@ class Agent():
         self.seed = random.seed(random_seed)
         
         self.target_entropy = -action_size  # -dim(A)
+        
         self.alpha = 1
+        self.log_alpha = tf.Variable([0.0])
+        self.alpha_opt = tf.keras.optimizers.Adam(lr=LR_ACTOR)
+        
         self._action_prior = action_prior
         
         # Actor Network 
         self.actor_local = Actor(state_size, action_size, random_seed, hidden_size)
-        
+        self.actor_opt = tf.keras.optimizers.Adam(lr=LR_ACTOR)
+
         # Critic Network (w/ Target Network)
         self.critic1 = Critic(state_size, action_size, random_seed, hidden_size)
         self.critic2 = Critic(state_size, action_size, random_seed, hidden_size)
@@ -44,8 +53,8 @@ class Agent():
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-        # Adam Optimizer
-        self.adam = Adam(0.0)
+        self.halving = np.arange(256)
+        self.halving = self.halving.fill(0.5)
         
     def step(self, state, action, reward, next_state, done, step):
         self.memory.add(state, action, reward, next_state, done)
@@ -63,19 +72,24 @@ class Agent():
         loss = -(x * (log_pis + self.target_entropy)).mean()
         return loss
 
+    def actor_step(self,X,alpha,policy_prior_log_probs):
+        with tf.GradientTape() as tape:
+            actions_pred , log_pis = self.actor_local.model(X)
+            c1_in = self.critic1.predict_learn(X, actions_pred)
+            loss = K.mean((alpha * log_pis - c1_in - policy_prior_log_probs))
+        grads = tape.gradient(loss,self.actor_local.model.trainable_variables)
+        self.actor_opt.apply_gradients(zip(grads, self.actor_local.model.trainable_variables))
+
+    def alpha_step(self,X):
+        with tf.GradientTape() as tape:
+            tape.watch(self.log_alpha)
+            actions_pred, log_pis = self.actor_local.model(X)
+            alpha_loss = - K.mean(self.log_alpha.read_value()[0] * (log_pis + self.target_entropy))
+        grads = tape.gradient(alpha_loss,self.log_alpha)
+        grads = tf.expand_dims(grads,0)
+        self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
+
     def learn(self, step, experiences, gamma, d=1):
-        """Updates actor, critics and entropy_alpha parameters using given batch of experience tuples.
-        Q_targets = r + γ * (min_critic_target(next_state, actor_target(next_state)) - α *log_pi(next_action|next_state))
-        Critic_loss = MSE(Q, Q_target)
-        Actor_loss = α * log_pi(a|s) - Q(s,a)
-        where:
-            actor_target(state) -> action
-            critic_target(state, action) -> Q-value
-        Params
-        ======
-            experiences (Tuple[torch.Tensor]): tuple of (s, a, r, s', done) tuples 
-            gamma (float): discount factor
-        """
         states, actions, rewards, next_states, dones = experiences
         
 
@@ -101,30 +115,26 @@ class Agent():
         x = np.concatenate((states,actions),axis=1)
         y = np.expand_dims(Q_targets,axis=1)
 
-        loss1 = self.critic1.network.fit(x,y, verbose=False)
-        loss2 = self.critic2.network.fit(x,y, verbose=False)
+        loss1 = self.critic1.network.fit(x,y, verbose=False, sample_weight=self.halving)
+        loss2 = self.critic2.network.fit(x,y, verbose=False, sample_weight=self.halving)
 
         #Actor Learning Step
         if step % d == 0:
-            alpha = np.exp(self.adam.param)
+            ###########################
+            alpha = np.exp(self.log_alpha.read_value()[0])
+
             # Compute alpha loss
-            actions_pred, log_pis = self.actor_local.evaluate(states)
+            converted_states = tf.convert_to_tensor(states,dtype=np.float32)
+            actions_pred, log_pis = self.actor_local.evaluate(converted_states)
 
-            #Forward Pass
-            a_loss = grad(self.alpha_loss)
-            a_grad = a_loss(self.adam.param,log_pis) 
+            self.alpha_step(X=converted_states)
 
-            #Backward Pass
-            self.adam.backward_pass(a_grad)
             self.alpha = alpha
+            #print(self.alpha)
+            ############################
 
-            # policy_prior_log_probs = 0.0
-            # actor_loss = (alpha * log_pis.squeeze - self.critic1(states, actions_pred.squeeze(0)) - policy_prior_log_probs).mean()
-
-            # # Minimize the loss
-            # self.actor_optimizer.zero_grad()
-            # actor_loss.backward()
-            # self.actor_optimizer.step()
+            #Fit
+            self.actor_step(X=converted_states,alpha=alpha,policy_prior_log_probs=0.0)
                 
         # ----------------------- update target networks ----------------------- #
         self.soft_update(self.critic1.network, self.critic1_target.network, TAU)
