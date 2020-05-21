@@ -1,61 +1,45 @@
+import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from keras.optimizers import Adam
 from keras.initializers import RandomUniform
-from keras.losses import mean_squared_error
-from keras.backend import clip
 import numpy as np
 import scipy.stats
 
-#CHECK
-class Actor:
-    def __init__(self,state_size, action_size, seed, hidden_size=32, init_w=3e-3, log_std_min=-20, log_std_max=2):
-        self.state_size = state_size
-        self.action_size = action_size
-        self.seed = seed
-        self.hidden_size = hidden_size
-        self.init_w = init_w
+from tensorflow.math import log,exp,tanh
+import tensorflow_probability as tfp
+tfd = tfp.distributions
+
+class Actor_Net(tf.keras.Model):
+    def __init__(self,state_size,hidden_size,action_size,log_std_min=-20,log_std_max=2,init_w=3e-3):
+        super(Actor_Net,self).__init__(name = 'actor_net')
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
-
-        self.LR_CRITIC = float(5e-4)
-        self.epsilon = 1e-6
-        self.model = self.build_actor_network()
-
-    def clamp_layer(self,input):
-        return clip(input,self.log_std_min,self.log_std_max)
-
-    def build_actor_network(self):
-        lim = 1. / np.sqrt(self.hidden_size)
-
+        lim = 1. / np.sqrt(hidden_size)
         hid_init = RandomUniform(minval=-lim, maxval=lim, seed=None)
-        out_init = RandomUniform(minval=self.log_std_min, maxval=self.log_std_max, seed=None)
-    
-        input_layer = keras.Input(shape=(self.state_size,))
-        d1 = layers.Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(input_layer)
-        d2 = layers.Dense(self.hidden_size,kernel_initializer=hid_init,activation="relu")(d1)
+        out_init = RandomUniform(minval=log_std_min, maxval=log_std_max, seed=None)
 
-        mu_d = layers.Dense(self.hidden_size)(d2)
-        mu_out = layers.Dense(self.action_size)(mu_d)
-
-        log_std_d = layers.Dense(self.hidden_size)(d2)
-        log_std = layers.Dense(self.action_size)(log_std_d)
-        log_std_out = layers.Lambda(self.clamp_layer)(log_std)
-
-        model = keras.Model(input_layer, [mu_out,log_std_out])
-        return model
-
-    def get_action(self, state):
-        mu, log_std = self.model.predict(state)
-        std = np.exp(log_std)
+        self.fc1 = layers.Dense(hidden_size,activation = 'relu',kernel_initializer=hid_init, input_dim=state_size,dtype='float32')
+        self.fc2 = layers.Dense(hidden_size,activation='relu',kernel_initializer=hid_init)
+        self.mu = layers.Dense(action_size,kernel_initializer=out_init)
+        self.log_std = layers.Dense(action_size,kernel_initializer=out_init)
+    def call(self, X):
+        x = self.fc1(X)
+        x = self.fc2(x)
+        mu = self.mu(x)
+        log = self.mu(x)
+        log_clamp = tf.clip_by_value(log,self.log_std_min,self.log_std_max)
+        return mu, log_clamp
+    def get_action(self,X):
+        mu, log_std = self.call(X)
+        std = exp(log_std)
         e = np.random.normal(0,1)
-        action = np.tanh(mu + e * std).squeeze()
+        action = tf.squeeze(tanh(mu + e * std))
         return action
-    
-    def evaluate(self, state):
-        mu, log_std = self.model.predict(state)
-        std = np.exp(log_std)
+    def evaluate(self, X, epsilon=1e-6):
+        mu, log_std = self.call(X)
+        std = exp(log_std)
         e = np.random.normal(0,1)
-        action = np.tanh(mu + e * std).squeeze()
-        log_prob = np.log(scipy.stats.norm.pdf(mu + e * std,mu,std)).squeeze() - np.log(1 - action**2 + self.epsilon)
+        action = tanh(mu + e * std)
+        dist = tfd.Normal(loc=mu, scale=std)
+        log_prob = log(dist.prob(mu + e * std)) - log(1 - action**2 + epsilon)
         return action, log_prob
