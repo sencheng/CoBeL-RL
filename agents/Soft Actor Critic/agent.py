@@ -53,7 +53,7 @@ class Agent():
         # Replay memory
         self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
 
-        self.halving = np.full((256,), 0.5, dtype=float)
+        self.halving = np.full((BATCH_SIZE,), 0.5, dtype=float)
         
     def step(self, state, action, reward, next_state, done, step):
         self.memory.add(state, action, reward, next_state, done)
@@ -69,11 +69,10 @@ class Agent():
 
     def actor_step(self,X,alpha,policy_prior_log_probs):
         with tf.GradientTape() as tape:
-            actions_pred , log_pis = self.actor_local.model(X)
-            c1_in = self.critic1.predict_learn(X, actions_pred)
-            #print(c1_in.mean())
+            actions_pred , log_pis = self.actor_local.evaluate(X)
+            c1_in = self.critic1.predict(X, tf.keras.backend.squeeze(actions_pred, axis=1))
             loss = K.mean((alpha * log_pis - c1_in - policy_prior_log_probs))
-        #print(loss)
+        print(loss)
         grads = tape.gradient(loss,self.actor_local.model.trainable_variables)
         self.actor_opt.apply_gradients(zip(grads, self.actor_local.model.trainable_variables))
 
@@ -82,7 +81,6 @@ class Agent():
             tape.watch(self.log_alpha)
             actions_pred, log_pis = self.actor_local.model(X)
             alpha_loss = - K.mean(self.log_alpha.read_value()[0] * (log_pis + self.target_entropy))
-        #print(alpha_loss)
         grads = tape.gradient(alpha_loss,self.log_alpha)
         grads = tf.expand_dims(grads,0)
         self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
@@ -94,7 +92,6 @@ class Agent():
         # ---------------------------- update critic ---------------------------- #
         # Get predicted next-state actions and Q values from target models
         next_action, log_pis_next = self.actor_local.evaluate(next_states)
-
         Q_target1_next = self.critic1_target.predict(next_states, next_action)
         Q_target2_next = self.critic2_target.predict(next_states, next_action)
 
@@ -127,7 +124,6 @@ class Agent():
             self.alpha_step(X=converted_states)
 
             self.alpha = alpha
-            #print(self.alpha)
             ############################
 
             #Fit
@@ -137,7 +133,6 @@ class Agent():
         self.soft_update(self.critic1.network, self.critic1_target.network, TAU)
         self.soft_update(self.critic2.network, self.critic2_target.network, TAU)
                      
-
     def soft_update(self, local_model, target_model, tau):
         a = np.array(local_model.get_weights()) #local
         b = np.array(target_model.get_weights()) #target

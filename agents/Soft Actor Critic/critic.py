@@ -37,10 +37,7 @@ class Critic:
         return self.network.get_weights()
 
     def predict(self,states,actions):
-        in_ = np.concatenate((states,actions),axis=1)
-        return self.network.predict(in_)
-
-    def predict_learn(self,states,actions):
+        actions = np.expand_dims(actions,axis=1)
         in_ = np.concatenate((states,actions),axis=1)
         return self.network.predict(in_)
 
