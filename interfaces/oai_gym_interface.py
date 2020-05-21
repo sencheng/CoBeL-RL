@@ -286,37 +286,58 @@ class unity2cobelRL(gym.Env):
         reward = step_result.reward[0]
         done = step_result.done[0]
 
-        self.cumulative_reward += reward
-
         # Instantiate info var
         # This is currently unused, but required by gym/core.py. At some point, useful information could be stored here
         # and passed to the callbacks to increase CoBeL-RL's interoperability with other ML frameworks
         info = self.EmptyClass()
         info.items = lambda: iter({})  # don't ask why :/
 
-        error = False
-
         # correct for extra observations
+        #
+        # some unity envs send two observations when an agent is done with it's episode.
+        # this is due to requesting a decision before the episode ends.
+        # resulting in adding two observations in one step to the agents data.
+        #
+        # 3DBall and Robot env have been changed to achieve that requesting a decision
+        # and ending the episode is exclusive, but other demos, f.e. the ones which make
+        # use of the 'DecisionRequester' script in unity will still send two observations,
+        # when they are configured to request a decision every step.
+        #
+        # by getting the observation at index 0, we get the last observation of the previous episode.
+        # a possible problem is that we lose an observation of the next episode.
+        #
+        # an easy workaround is to set the parameter in the environment such that it not requests
+        # a decision in every step (but in every 2,3,... step).
+        #
+        # TODO: for the future we should work on supporting multiple obs since there is also an option
+        # in mlagents to 'stack' obs and send them in a batch.
+        #
+        double_obs_error = False
         if not self.observation_shape == observation.shape:
-            # Unity seems to throw extra sets of observations in a seemingly random fashion. When this happens,
-            # only the first observation is taken into account.
-            # Attention: If you want to implement MULTI-AGENT RL this is going to need to be fixed.
-            error = True
+            double_obs_error = True
             print(f'double obs received {observation}')
             observation = observation[0]
 
-        #raise exception on error.
-        if error and done:
+        # DEBUG: used to check if the double obs occure only together with 'done'.
+        #
+        # TODO: remove since 'stacked' obs will trigger this exception.
+        #
+        if double_obs_error and done:
             pass
-        elif error:
+        elif double_obs_error:
             raise Exception("Double observation didn't occured as assumed.")
 
         # print episode debug info
+        self.cumulative_reward += reward
         if done:
             print('Done => total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
                 self.n_step, self.episode_steps, self.cumulative_reward))
             self.episode_steps = 0
             self.cumulative_reward = 0
+            # when an agent is done and resetted: reset the academy, too.
+            # this syncs the local episodes of an agent with the episodes of the academy.
+            # TODO: think about if we want to allow the agents to have local episodes.
+            # See: _reset
             self.env.reset()
         else:
             print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
@@ -329,7 +350,18 @@ class unity2cobelRL(gym.Env):
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
         :return: the agent observation
         """
-        #self.env.reset()
+        # self.env.reset() resets the mlagents academy.
+        #
+        # in mlagents the agents have a local maxstep value to reset multiple times in
+        # an episode without being addressed by python.
+        # so the agents can have multiple runs in an academy episode.
+        #
+        # it is disabled at the moment, because the _reset method is called very frequently
+        # by a module and the agents can't make any progress.
+        #
+        # TODO: search for a better place to call it.
+        #
+        # self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
 
