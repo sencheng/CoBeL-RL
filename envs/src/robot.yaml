@@ -1,0 +1,8 @@
+DrivingRobot:
+  measure: rewards
+  thresholds: [0.9, 0.1, 0.2, 0.3, 0.5]
+  min_lesson_length: 100
+  signal_smoothing: true
+  parameters:
+    target_reached_radius: [20, 12.5, 10, 10, 7.5, 5]
+    target_spawn_distance: [15, 15, 15, 15, 15, 15]

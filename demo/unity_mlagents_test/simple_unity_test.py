@@ -62,6 +62,7 @@ def single_run(environment_filename, n_train=1):
     modules['interfaceOAI'] = unity2cobelRL(env_path=environment_filename, modules=modules, withGUI=visualOutput,
                                             seed=seed)
 
+
     rl_agent = DQNAgentBaseline(modules['interfaceOAI'], memoryCapacity=5000, epsilon=0.3,
                                 trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
@@ -76,7 +77,7 @@ def single_run(environment_filename, n_train=1):
 
 
 def get_cobel_rl_path():
-    paths = os.environ['PYTHONPATH'].split(':')
+    paths = os.environ['PYTHONPATH'].split(';')
     path = None
     for p in paths:
         if 'CoBeL-RL' in p:
@@ -91,9 +92,7 @@ def get_cobel_rl_path():
 if __name__ == "__main__":
 
     project = get_cobel_rl_path()
-    print('Testing 3DBall environment')
-    single_run(environment_filename=project+'/envs/3DBall_single_agent', n_train=1000)
-    print('Testing GridWorld environment')
-    single_run(environment_filename=project+'/envs/GridWorld_single_agent.bak', n_train=1000)
+    print('Testing environment')
+    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=200000)
     print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
