@@ -309,18 +309,18 @@ class unity2cobelRL(gym.Env):
         # an easy workaround is to set the parameter in the environment such that it not requests
         # a decision in every step (but in every 2,3,... step).
         #
-        # TODO: for the future we should work on supporting multiple obs since there is also an option
-        # in mlagents to 'stack' obs and send them in a batch.
+        # currently if we need an observation every step, the unity example env need to be modified.
         #
         double_obs_error = False
         if not self.observation_shape == observation.shape:
             double_obs_error = True
             print(f'double obs received {observation}')
+            time.sleep(1)
             observation = observation[0]
 
         # DEBUG: used to check if the double obs occure only together with 'done'.
         #
-        # TODO: remove since 'stacked' obs will trigger this exception.
+        # TODO: remove since always true.
         #
         if double_obs_error and done:
             pass
