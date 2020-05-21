@@ -1,1 +1,0 @@
-this is the folder for sharing assets over git.
