@@ -11,7 +11,7 @@ class Critic_Net(tf.keras.Model):
         out_init = RandomUniform(minval=-init_w, maxval=init_w, seed=None)
 
         self.fc1 = layers.Dense(hidden_size,activation = 'relu',kernel_initializer=hid_init, input_dim=state_size+action_size,dtype='float32')
-        self.fc2 = layers.Dense(hidden_size,activation='relu',kernel_initializer=out_init)
+        self.fc2 = layers.Dense(hidden_size,activation='relu',kernel_initializer=hid_init)
         self.v = layers.Dense(units=1)
     def call(self, state, action):
         x = tf.concat([state,action], axis=1)

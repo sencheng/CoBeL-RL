@@ -27,12 +27,12 @@ class Agent():
         
         self.alpha = 1
         self.log_alpha = tf.Variable([0.0])
-        self.alpha_opt = tf.keras.optimizers.Adam(lr=LR_ACTOR)
+        self.alpha_opt = Adam(lr=LR_ACTOR)
         self._action_prior = action_prior
         
         # Actor Network 
         self.actor_local = Actor_Net(self.state_size,hidden_size,self.action_size)
-        self.actor_opt = tf.keras.optimizers.Adam(lr=LR_ACTOR)
+        self.actor_opt = Adam(lr=LR_ACTOR)
 
         # Critic Network (w/ Target Network)
         self.critic1 = Critic_Net("critic1",self.state_size,hidden_size,self.action_size)
@@ -64,25 +64,6 @@ class Agent():
         action = self.actor_local.get_action(state)
         return action
 
-    def actor_step(self,X,alpha,policy_prior_log_probs):
-        with tf.GradientTape() as tape:
-            actions_pred , log_pis = self.actor_local.evaluate(X)
-            log_pis = tf.squeeze(log_pis)
-            c1_in = tf.squeeze(self.critic1.call(X,actions_pred))
-            loss = (alpha * log_pis - c1_in - policy_prior_log_probs)
-            mean = tf.math.reduce_mean(loss, axis=0)
-        grads = tape.gradient(mean,self.actor_local.trainable_variables)
-        self.actor_opt.apply_gradients(zip(grads, self.actor_local.trainable_variables))
-
-    def alpha_step(self,X):
-        with tf.GradientTape() as tape:
-            tape.watch(self.log_alpha)
-            actions_pred, log_pis = self.actor_local.evaluate(X)
-            alpha_loss = - K.mean(self.log_alpha.read_value()[0] * (log_pis + self.target_entropy))
-        grads = tape.gradient(alpha_loss,self.log_alpha)
-        grads = tf.expand_dims(grads,0)
-        self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
-
     def learn(self, step, experiences, gamma, d=1):
         states, actions, rewards, next_states, dones = experiences
         
@@ -90,12 +71,14 @@ class Agent():
         # ---------------------------- update critic ---------------------------- #
         # Get predicted next-state actions and Q values from target models
         next_action, log_pis_next = self.actor_local.evaluate(next_states)
+
         Q_target1_next = self.critic1_target.call(next_states, next_action)
         Q_target2_next = self.critic2_target.call(next_states, next_action)
 
         # take the min of both critics for updating
         Q_target_next = tf.squeeze(tf.math.minimum(Q_target1_next,Q_target2_next))
         
+
         log_pis_next = tf.squeeze(log_pis_next)
 
         if FIXED_ALPHA == None:
@@ -104,6 +87,7 @@ class Agent():
         else:
             Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - FIXED_ALPHA * log_pis_next))
 
+        #tf.print(tf.math.reduce_mean(Q_targets))
         #Critic1
         with tf.GradientTape() as tape:
             v_s = self.critic1.call(states,actions)
@@ -125,15 +109,28 @@ class Agent():
 
             # Compute alpha loss
             converted_states = tf.convert_to_tensor(states,dtype=np.float32)
-            actions_pred, log_pis = self.actor_local.evaluate(converted_states)
 
-            self.alpha_step(X=converted_states)
+            with tf.GradientTape() as tape:
+                tape.watch(self.log_alpha)
+                actions_pred, log_pis = self.actor_local.evaluate(converted_states)
+                alpha_loss = -K.mean(self.log_alpha.read_value()[0] * (log_pis + self.target_entropy))
+            
+            grads = tape.gradient(alpha_loss,self.log_alpha)
+            grads = tf.expand_dims(grads,0)
+            self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
 
             self.alpha = alpha
             ############################
 
             #Fit
-            self.actor_step(X=converted_states,alpha=alpha,policy_prior_log_probs=0.0)
+            with tf.GradientTape() as tape:
+                actions_pred , log_pis = self.actor_local.evaluate(converted_states)
+                log_pis = tf.squeeze(log_pis)
+                c1_in = tf.squeeze(self.critic1.call(converted_states,actions_pred))
+                loss = (alpha * log_pis - c1_in)
+                mean = tf.math.reduce_mean(loss, axis=0)
+            grads = tape.gradient(mean,self.actor_local.trainable_variables)
+            self.actor_opt.apply_gradients(zip(grads, self.actor_local.trainable_variables))
                 
         # ----------------------- update target networks ----------------------- #
         self.soft_update(self.critic1, self.critic1_target, TAU)

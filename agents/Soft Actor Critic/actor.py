@@ -16,17 +16,19 @@ class Actor_Net(tf.keras.Model):
         self.log_std_max = log_std_max
         lim = 1. / np.sqrt(hidden_size)
         hid_init = RandomUniform(minval=-lim, maxval=lim, seed=None)
-        out_init = RandomUniform(minval=log_std_min, maxval=log_std_max, seed=None)
+        out_init = RandomUniform(minval=-3e-3, maxval=3e-3, seed=None)
 
         self.fc1 = layers.Dense(hidden_size,activation = 'relu',kernel_initializer=hid_init, input_dim=state_size,dtype='float32')
         self.fc2 = layers.Dense(hidden_size,activation='relu',kernel_initializer=hid_init)
+
         self.mu = layers.Dense(action_size,kernel_initializer=out_init)
         self.log_std = layers.Dense(action_size,kernel_initializer=out_init)
     def call(self, X):
         x = self.fc1(X)
         x = self.fc2(x)
+
         mu = self.mu(x)
-        log = self.mu(x)
+        log = self.log_std(x)
         log_clamp = tf.clip_by_value(log,self.log_std_min,self.log_std_max)
         return mu, log_clamp
     def get_action(self,X):

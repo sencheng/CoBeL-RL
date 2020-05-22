@@ -8,10 +8,6 @@ import argparse
 
 from agent import Agent
 
-import logging, os 
-logging.disable(logging.WARNING) 
-#os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-
 def SAC(n_episodes=200, max_t=500, print_every=10):
     scores_deque = deque(maxlen=100)
     average_100_scores = []
@@ -24,7 +20,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10):
             action = agent.act(state)
             action_v = np.clip(action*action_high, action_low, action_high)
             next_state, reward, done, info = env.step([action_v])
-            #env.render()
+            env.render()
             next_state = next_state.reshape((1,state_size))
             agent.step(state, action, reward, next_state, done, t)
             state = next_state
@@ -43,7 +39,7 @@ def SAC(n_episodes=200, max_t=500, print_every=10):
 if __name__ == "__main__":
     env_name = "Pendulum-v0"
     seed = int(0)
-    episodes = int(15)
+    episodes = int(50)
     HIDDEN_SIZE = int(256)
     
     t0 = time.time()
