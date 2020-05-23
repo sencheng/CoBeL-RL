@@ -1,3 +1,6 @@
+![Screenshot](benchmark.png)
+
+--------------------------
 This is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" **(CoBeL-RL)**.
 
 Version by date:
