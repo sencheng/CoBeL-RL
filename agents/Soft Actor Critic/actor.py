@@ -9,6 +9,8 @@ from tensorflow.math import log,exp,tanh
 import tensorflow_probability as tfp
 tfd = tfp.distributions
 
+tf.keras.backend.set_floatx('float32')
+
 class Actor_Net(tf.keras.Model):
     def __init__(self,state_size,hidden_size,action_size,log_std_min=-20,log_std_max=2,init_w=3e-3):
         super(Actor_Net,self).__init__(name = 'actor_net')
@@ -23,20 +25,23 @@ class Actor_Net(tf.keras.Model):
 
         self.mu = layers.Dense(action_size,kernel_initializer=out_init)
         self.log_std = layers.Dense(action_size,kernel_initializer=out_init)
+        
     def call(self, X):
         x = self.fc1(X)
         x = self.fc2(x)
-
         mu = self.mu(x)
+
         log = self.log_std(x)
-        log_clamp = tf.clip_by_value(log,self.log_std_min,self.log_std_max)
-        return mu, log_clamp
+        log_dev = tf.clip_by_value(log,self.log_std_min,self.log_std_max)
+        return mu, log_dev
+
     def get_action(self,X):
         mu, log_std = self.call(X)
         std = exp(log_std)
         e = np.random.normal(0,1)
         action = tf.squeeze(tanh(mu + e * std))
         return action
+
     def evaluate(self, X, epsilon=1e-6):
         mu, log_std = self.call(X)
         std = exp(log_std)

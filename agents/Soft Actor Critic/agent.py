@@ -9,26 +9,27 @@ import tensorflow as tf
 import tensorflow.keras.backend as K
 from tensorflow.keras.optimizers import Adam
 
+import logging, os
+logging.disable(logging.WARNING)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
+
 LR_ACTOR = float(5e-4)
 LR_CRITIC = float(5e-4)
 BUFFER_SIZE = int(1e6)
-BATCH_SIZE = int(256)
-GAMMA = float(0.99)
+BATCH_SIZE = 256
+GAMMA = 0.99
 TAU = float(1e-2)
-FIXED_ALPHA = None
 
 class Agent():
-    def __init__(self, state_size, action_size, random_seed, hidden_size, action_prior="uniform"):
+    def __init__(self, state_size, action_size, hidden_size):
         self.state_size = state_size
         self.action_size = action_size
-        self.seed = random.seed(random_seed)
         
-        self.target_entropy = -action_size  # -dim(A)
+        self.target_entropy = -action_size
         
         self.alpha = 1
         self.log_alpha = tf.Variable([0.0])
         self.alpha_opt = Adam(lr=LR_ACTOR)
-        self._action_prior = action_prior
         
         # Actor Network 
         self.actor_local = Actor_Net(self.state_size,hidden_size,self.action_size)
@@ -36,10 +37,10 @@ class Agent():
 
         # Critic Network (w/ Target Network)
         self.critic1 = Critic_Net("critic1",self.state_size,hidden_size,self.action_size)
-        self.critic1_opt = Adam(lr=LR_CRITIC)
+        self.critic1.compile(optimizer=Adam(lr=LR_CRITIC),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic2 = Critic_Net("critic2",self.state_size,hidden_size,self.action_size)
-        self.critic2_opt = Adam(lr=LR_CRITIC)
+        self.critic2.compile(optimizer=Adam(lr=LR_CRITIC),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic1_target = Critic_Net("critic1_target",self.state_size,hidden_size,self.action_size)
         self.critic2_target = Critic_Net("critic2_target",self.state_size,hidden_size,self.action_size)
@@ -48,14 +49,11 @@ class Agent():
         self.critic2_target.set_weights(self.critic2.get_weights())
 
         # Replay memory
-        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE, random_seed)
-
-        self.halving = np.full((BATCH_SIZE,), 0.5, dtype=float)
+        self.memory = ReplayBuffer(action_size, BUFFER_SIZE, BATCH_SIZE)
         
     def step(self, state, action, reward, next_state, done, step):
         self.memory.add(state, action, reward, next_state, done)
 
-        # Learn, if enough samples are available in memory
         if len(self.memory) > BATCH_SIZE:
             experiences = self.memory.sample()
             self.learn(step, experiences, GAMMA)
@@ -69,42 +67,23 @@ class Agent():
         
 
         # ---------------------------- update critic ---------------------------- #
-        # Get predicted next-state actions and Q values from target models
         next_action, log_pis_next = self.actor_local.evaluate(next_states)
 
-        Q_target1_next = self.critic1_target.call(next_states, next_action)
-        Q_target2_next = self.critic2_target.call(next_states, next_action)
+        a_x = tf.concat([next_states, next_action], axis=1)
+        Q_target1_next = self.critic1_target.call(a_x)
+        Q_target2_next = self.critic2_target.call(a_x)
 
         # take the min of both critics for updating
         Q_target_next = tf.squeeze(tf.math.minimum(Q_target1_next,Q_target2_next))
-        
 
-        log_pis_next = tf.squeeze(log_pis_next)
+        Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - self.alpha * tf.squeeze(log_pis_next)))
 
-        if FIXED_ALPHA == None:
-            # Compute Q targets for current states (y_i)
-            Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - self.alpha * log_pis_next))
-        else:
-            Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - FIXED_ALPHA * log_pis_next))
-
-        #tf.print(tf.math.reduce_mean(Q_targets))
-        #Critic1
-        with tf.GradientTape() as tape:
-            v_s = self.critic1.call(states,actions)
-            loss = 0.5 * tf.keras.losses.mean_squared_error(Q_targets,v_s)
-        grads = tape.gradient(loss,self.critic1.trainable_variables)
-        self.critic1_opt.apply_gradients(zip(grads, self.critic1.trainable_variables))
-
-        #Critic2
-        with tf.GradientTape() as tape:
-            v_s = self.critic2.call(states,actions)
-            loss = 0.5 * tf.keras.losses.mean_squared_error(Q_targets,v_s)
-        grads = tape.gradient(loss,self.critic2.trainable_variables)
-        self.critic2_opt.apply_gradients(zip(grads, self.critic2.trainable_variables))
+        x = tf.concat([states,actions], axis=1)
+        self.critic1.fit(x,Q_targets,verbose=0)
+        self.critic2.fit(x,Q_targets, verbose=0)
 
         #Actor Learning Step
         if step % d == 0:
-            ###########################
             alpha = np.exp(self.log_alpha.read_value()[0])
 
             # Compute alpha loss
@@ -120,13 +99,13 @@ class Agent():
             self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
 
             self.alpha = alpha
-            ############################
 
-            #Fit
+            #Fit Actor Step
             with tf.GradientTape() as tape:
                 actions_pred , log_pis = self.actor_local.evaluate(converted_states)
                 log_pis = tf.squeeze(log_pis)
-                c1_in = tf.squeeze(self.critic1.call(converted_states,actions_pred))
+                a_c = tf.concat([converted_states, actions_pred], axis=1)
+                c1_in = tf.squeeze(self.critic1.call(a_c))
                 loss = (alpha * log_pis - c1_in)
                 mean = tf.math.reduce_mean(loss, axis=0)
             grads = tape.gradient(mean,self.actor_local.trainable_variables)
