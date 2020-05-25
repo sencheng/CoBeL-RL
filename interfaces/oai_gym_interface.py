@@ -9,96 +9,96 @@ import time
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
 class OAIGymInterface(gym.Env):
-    
-    
+
+
     # The constructor.
     # modules:          the dict of all available modules in the system
     # withGUI:          if True, the module provides GUI control
     # rewardCallback:   this callback function is invoked in the step routine in order to get the appropriate reward w.r.t. the experimental design
-    
+
     def __init__(self, modules,withGUI=True,rewardCallback=None):
-        
+
         # store the modules
         self.modules=modules
-    
+
         # store visual output variable
         self.withGUI=withGUI
-        
+
         # memorize the reward callback function
         self.rewardCallback=rewardCallback
-        
+
         self.world=self.modules['world']
         self.observations=self.modules['observation']
 
-        
+
         # second: action space
         self.action_space = gym.spaces.Discrete(modules['topologyGraph'].cliqueSize)
-        
-        
+
+
         # third: observation space
         self.observation_space=modules['observation'].getObservationSpace()
-        
+
         # all OAI spaces have been initialized!
-        
-        # this observation variable is filled by the OBS modules 
+
+        # this observation variable is filled by the OBS modules
         self.observation=None
-        
+
         # required for the analysis of the agent's behavior
         self.forbiddenZoneHit=False
         self.finalNode=-1
-        
+
         # a variable that allows the OAI class to access the robotic agent class
         self.rlAgent=None
-        
-        
+
+
     # This function (slot) updates the observation provided by the environment
-    # 
+    #
     # observation:  the observation used to perform the update
     def updateObservation(self,observation):
         self.observation=observation
-    
-    
-    
-    
+
+
+
+
     # This function moves the robot/agent to a goal position
-    # 
+    #
     # goalPosition: the goal position to move the robot/agent to
-    # 
+    #
     def moveToPosition(self,goalPosition):
         # set the new goal position
         # wait until the agent reaches the designated next node (when teleporting, this happens instantaneously)
-        
-        self.modules['world'].actuateRobot(np.array([goalPosition[0],goalPosition[1],90.0])) 
-        self.modules['world'].actuateRobot(np.array([goalPosition[0],goalPosition[1],90.0])) 
-        
+
+        self.modules['world'].actuateRobot(np.array([goalPosition[0],goalPosition[1],90.0]))
+        self.modules['world'].actuateRobot(np.array([goalPosition[0],goalPosition[1],90.0]))
+
         if self.withGUI:
             qt.QtGui.QApplication.instance().processEvents()
-        
-        
-        
+
+
+
         # reset the 'goal reached' indicator of the environment
-        
+
         self.modules['observation'].update()
         self.modules['topologyGraph'].updateRobotPose([goalPosition[0],goalPosition[1],0.0,1.0])
-    
-        
-    
+
+
+
     # The step function that propels the simulation.
     # This function is called by the .fit function of the RL agent whenever a novel action has been computed.
     # The action is used to decide on the next topology node to run to, and step then triggers the control path (including 'Blender')
     # by making use of direct calls and signal/slot methods.
-    # 
+    #
     # action:   the action to be executed
-    
+
     def _step(self, action):
-        
+
         print(action)
         previousNode=self.modules['topologyGraph'].currentNode
         # with action given, the next node can be computed
         self.modules['topologyGraph'].nextNode=self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].currentNode].neighbors[action].index
         # array to store the next node's coordinates
         nextNodePos=np.array([0.0,0.0])
-            
+
         if self.modules['topologyGraph'].nextNode!=-1:
             # compute the next node's coordinates
             nextNodePos=np.array([self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].nextNode].x,self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].nextNode].y])
@@ -108,35 +108,35 @@ class OAIGymInterface(gym.Env):
             # prevent the agent from starting any motion pattern
             self.modules['world'].goalReached=True
             nextNodePos=np.array([self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].currentNode].x,self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].currentNode].y])
-        
+
         print('step to node: %d' % self.modules['topologyGraph'].nextNode)
-        
+
         # actually move the robot to the node
         self.moveToPosition(nextNodePos)
-        
-        
-        
-        
+
+
+
+
         # make the current node the one the agent travelled to
         self.modules['topologyGraph'].currentNode=self.modules['topologyGraph'].nextNode
-        
-        
-        
-        
+
+
+
+
         callbackValue=dict()
         callbackValue['rlAgent']=self.rlAgent
         callbackValue['modules']=self.modules
         callbackValue['currentNode']=self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].currentNode]
         callbackValue['previousNode']=self.modules['topologyGraph'].nodes[previousNode]
         reward,stopEpisode=self.rewardCallback(callbackValue)
-        
+
         return self.modules['observation'].observation, reward, stopEpisode, {}
-        
-        
+
+
     # This function restarts the RL agent's learning cycle by initiating a new episode.
-    # 
+    #
     def _reset(self):
-        
+
         # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
         nextNode=-1
         while True:
@@ -144,16 +144,16 @@ class OAIGymInterface(gym.Env):
             nextNode=np.random.random_integers(0,nrNodes-1)
             if self.modules['topologyGraph'].nodes[nextNode].startNode:
                 break
-        
+
         nextNodePos=np.array([self.modules['topologyGraph'].nodes[nextNode].x,self.modules['topologyGraph'].nodes[nextNode].y])
-        
+
         print('reset to node: %d' % nextNode)
-        
+
         # actually move the robot to the node
         self.moveToPosition(nextNodePos)
         # make the current node the one the agent travelled to
         self.modules['topologyGraph'].currentNode=nextNode
-        
+
         # return the observation
         return self.modules['observation'].observation
 
@@ -173,7 +173,7 @@ class unity_wrapper(gym.Env):
         :param withGUI: graphics, bool
         :param rewardCallback: TODO: implement if needed
         :param worker_id: Port used to communicate with Unity
-        :param seed: Random seed. Keep at 42 for good luck. 
+        :param seed: Random seed. Keep at 42 for good luck.
         :param timeout_wait: Time until Unity is declared ded
         :param side_channels: possible channels to talk with the academy (to adjust environmental settings, e.g. light)
         :param time_scale: Speed of the simulation
@@ -208,7 +208,7 @@ class unity_wrapper(gym.Env):
         env.reset()
 
         # Set the time scale of the engine
-        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale)
+        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=800, height=800)
 
         # receive environment information from environment
         group_name = env.get_agent_groups()[0]             # get agent ID
@@ -250,6 +250,15 @@ class unity_wrapper(gym.Env):
         self.observation_shape = observation.shape  # store to check incoming observations againts
 
         self.n_step = 0
+        self.episode_steps = 0
+        self.cumulative_reward = 0
+
+        print(f'group_name: {group_name}')
+        print(f'group_spec: {group_spec}')
+        print(f'observation_space: {observation_space}')
+        print(f'action_shape: {action_shape}')
+        print(f'action_type: {action_type}')
+
 
     def _step(self, action, *args, **kwargs):
         """
@@ -258,11 +267,13 @@ class unity_wrapper(gym.Env):
         :return: (observation, reward, done, info), necessary to function as a gym
         """
 
+        self.episode_steps += 1;
+
         # format action
         if self.action_type is 'continuous':
-            action = self.id2continuous(action)
+            action = self.make_continuous(action)
         elif self.action_type is 'discrete':
-            action = self.id2discrete(action)
+            action = self.make_discrete(action)
         else:
             raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
 
@@ -288,16 +299,55 @@ class unity_wrapper(gym.Env):
         info.items = lambda: iter({})  # don't ask why :/
 
         # correct for extra observations
+        #
+        # some unity envs send two observations when an agent is done with it's episode.
+        # this is due to requesting a decision before the episode ends.
+        # resulting in adding two observations in one step to the agents data.
+        #
+        # 3DBall and Robot env have been changed to achieve that requesting a decision
+        # and ending the episode is exclusive, but other demos, f.e. the ones which make
+        # use of the 'DecisionRequester' script in unity will still send two observations,
+        # when they are configured to request a decision every step.
+        #
+        # by getting the observation at index 0, we get the last observation of the previous episode.
+        # a possible problem is that we lose an observation of the next episode.
+        #
+        # an easy workaround is to set the parameter in the environment such that it not requests
+        # a decision in every step (but in every 2,3,... step).
+        #
+        # currently if we need an observation every step, the unity example env need to be modified.
+        #
+        double_obs_error = False
         if not self.observation_shape == observation.shape:
-            # Unity seems to throw extra sets of observations in a seemingly random fashion. When this happens,
-            # only the first observation is taken into account.
-            # Attention: If you want to implement MULTI-AGENT RL this is going to need to be fixed.
+            double_obs_error = True
+            print(f'double obs received {observation}')
+            time.sleep(1)
             observation = observation[0]
 
+        # DEBUG: used to check if the double obs occure only together with 'done'.
+        #
+        # TODO: remove since always true.
+        #
+        if double_obs_error and done:
+            pass
+        elif double_obs_error:
+            raise Exception("Double observation didn't occured as assumed.")
+
+        # print episode debug info
+        self.cumulative_reward += reward
         if done:
-            # print episode debug info
-            print('Reward = {0}, step obs shape = {1}, step = {2}'.format(
-                round(reward,2),observation.shape, self.n_step))
+            print('Done => total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
+                self.n_step, self.episode_steps, self.cumulative_reward))
+            self.episode_steps = 0
+            self.cumulative_reward = 0
+            # when an agent is done and resetted: reset the academy, too.
+            # this syncs the local episodes of an agent with the episodes of the academy.
+            # TODO: think about if we want to allow the agents to have local episodes.
+            # See: _reset
+            self.env.reset()
+        else:
+            print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
+                self.n_step, self.episode_steps, self.cumulative_reward))
 
         return observation, reward, done, info
 
@@ -306,7 +356,18 @@ class unity_wrapper(gym.Env):
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
         :return: the agent observation
         """
-        self.env.reset()
+        # self.env.reset() resets the mlagents academy.
+        #
+        # in mlagents the agents have a local maxstep value to reset multiple times in
+        # an episode without being addressed by python.
+        # so the agents can have multiple runs in an academy episode.
+        #
+        # it is disabled at the moment, because the _reset method is called very frequently
+        # by a module and the agents can't make any progress.
+        #
+        # TODO: search for a better place to call it.
+        #
+        # self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
 
@@ -327,7 +388,7 @@ class unity_wrapper(gym.Env):
         """
         raise NotImplementedError
 
-    def id2continuous(self, action_id):
+    def make_continuous(self, action_id):
         """
         Takes an action represented by a positive integer and turns it into a representation suitable for continuous
         unity environments
@@ -377,12 +438,12 @@ class unity_wrapper(gym.Env):
 
         return np.array([new_action])
 
-    def id2discrete(self, action_id):
-        # """
-        # Encodes positive integers into Unity-acceptable format
-        # :param action_id: a positive integer in the range of 0, N
-        # :return: correctly formatted action.
-        # """
+    def make_discrete(self, action_id):
+        """
+        Encodes positive integers into Unity-acceptable format
+        :param action_id: a positive integer in the range of 0, N
+        :return: correctly formatted action.
+        """
         assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
         assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
 

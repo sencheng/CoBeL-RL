@@ -76,7 +76,7 @@ def single_run(environment_filename, n_train=1):
 
 
 def get_cobel_rl_path():
-    paths = os.environ['PYTHONPATH'].split(':')
+    paths = os.environ['PYTHONPATH'].split(';')
     path = None
     for p in paths:
         if 'CoBeL-RL' in p:
@@ -91,9 +91,8 @@ def get_cobel_rl_path():
 if __name__ == "__main__":
 
     project = get_cobel_rl_path()
-    print('Testing 3DBall environment')
-    single_run(environment_filename=project+'/envs/3DBall_single_agent', n_train=1000)
-    print('Testing GridWorld environment')
-    single_run(environment_filename=project+'/envs/GridWorld_single_agent.bak', n_train=1000)
+    print('Testing environment 1')
+    single_run(environment_filename=project+'/envs/lin/3DBall_single_agent', n_train=10)
+    single_run(environment_filename=project + '/envs/lin/3DBall_single_agent', n_train=10)
     print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
