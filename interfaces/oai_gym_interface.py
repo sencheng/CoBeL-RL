@@ -249,10 +249,6 @@ class unity2cobelRL(gym.Env):
 
         print(f'group_name: {group_name}')
         print(f'group_spec: {group_spec}')
-        print(f'observation_space: {observation_space}')
-        print(f'action_shape: {action_shape}')
-        print(f'action_type: {action_type}')
-
 
     def _step(self, action, *args, **kwargs):
         """
@@ -292,7 +288,7 @@ class unity2cobelRL(gym.Env):
         info = self.EmptyClass()
         info.items = lambda: iter({})  # don't ask why :/
 
-        # correct for extra observations
+        # WORKAROUND for extra observations:
         #
         # some unity envs send two observations when an agent is done with it's episode.
         # this is due to requesting a decision before the episode ends.
@@ -306,42 +302,46 @@ class unity2cobelRL(gym.Env):
         # by getting the observation at index 0, we get the last observation of the previous episode.
         # a possible problem is that we lose an observation of the next episode.
         #
+        # by getting the observation at index 1 we get the first observation of the next episode.
+        # the problem that we loose the last observation seemed smaller, so we keep the first.
+        #
         # an easy workaround is to set the parameter in the environment such that it not requests
         # a decision in every step (but in every 2,3,... step).
         #
         # currently if we need an observation every step, the unity example env need to be modified.
-        #
         double_obs_error = False
         if not self.observation_shape == observation.shape:
             double_obs_error = True
             print(f'double obs received {observation}')
-            time.sleep(1)
-            observation = observation[0]
+            observation = observation[1]
 
         # DEBUG: used to check if the double obs occure only together with 'done'.
         #
         # TODO: remove since always true.
         #
-        if double_obs_error and done:
-            pass
-        elif double_obs_error:
+        if double_obs_error and not done:
             raise Exception("Double observation didn't occured as assumed.")
 
-        # print episode debug info
+
+        # add current reward for debugging.
         self.cumulative_reward += reward
+
+        # current WORKAROUND for _reset behavior:
+        #
+        # when an agent is done and resetted: reset the academy, too.
+        # this syncs the local episodes of an agent with the episodes of the academy.
+        # TODO: think about if we want to allow the agents to have local episodes.
+        # See: _reset
         if done:
-            print('Done => total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
-                self.n_step, self.episode_steps, self.cumulative_reward))
+            #self.env.reset()
+            # print episode debug info
             self.episode_steps = 0
             self.cumulative_reward = 0
-            # when an agent is done and resetted: reset the academy, too.
-            # this syncs the local episodes of an agent with the episodes of the academy.
-            # TODO: think about if we want to allow the agents to have local episodes.
-            # See: _reset
             self.env.reset()
-        else:
-            print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
-                self.n_step, self.episode_steps, self.cumulative_reward))
+
+        # print episode debug info
+        print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
+            self.n_step, self.episode_steps, self.cumulative_reward))
 
         return observation, reward, done, info
 
@@ -361,7 +361,7 @@ class unity2cobelRL(gym.Env):
         #
         # TODO: search for a better place to call it.
         #
-        # self.env.reset()
+        #self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
 

@@ -91,6 +91,8 @@ def get_cobel_rl_path():
 
 if __name__ == "__main__":
 
+    #TODO Make a loop and try out different hyperparamters
+    #make your own agent adapted to the problem.
     project = get_cobel_rl_path()
     print('Testing environment')
     single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=200000)
