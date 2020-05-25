@@ -1,7 +1,6 @@
 
 
 
-
 import numpy     as np
 import tensorflow as tf
 import datetime
@@ -13,8 +12,7 @@ from keras.optimizers import Adam
 from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
-
-
+from pathlib import Path
 
 ### The reinforcement learing class. It wraps all functionality required to set up a RL agent.
 class DQNAgentBaseline():
@@ -128,7 +126,8 @@ class DQNAgentBaseline():
         self.maxSteps=steps
 
         # setup Tensorboard for logging
-        log_dir="logs\\fit\\" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))  # create OS-agnostic path
+        log_dir = str(log_dir)                                                               # extract as string
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
 
         # call the fit method to start the RL learning process

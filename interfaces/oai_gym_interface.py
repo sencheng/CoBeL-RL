@@ -158,18 +158,18 @@ class OAIGymInterface(gym.Env):
         return self.modules['observation'].observation
 
 
-class unity2cobelRL(gym.Env):
+class unity_wrapper(gym.Env):
     """
-    Wrapper for Unity with ML-agents
+    Wrapper for Unity 3D with ML-agents
     """
     class EmptyClass:
         pass
 
-    def __init__(self, env_path, modules, withGUI=True, worker_id=None,
+    def __init__(self, env_path, modules=None, withGUI=True, worker_id=None,
                  seed=42, timeout_wait=60, side_channels=None, time_scale=5.0):
         """
         :param env_path: full path to compiled unity executable
-        :param modules: the old CoBeL-RL modules. Currently unnecessary
+        :param modules: the old CoBeL-RL modules. Currently unnecessary.
         :param withGUI: graphics, bool
         :param rewardCallback: TODO: implement if needed
         :param worker_id: Port used to communicate with Unity
@@ -226,7 +226,8 @@ class unity2cobelRL(gym.Env):
             self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
             self.action_space.n = action_shape*2 # continuous actions in Unity are bidirectional
         else:
-            raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
+            raise NotImplementedError('Action type is not recognized. Check action_type definition.')
+
 
         # save environment variables
         self.env = env
@@ -238,11 +239,16 @@ class unity2cobelRL(gym.Env):
         self.action_shape = action_shape
         self.action_type = action_type
 
-        # debugging stuff
+        # debug stuff
+
+        # start evnironment
         self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
+
+        # extract observation shape
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
-        self.observation_shape = observation.shape
+        self.observation_shape = observation.shape  # store to check incoming observations againts
+
         self.n_step = 0
         self.episode_steps = 0
         self.cumulative_reward = 0
@@ -261,9 +267,9 @@ class unity2cobelRL(gym.Env):
 
         # format action
         if self.action_type is 'continuous':
-            action = self.id2continuous(action)
+            action = self.make_continuous(action)
         elif self.action_type is 'discrete':
-            action = self.id2discrete(action)
+            action = self.make_discrete(action)
         else:
             raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
 
@@ -382,7 +388,7 @@ class unity2cobelRL(gym.Env):
         """
         raise NotImplementedError
 
-    def id2continuous(self, action_id):
+    def make_continuous(self, action_id):
         """
         Takes an action represented by a positive integer and turns it into a representation suitable for continuous
         unity environments
@@ -432,12 +438,12 @@ class unity2cobelRL(gym.Env):
 
         return np.array([new_action])
 
-    def id2discrete(self, action_id):
-        # """
-        # Encodes positive integers into Unity-acceptable format
-        # :param action_id: a positive integer in the range of 0, N
-        # :return: correctly formatted action.
-        # """
+    def make_discrete(self, action_id):
+        """
+        Encodes positive integers into Unity-acceptable format
+        :param action_id: a positive integer in the range of 0, N
+        :return: correctly formatted action.
+        """
         assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
         assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
 

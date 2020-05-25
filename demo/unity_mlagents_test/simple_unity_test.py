@@ -1,6 +1,6 @@
 from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
-from interfaces.oai_gym_interface import unity2cobelRL
+from interfaces.oai_gym_interface import unity_wrapper
 import os
 
 visualOutput = True
@@ -9,12 +9,15 @@ visualOutput = True
 def reward_callback(*args, **kwargs):
     """
     ATTENTION: This function is deprecated.
-    These changes should be encoded in the Academy object of the environment, and triggered via a side channel.
+    These changes should be encoded in the Academy object of the environment, and triggered via a side channel, or in
+    the Agent definition inside Unity.
+
     :return: None
     """
 
-    raise NotImplementedError('This function is deprecated. These changes should be encoded in the Academy '
-                              'object of the environment, and triggered via a side channel.')
+    raise NotImplementedError('This function is deprecated. These changes should either be encoded in the Academy '
+                              'object of the environment, and triggered via a side channel, or in the Agent definition'
+                              'inside Unity.')
 
 
 def trial_begin_callback(trial, rl_agent):
@@ -26,9 +29,9 @@ def trial_begin_callback(trial, rl_agent):
     :return: None
     """
 
+    # end learning after n trials
     if trial == rl_agent.trialNumber - 1:
-        # end the experiment by setting the number of steps to a excessively large value, this stops the 'fit' routine
-        rl_agent.agent.step = rl_agent.maxSteps + 1
+        rl_agent.agent.step = rl_agent.maxSteps + 1  # force a max_steps exit
 
 
 def trial_end_callback(trial, rl_agent, logs):
@@ -54,16 +57,12 @@ def single_run(environment_filename, n_train=1):
     """
 
     # set random seed
-    seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in.
+    seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in. Pardon the PEP.
 
-    # a dictionary that contains all employed modules
-    modules = dict()
-
-    modules['interfaceOAI'] = unity2cobelRL(env_path=environment_filename, modules=modules, withGUI=visualOutput,
+    unity_gym = unity_wrapper(env_path=environment_filename, modules=None, withGUI=visualOutput,
                                             seed=seed)
 
-
-    rl_agent = DQNAgentBaseline(modules['interfaceOAI'], memoryCapacity=5000, epsilon=0.3,
+    rl_agent = DQNAgentBaseline(interfaceOAI=unity_gym, memoryCapacity=5000, epsilon=0.3,
                                 trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
     # set the experimental parameters
@@ -73,7 +72,7 @@ def single_run(environment_filename, n_train=1):
     rl_agent.train(n_train)
 
     backend.clear_session()
-    modules['interfaceOAI'].close()
+    unity_gym.close()
 
 
 def get_cobel_rl_path():
@@ -94,7 +93,8 @@ if __name__ == "__main__":
     #TODO Make a loop and try out different hyperparamters
     #make your own agent adapted to the problem.
     project = get_cobel_rl_path()
-    print('Testing environment')
-    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=200000)
+    print('Testing environment 1')
+    single_run(environment_filename=project+'/envs/lin/3DBall_single_agent', n_train=10)
+    single_run(environment_filename=project + '/envs/lin/3DBall_single_agent', n_train=10)
     print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
