@@ -94,7 +94,6 @@ if __name__ == "__main__":
     #make your own agent adapted to the problem.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    single_run(environment_filename=project+'/envs/lin/3DBall_single_agent', n_train=10)
-    single_run(environment_filename=project + '/envs/lin/3DBall_single_agent', n_train=10)
+    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=10)
     print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')

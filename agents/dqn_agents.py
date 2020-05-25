@@ -126,7 +126,7 @@ class DQNAgentBaseline():
         self.maxSteps=steps
 
         # setup Tensorboard for logging
-        log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H:%M:%S"))  # create OS-agnostic path
+        log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H-%M-%S"))  # create OS-agnostic path
         log_dir = str(log_dir)                                                               # extract as string
         tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
 
