@@ -373,11 +373,16 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
                 print(angle)
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+            
             if action==2:
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],np.arctan2(right_edge[1][1],right_edge[1][0])])) 
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],np.arctan2(right_edge[1][1],right_edge[1][0])])) 
         
-            self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],left_edge[1][1],left_edge[1][0]])
+            self.modules['observation'].update()
+            self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],left_edge[1][0],left_edge[1][1]])
+            
+            # make the current node the one the agent travelled to
+            self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
         
             time.sleep(1)
             
@@ -401,10 +406,9 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             
         
         
-        # make the current node the one the agent travelled to
-        self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
         
-        self.modules['observation'].update()
+        
+        
         
         # if possible try to update the visual debugging display
         if qt.QtGui.QApplication.instance() is not None:
