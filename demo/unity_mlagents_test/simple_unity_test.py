@@ -1,5 +1,6 @@
 from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
+from agents.dqn_agents import DDPGAgentBaseline
 from interfaces.oai_gym_interface import unity_wrapper
 import os
 
@@ -60,10 +61,20 @@ def single_run(environment_filename, n_train=1):
     seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in. Pardon the PEP.
 
     unity_gym = unity_wrapper(env_path=environment_filename, modules=None, withGUI=visualOutput,
-                                            seed=seed)
+                                            seed=seed, agent_type="continuous")
 
-    rl_agent = DQNAgentBaseline(interfaceOAI=unity_gym, memoryCapacity=5000, epsilon=0.3,
-                                trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
+    #rl_agent = DQNAgentBaseline(interfaceOAI=unity_gym,
+    #                            memoryCapacity=5000,
+    #                            epsilon=0.3,
+    #                            trialBeginFcn=trial_begin_callback,
+    #                            trialEndFcn=trial_end_callback
+    #                            )
+
+    rl_agent = DDPGAgentBaseline(interfaceOAI=unity_gym,
+                                 memoryCapacity=5000,
+                                 trialBeginFcn=trial_begin_callback,
+                                 trialEndFcn=trial_end_callback
+                                 )
 
     # set the experimental parameters
     rl_agent.trialNumber = 1000
@@ -89,11 +100,10 @@ def get_cobel_rl_path():
 
 
 if __name__ == "__main__":
-
     #TODO Make a loop and try out different hyperparamters
     #make your own agent adapted to the problem.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=10)
+    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=10000)
     print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')

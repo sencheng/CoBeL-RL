@@ -166,7 +166,7 @@ class unity_wrapper(gym.Env):
         pass
 
     def __init__(self, env_path, modules=None, withGUI=True, worker_id=None,
-                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0):
+                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0, agent_type='discrete'):
         """
         :param env_path: full path to compiled unity executable
         :param modules: the old CoBeL-RL modules. Currently unnecessary.
@@ -220,11 +220,25 @@ class unity_wrapper(gym.Env):
         action_type = "discrete" if 'DISCRETE' in str(group_spec.action_type) else "continuous"
 
         # instantiate action space
-        if action_type is "discrete":
+        # TODO: we should think about this implementation since a DDPGAgent f.e. uses an continuous action space.
+        # at the moment everything is set up for an DQNAgent with discrete output, but i think
+        # we should deligate the responsibility to choose the right agent for an example to the user.
+        # maybe we also can fetch the agent type somehow and use this for creating the best actionspace.
+
+        if action_type is "discrete" and agent_type is "discrete":
             self.action_space = gym.spaces.Discrete(n=action_shape[0])
-        elif action_type is "continuous":
+
+        elif action_type is "discrete" and agent_type is 'continuous':
+            raise NotImplementedError('Not implemented!')
+
+        elif action_type is "continuous" and agent_type is "discrete":
             self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            self.action_space.n = action_shape*2 # continuous actions in Unity are bidirectional
+            self.action_space.n = action_shape * 2 # continuous actions in Unity are bidirectional, so we double the action space.
+
+        elif action_type is "continuous" and agent_type is "continuous":
+            self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+            self.action_space.n = action_shape # no adapting needed.
+
         else:
             raise NotImplementedError('Action type is not recognized. Check action_type definition.')
 
@@ -233,13 +247,12 @@ class unity_wrapper(gym.Env):
         self.env = env
         self.group_name = group_name
         self.group_spec = group_spec
-
         self.observation_space = np.zeros(shape=observation_space)
-
         self.action_shape = action_shape
         self.action_type = action_type
+        self.agent_type = agent_type
 
-        # debug stuff
+        # debug stuff ##########################################################
 
         # start evnironment
         self.env.reset()
@@ -263,18 +276,24 @@ class unity_wrapper(gym.Env):
         :return: (observation, reward, done, info), necessary to function as a gym
         """
 
-        self.episode_steps += 1;
-
         # format action
-        if self.action_type is 'continuous':
+        # WORKAROUND to adapt an agent with discrete actionspace to a continuous actionspace.
+        if self.action_type is 'continuous' and self.agent_type is 'discrete':
             action = self.make_continuous(action)
+
+        # do not adapt
+        elif self.action_type is 'continuous' and self.agent_type is 'continuous':
+            action = np.array([action])
+            print(action)
+
         elif self.action_type is 'discrete':
             action = self.make_discrete(action)
+
         else:
             raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
 
         # accumulate steps
-        self.n_step +=1
+        self.n_step += 1
 
         # setup action in the Unity environment
         self.env.set_actions(self.group_name, action)
@@ -328,22 +347,14 @@ class unity_wrapper(gym.Env):
         if double_obs_error and not done:
             raise Exception("Double observation didn't occured as assumed.")
 
-
-        # add current reward for debugging.
-        self.cumulative_reward += reward
-
-        # current WORKAROUND for _reset behavior:
-        #
-        # when an agent is done and resetted: reset the academy, too.
-        # this syncs the local episodes of an agent with the episodes of the academy.
-        # TODO: think about if we want to allow the agents to have local episodes.
-        # See: _reset
+        # reset debug vaiables, when agent is done.
         if done:
-            #self.env.reset()
-            # print episode debug info
             self.episode_steps = 0
             self.cumulative_reward = 0
-            self.env.reset()
+        else:
+            # add current reward for debugging.
+            self.cumulative_reward += reward
+            self.episode_steps += 1;
 
         # print episode debug info
         print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
@@ -356,18 +367,8 @@ class unity_wrapper(gym.Env):
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
         :return: the agent observation
         """
-        # self.env.reset() resets the mlagents academy.
-        #
-        # in mlagents the agents have a local maxstep value to reset multiple times in
-        # an episode without being addressed by python.
-        # so the agents can have multiple runs in an academy episode.
-        #
-        # it is disabled at the moment, because the _reset method is called very frequently
-        # by a module and the agents can't make any progress.
-        #
-        # TODO: search for a better place to call it.
-        #
-        #self.env.reset()
+        # resets the mlagents academy.
+        self.env.reset()
         step_result = self.env.get_step_result(self.group_name)
         observation = step_result.obs[0].squeeze()  # remove singleton dimensions
 
