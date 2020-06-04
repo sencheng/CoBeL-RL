@@ -157,6 +157,14 @@ class OAIGymInterface(gym.Env):
         # return the observation
         return self.modules['observation'].observation
 
+def unity_decorater(func):
+    def wrapper(self, *args, **kwargs):
+        try:
+            return func(self, *args, **kwargs)
+        except Exception as e:
+            print(f'Unity crashed. {e}')
+    return wrapper
+
 
 class unity_wrapper(gym.Env):
     """
@@ -272,7 +280,6 @@ class unity_wrapper(gym.Env):
         #
         # we also need to process the action_space for discrete actions, since Unity uses branches to structure
         # the actions.
-        #
         # see: make_discrete
         #
         if action_type is "discrete" and agent_action_type is "discrete":
@@ -297,6 +304,7 @@ class unity_wrapper(gym.Env):
     def _step(self, action, *args, **kwargs):
         """
         Make the simulation move forward one tick.
+
         :param action:  integer corresponding to the index of a one-hot-vector that is one.
         :return:        (observation, reward, done, info), necessary to function as a gym
         """
@@ -375,6 +383,7 @@ class unity_wrapper(gym.Env):
 
         return observation, reward, done, info
 
+    @unity_decorater
     def step_env(self, action):
         """
         Wrapper for the step functionality of the Unity env.
@@ -386,15 +395,13 @@ class unity_wrapper(gym.Env):
         # format the action for unity.
         formatted_action = self.format_action(action)
         
-        try:
-            # setup action in the Unity environment
-            self.env.set_actions(self.group_name, formatted_action)
+        # setup action in the Unity environment
+        self.env.set_actions(self.group_name, formatted_action)
 
-            # forward the simulation by a tick (and execute action)
-            self.env.step()
-        except Exception as e:
-            print(f'Unity crashed. {e}')
+        # forward the simulation by a tick (and execute action)
+        self.env.step()
 
+    @unity_decorater
     def get_step_results(self):
         """
         Wrapper for the get_step_result function of Unity.
@@ -408,6 +415,7 @@ class unity_wrapper(gym.Env):
         done = step_result.done[0]
         return (observation, reward, done)
 
+    @unity_decorater
     def _reset(self):
         """
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
@@ -422,16 +430,14 @@ class unity_wrapper(gym.Env):
 
         return observation
 
+    @unity_decorater
     def _close(self):
         """
         Closes the environment
 
         :return:
         """
-        try:
-            self.env.close()
-        except Exception as e:
-            print(f'Unity crashed. {e}')
+        self.env.close()
 
         # debug plot
         plt.matshow(self.reward_plot)
