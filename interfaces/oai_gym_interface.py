@@ -5,6 +5,7 @@ from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
 import time
+from matplotlib import pyplot as plt
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
@@ -92,7 +93,6 @@ class OAIGymInterface(gym.Env):
 
     def _step(self, action):
 
-        print(action)
         previousNode=self.modules['topologyGraph'].currentNode
         # with action given, the next node can be computed
         self.modules['topologyGraph'].nextNode=self.modules['topologyGraph'].nodes[self.modules['topologyGraph'].currentNode].neighbors[action].index
@@ -166,7 +166,8 @@ class unity_wrapper(gym.Env):
         pass
 
     def __init__(self, env_path, modules=None, withGUI=True, worker_id=None,
-                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0, agent_type='discrete'):
+                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0, 
+                 agent_action_type='discrete'):
         """
         :param env_path: full path to compiled unity executable
         :param modules: the old CoBeL-RL modules. Currently unnecessary.
@@ -177,6 +178,7 @@ class unity_wrapper(gym.Env):
         :param timeout_wait: Time until Unity is declared ded
         :param side_channels: possible channels to talk with the academy (to adjust environmental settings, e.g. light)
         :param time_scale: Speed of the simulation
+        :param agent_action_type: the native action type of the agent.
         """
 
         # setup communication port
@@ -208,104 +210,106 @@ class unity_wrapper(gym.Env):
         env.reset()
 
         # Set the time scale of the engine
-        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=800, height=800)
+        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=400, height=400)
 
         # receive environment information from environment
         group_name = env.get_agent_groups()[0]             # get agent ID
         group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
 
-        # refine information
-        observation_space = group_spec.observation_shapes[0]
-        action_shape = group_spec.action_shape
-        action_type = "discrete" if 'DISCRETE' in str(group_spec.action_type) else "continuous"
-
-        # instantiate action space
-        # TODO: we should think about this implementation since a DDPGAgent f.e. uses an continuous action space.
-        # at the moment everything is set up for an DQNAgent with discrete output, but i think
-        # we should deligate the responsibility to choose the right agent for an example to the user.
-        # maybe we also can fetch the agent type somehow and use this for creating the best actionspace.
-
-        if action_type is "discrete" and agent_type is "discrete":
-            self.action_space = gym.spaces.Discrete(n=action_shape[0])
-
-        elif action_type is "discrete" and agent_type is 'continuous':
-            raise NotImplementedError('Not implemented!')
-
-        elif action_type is "continuous" and agent_type is "discrete":
-            self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            self.action_space.n = action_shape * 2 # continuous actions in Unity are bidirectional, so we double the action space.
-
-        elif action_type is "continuous" and agent_type is "continuous":
-            self.action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            self.action_space.n = action_shape # no adapting needed.
-
-        else:
-            raise NotImplementedError('Action type is not recognized. Check action_type definition.')
-
-
         # save environment variables
         self.env = env
         self.group_name = group_name
-        self.group_spec = group_spec
-        self.observation_space = np.zeros(shape=observation_space)
-        self.action_shape = action_shape
-        self.action_type = action_type
-        self.agent_type = agent_type
+        self.agent_action_type = agent_action_type
+        self.observation_shape, self.observation_space = self.get_observation_specs(group_spec)
+        self.action_shape, self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
-        # debug stuff ##########################################################
-
-        # start evnironment
-        self.env.reset()
-        step_result = self.env.get_step_result(self.group_name)
-
-        # extract observation shape
-        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
-        self.observation_shape = observation.shape  # store to check incoming observations againts
-
+        # debug stuff
         self.n_step = 0
+        self.nb_episode = 0
         self.episode_steps = 0
         self.cumulative_reward = 0
+        self.reward_plot = np.zeros(shape=(1000, 1000))
 
-        print(f'group_name: {group_name}')
-        print(f'group_spec: {group_spec}')
+    def get_observation_specs(self, env_agent_specs):
+        """
+        Extract the information about the observation space from mlagents group_spec.
+
+        :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
+        :return:                    tuple (observation_shape, observation_space)
+
+        Just getting the shape of the observation of agent 0 ;)
+        and constructing the action space from the shape.
+        """
+
+        observation_shape = env_agent_specs.observation_shapes[0]
+        observation_space = np.zeros(shape=observation_shape)
+
+        return (observation_shape, observation_space)
+
+    def get_action_specs(self, env_agent_specs, agent_action_type):
+        """
+        Extract the informations about the action space from mlagents group_spec
+
+        :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
+        :param agent_action_type:   the agent_action_type string 
+        :return:                    tuple (action_shape, action_space, action_type) used by CoBeL-RL.
+        """
+        # extract action specs.
+        # to get the action_shape just fetch the action_shape from the spec object.
+        action_shape = env_agent_specs.action_shape
+
+        # get the action type by examinating the action_type string of the spec object.
+        action_type = "discrete" if 'DISCRETE' in str(env_agent_specs.action_type) else "continuous"
+
+        # instantiate the action space
+        #
+        # depends on the type of agent you are using and the action space of the
+        # environment.
+        #
+        # if you are using an agent with a natively discrete space like a DQNAgent, you are not able to run
+        # a continuous example. For compability reasons, we set up a mapping to discretize the continuous space.
+        # see: make_continuous 
+        #
+        # we also need to process the action_space for discrete actions, since Unity uses branches to structure
+        # the actions.
+        #
+        # see: make_discrete
+        #
+        if action_type is "discrete" and agent_action_type is "discrete":
+            action_space = gym.spaces.Discrete(n=np.prod(action_shape)) # Unity uses branches of discrete action so we use all possible 
+                                                                        # combinations of them as action_space for the DQN.
+
+
+        elif action_type is "continuous" and agent_action_type is "discrete":
+            action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+            action_space.n = action_shape * 2                           # continuous actions in Unity are bidirectional, 
+                                                                        # so we double the action space.
+
+        elif action_type is "continuous" and agent_action_type is "continuous":
+            action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+            action_space.n = action_shape                               
+
+        else:
+            raise NotImplementedError('This combination of action and agent type is not supported. Check the definitions')
+
+        return (action_shape, action_space, action_type)
 
     def _step(self, action, *args, **kwargs):
         """
         Make the simulation move forward one tick.
-        :param action: integer
-        :return: (observation, reward, done, info), necessary to function as a gym
+        :param action:  integer corresponding to the index of a one-hot-vector that is one.
+        :return:        (observation, reward, done, info), necessary to function as a gym
         """
-
-        # format action
-        # WORKAROUND to adapt an agent with discrete actionspace to a continuous actionspace.
-        if self.action_type is 'continuous' and self.agent_type is 'discrete':
-            action = self.make_continuous(action)
-
-        # do not adapt
-        elif self.action_type is 'continuous' and self.agent_type is 'continuous':
-            action = np.array([action])
-            print(action)
-
-        elif self.action_type is 'discrete':
-            action = self.make_discrete(action)
-
-        else:
-            raise NotImplementedError('Action type is not recognized. Check the self.action_type definition')
 
         # accumulate steps
         self.n_step += 1
 
-        # setup action in the Unity environment
-        self.env.set_actions(self.group_name, action)
-
-        # forward the simulation by a tick (and execute action)
-        self.env.step()
+        # step the env with the provided action.
+        self.step_env(action)
 
         # get results
-        step_result = self.env.get_step_result(self.group_name)
-        observation = step_result.obs[0].squeeze()  # removes singleton dimensions
-        reward = step_result.reward[0]
-        done = step_result.done[0]
+        # at the moment only one agent in the environment is supported.
+        observation, reward, done = self.get_step_results()
 
         # Instantiate info var
         # This is currently unused, but required by gym/core.py. At some point, useful information could be stored here
@@ -313,16 +317,20 @@ class unity_wrapper(gym.Env):
         info = self.EmptyClass()
         info.items = lambda: iter({})  # don't ask why :/
 
+        #
+        #### DEBUG SECTION #####################################################
+        #
+
         # WORKAROUND for extra observations:
         #
         # some unity envs send two observations when an agent is done with it's episode.
-        # this is due to requesting a decision before the episode ends.
+        # this is due to instantly requesting a decision after the episode ends.
         # resulting in adding two observations in one step to the agents data.
         #
         # 3DBall and Robot env have been changed to achieve that requesting a decision
         # and ending the episode is exclusive, but other demos, f.e. the ones which make
         # use of the 'DecisionRequester' script in unity will still send two observations,
-        # when they are configured to request a decision every step.
+        # when they are configured to request a decision at every step.
         #
         # by getting the observation at index 0, we get the last observation of the previous episode.
         # a possible problem is that we lose an observation of the next episode.
@@ -333,7 +341,8 @@ class unity_wrapper(gym.Env):
         # an easy workaround is to set the parameter in the environment such that it not requests
         # a decision in every step (but in every 2,3,... step).
         #
-        # currently if we need an observation every step, the unity example env need to be modified.
+        # currently if we need an observation every step, the unity example env should to be modified.
+        #
         double_obs_error = False
         if not self.observation_shape == observation.shape:
             double_obs_error = True
@@ -347,56 +356,148 @@ class unity_wrapper(gym.Env):
         if double_obs_error and not done:
             raise Exception("Double observation didn't occured as assumed.")
 
-        # reset debug vaiables, when agent is done.
-        if done:
-            self.episode_steps = 0
-            self.cumulative_reward = 0
-        else:
-            # add current reward for debugging.
-            self.cumulative_reward += reward
-            self.episode_steps += 1;
+        # update debug vars.
+        self.cumulative_reward += reward
+        self.episode_steps += 1
 
-        # print episode debug info
+        # print episode info
         print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
             self.n_step, self.episode_steps, self.cumulative_reward))
 
+        # plot episode info.
+        #self.reward_plot[self.nb_episode-1, self.episode_steps-1] = self.cumulative_reward
+
+        # reset debug vars, when done.
+        if done:
+            self.episode_steps = 0
+            self.cumulative_reward = 0
+            self.nb_episode += 1
+
         return observation, reward, done, info
+
+    def step_env(self, action):
+        """
+        Wrapper for the step functionality of the Unity env.
+        We format the action, set it and step the env.
+
+        :param action:  the action provided by an agent.
+        :return:        
+        """
+        # format the action for unity.
+        formatted_action = self.format_action(action)
+        
+        try:
+            # setup action in the Unity environment
+            self.env.set_actions(self.group_name, formatted_action)
+
+            # forward the simulation by a tick (and execute action)
+            self.env.step()
+        except Exception as e:
+            print(f'Unity crashed. {e}')
+
+    def get_step_results(self):
+        """
+        Wrapper for the get_step_result function of Unity.
+        We only use the first result of each type, since we only support one agent.
+
+        :return: tuple observation, reward, done
+        """
+        step_result = self.env.get_step_result(self.group_name)
+        observation = self.format_observation(step_result.obs[0])
+        reward = step_result.reward[0]
+        done = step_result.done[0]
+        return (observation, reward, done)
 
     def _reset(self):
         """
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
-        :return: the agent observation
+
+        :return: the agents initial observation
         """
         # resets the mlagents academy.
         self.env.reset()
-        step_result = self.env.get_step_result(self.group_name)
-        observation = step_result.obs[0].squeeze()  # remove singleton dimensions
+
+        # get the intial observation from the env.
+        observation, _ , _ = self.get_step_results()
 
         return observation
 
     def _close(self):
         """
         Closes the environment
+
         :return:
         """
-        self.env.close()
+        try:
+            self.env.close()
+        except Exception as e:
+            print(f'Unity crashed. {e}')
+
+        # debug plot
+        plt.matshow(self.reward_plot)
+        plt.show()
 
     def format_observation(self, obs):
         """
-        Currently unused. Can be used to perform manipulations on the observation.
+        Formate the received observation to work with cobel.
+        At the moment we just remove the singleton dimensions.
+
         :param obs: the observation received from env.step or env.reset
-        :return:
+        :return:    the formated observation
         """
-        raise NotImplementedError
+        return obs.squeeze() # remove singleton dimensions.
+
+    def format_action(self, action):
+        """
+        This is a wrapper for the action / agent_action_type logic.
+
+        :param action: the action received from the agent.
+        :return:       the action formatted for unity.
+
+        it's not possible to use a discrete agent like DQN with a
+        continuous env from out of the box. So for compability reasons,
+        we set up a mapping.
+
+        there are four possible combinations:
+
+        action_type = continuous, agent_action_type = discrete
+        -> we map the discrete action to a continuous action
+        see: make_continuous
+
+        action_type = continuous, agent_action_type = continuous
+        -> nothing to do, just wrap the action.
+
+        action_type = discrete, agent = discrete
+        -> Unity uses branches to structure the actions,
+        so we map our one-hot-vector accordingly.
+        see: make_discrete
+
+        action_type = discrete, agent = continuous
+        -> not supported at the moment.
+        """
+        if self.action_type is 'continuous' and self.agent_action_type is 'discrete':
+            action = self.make_continuous(action)
+
+        elif self.action_type is 'continuous' and self.agent_action_type is 'continuous':
+            action = np.array([action])
+
+        elif self.action_type is 'discrete' and self.agent_action_type is 'discrete':
+            action = self.make_discrete(action)
+
+        else:
+            raise NotImplementedError('This combination of action and agent type is not supported. Check the definitions.')
+
+        return action
 
     def make_continuous(self, action_id):
         """
         Takes an action represented by a positive integer and turns it into a representation suitable for continuous
-        unity environments
+        unity environments.
+        
+        :param action_id:   a positive value integer from 0 to N
+        :return:            an array with the correct format and range to be used by the ML-Agents framework
 
         TODO: Find a dumber way to do this
-        :param action_id: a positive value integer from 0 to N
-        :return: an array with the correct format and range to be used by the ML-Agents framework
 
         :Reason of existence: The DQN outputs values that are integers. However, the ML-agents framework takes as
         inputs actions that also have negative values. Take for example an action space of 4 and an integer action id,
@@ -441,13 +542,56 @@ class unity_wrapper(gym.Env):
 
     def make_discrete(self, action_id):
         """
-        Encodes positive integers into Unity-acceptable format
-        :param action_id: a positive integer in the range of 0, N
-        :return: correctly formatted action.
+        Encodes positive one hot integer into Unity-acceptable format
+
+        :param action_id:   a positive integer in the range of 0, N
+        :return:            correctly formatted action.
+
+        Adaptation to Unity branching system.
+
+        In Unity you can specify branches for an discrete actions.
+        f.e. a moving branch where you got the options
+        0 = stay, 1 = left, 2 = right
+        and maybe another action 
+        0 = no jump, 1 = jump
+
+        but from our dqn agent we only get out a one hot vector.
+
+        in order to map this correctly we set the action space to
+        the product of the action shape value.
+        f.e. action_shape = (3,2) in Unity => (1,6) one hot vector
+        by doing so we have all possible combinations of actions covered.
+
+        the last step is to map this one hot vector back to the branches.
+        for this we resize the one hot vector to the shape of the initial
+        action space ...
+        f.e. [0, 0, 1, 0, 0, 0] => [[0, 0], [1, 0], [0, 0]]]
+        and the calculate the indicies where it is one.
+        in this case: x=1, y=0 and use them as the values for the branchs ;)
+
+        the output is then [1, 0] correnponding to branch0 action1, branch1 action0
+
+        this should work for all cases, n branches with m actions.
         """
         assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
         assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
 
-        new_action = np.array([[action_id]])
+        # setup a one-hot vector with all possible combinations of actions.
+        one_hot_vector = np.zeros(self.action_space.n)
 
-        return new_action
+        # set the chosen action to 1.
+        one_hot_vector[action_id] = 1
+
+        # resize to be a branch matrix.
+        one_hot_vector.resize(self.action_shape)
+
+        # get the coordinate where the 1 was stored (multidimensional)
+        coords = np.where(one_hot_vector == 1)
+
+        # store the coordinates as values in the branches.
+        branches = []
+        for arr in coords:
+            branches.append(arr[0])
+
+        # wrap and return.
+        return np.array([branches])    
