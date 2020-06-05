@@ -1,11 +1,15 @@
+import time
 import numpy as np
 import gym
 import PyQt5 as qt
+
 from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
-import time
-from matplotlib import pyplot as plt
+from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
+
+from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
@@ -165,7 +169,6 @@ def unity_decorater(func):
             print(f'Unity crashed. {e}')
     return wrapper
 
-
 class unity_wrapper(gym.Env):
     """
     Wrapper for Unity 3D with ML-agents
@@ -173,9 +176,17 @@ class unity_wrapper(gym.Env):
     class EmptyClass:
         pass
 
-    def __init__(self, env_path, modules=None, withGUI=True, worker_id=None,
-                 seed=42, timeout_wait=60, side_channels=None, time_scale=5.0, 
-                 agent_action_type='discrete'):
+    def __init__(self, 
+                 env_path, 
+                 modules=None, 
+                 withGUI=True, 
+                 worker_id=None,
+                 seed=42,  
+                 timeout_wait=60, 
+                 side_channels=None, 
+                 time_scale=5.0, 
+                 agent_action_type='discrete'
+                 ):
         """
         :param env_path: full path to compiled unity executable
         :param modules: the old CoBeL-RL modules. Currently unnecessary.
@@ -211,8 +222,13 @@ class unity_wrapper(gym.Env):
         side_channels.append(self.engine_configuration_channel)
 
         # connect python to executable environment
-        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, timeout_wait=timeout_wait,
-                               side_channels=side_channels, no_graphics=not withGUI)
+        env = UnityEnvironment(file_name=env_path, 
+                               worker_id=worker_id, 
+                               seed=seed, 
+                               timeout_wait=timeout_wait,
+                               side_channels=side_channels, 
+                               no_graphics=not withGUI
+                               )
 
         # Reset the environment
         env.reset()
@@ -234,9 +250,9 @@ class unity_wrapper(gym.Env):
         # debug stuff
         self.n_step = 0
         self.nb_episode = 0
-        self.episode_steps = 0
+        self.episode_step = 0
         self.cumulative_reward = 0
-        self.reward_plot = np.zeros(shape=(1000, 1000))
+        self.reward_plot = []
 
     def get_observation_specs(self, env_agent_specs):
         """
@@ -309,11 +325,11 @@ class unity_wrapper(gym.Env):
         :return:        (observation, reward, done, info), necessary to function as a gym
         """
 
-        # accumulate steps
-        self.n_step += 1
-
         # step the env with the provided action.
         self.step_env(action)
+
+        # accumulate steps
+        self.n_step += 1
 
         # get results
         # at the moment only one agent in the environment is supported.
@@ -366,18 +382,17 @@ class unity_wrapper(gym.Env):
 
         # update debug vars.
         self.cumulative_reward += reward
-        self.episode_steps += 1
+        self.episode_step += 1
 
-        # print episode info
-        print('total step = {0}, episode_step = {1}, cumulative reward = {2}'.format(
-            self.n_step, self.episode_steps, self.cumulative_reward))
-
-        # plot episode info.
-        #self.reward_plot[self.nb_episode-1, self.episode_steps-1] = self.cumulative_reward
-
-        # reset debug vars, when done.
         if done:
-            self.episode_steps = 0
+            # print episode info
+            print(f'total step = {self.n_step}, episode_step = {self.episode_step}, cumulative reward = {self.cumulative_reward}')
+
+            # plot episode info.
+            self.reward_plot.append((self.nb_episode, self.episode_step, self.cumulative_reward))
+
+            # reset debug vars
+            self.episode_step = 0
             self.cumulative_reward = 0
             self.nb_episode += 1
 
@@ -440,7 +455,21 @@ class unity_wrapper(gym.Env):
         self.env.close()
 
         # debug plot
-        plt.matshow(self.reward_plot)
+        self.plot()
+
+    #TODO move this to the test.py?
+    def plot(self):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        x, y, z = zip(*self.reward_plot)
+
+        ax.scatter(x, y, z, c='r', marker='o')
+
+        ax.set_xlabel('Episode')
+        ax.set_ylabel('Step')
+        ax.set_zlabel('Cumulativ Reward')
+
         plt.show()
 
     def format_observation(self, obs):
@@ -548,7 +577,7 @@ class unity_wrapper(gym.Env):
 
     def make_discrete(self, action_id):
         """
-        Encodes positive one hot integer into Unity-acceptable format
+        Encodes positive one hot integer into Unity acceptable format
 
         :param action_id:   a positive integer in the range of 0, N
         :return:            correctly formatted action.
@@ -563,7 +592,7 @@ class unity_wrapper(gym.Env):
 
         but from our dqn agent we only get out a one hot vector.
 
-        in order to map this correctly we set the action space to
+        in order to map this we set the action space to
         the product of the action shape value.
         f.e. action_shape = (3,2) in Unity => (1,6) one hot vector
         by doing so we have all possible combinations of actions covered.
@@ -573,7 +602,7 @@ class unity_wrapper(gym.Env):
         action space ...
         f.e. [0, 0, 1, 0, 0, 0] => [[0, 0], [1, 0], [0, 0]]]
         and the calculate the indicies where it is one.
-        in this case: x=1, y=0 and use them as the values for the branchs ;)
+        in this case: x=1, y=0 and use them as the values for the branches.
 
         the output is then [1, 0] correnponding to branch0 action1, branch1 action0
 
@@ -591,7 +620,7 @@ class unity_wrapper(gym.Env):
         # resize to be a branch matrix.
         one_hot_vector.resize(self.action_shape)
 
-        # get the coordinate where the 1 was stored (multidimensional)
+        # get the coordinate where the 1 was stored
         coords = np.where(one_hot_vector == 1)
 
         # store the coordinates as values in the branches.

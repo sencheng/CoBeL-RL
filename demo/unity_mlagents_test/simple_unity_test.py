@@ -1,8 +1,10 @@
 import tensorboard as tb
+import tensorflow as tf
 from keras import backend
 from agents.dqn_agents import RobotDQNAgent
 from agents.dqn_agents import DDPGAgentBaseline
 from interfaces.oai_gym_interface import unity_wrapper
+from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
 import os
 
 visualOutput = True
@@ -30,11 +32,8 @@ def trial_begin_callback(trial, rl_agent):
     :param rl_agent: the employed reinforcement learning agent
     :return: None
     """
-    print(trial)
-    # end learning after n trials
-    if trial == rl_agent.trialNumber - 1:
-        rl_agent.agent.step = rl_agent.maxSteps + 1  # force a max_steps exit
-
+    pass
+    #print("Episode begin")
 
 def trial_end_callback(trial, rl_agent, logs):
     """
@@ -46,6 +45,7 @@ def trial_end_callback(trial, rl_agent, logs):
     :return:
     """
     pass
+    #print("Episode end")
 
 
 def single_run(environment_filename, n_train=1):
@@ -57,16 +57,18 @@ def single_run(environment_filename, n_train=1):
     This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization
     mechanism (without visual output), or by a direct call (in this case, visual output can be used).
     """
+    tf.global_variables_initializer
 
     # set random seed
     seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in. Pardon the PEP.
 
-    unity_gym = unity_wrapper(env_path=environment_filename, modules=None, withGUI=visualOutput,
-                                            seed=seed, agent_action_type="discrete")
+    # setup a float side channel
+    float_properties_channel = FloatPropertiesChannel()
 
-    rl_agent = RobotDQNAgent(interfaceOAI=unity_gym,
-                            trialBeginFcn=trial_begin_callback,
-                            trialEndFcn=trial_end_callback)
+    unity_gym = unity_wrapper(env_path=environment_filename, modules=None, withGUI=visualOutput,
+                              seed=seed, agent_action_type="discrete", side_channels=[float_properties_channel])
+
+    rl_agent = RobotDQNAgent(interfaceOAI=unity_gym, trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
     ''' THIS NEED MORE WORK
     rl_agent = DDPGAgentBaseline(interfaceOAI=unity_gym,
@@ -77,10 +79,15 @@ def single_run(environment_filename, n_train=1):
                                  '''
 
     # set the experimental parameters
-    rl_agent.trialNumber = 1000
+    float_properties_channel.set_property("nb_max_episode_steps", 3000) # max steps of the agent
+    float_properties_channel.set_property("target_reached_radius", 10)  # distance at which the target is considered reached
+    float_properties_channel.set_property("target_spawn_distance", 30)  # spawn distance of the target
+    float_properties_channel.set_property("add_to_spawn_angle", 45)     # the change of the spawn angle, when successfully reached
+    unity_gym._reset()
 
-    # let the agent learn, with extremely large number of allowed maximum steps
     rl_agent.train(n_train)
+
+    rl_agent.agent.model.save_weights("models/robot.h5")
 
     backend.clear_session()
 
@@ -102,9 +109,7 @@ def get_cobel_rl_path():
 
 if __name__ == "__main__":
     #TODO Make a loop and try out different hyperparamters
-    #make your own agent adapted to the problem.
     project = get_cobel_rl_path()
     print('Testing environment 1')
     single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=1000000)
-    print('Testing concluded: No program breaking bugs detected.')
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
