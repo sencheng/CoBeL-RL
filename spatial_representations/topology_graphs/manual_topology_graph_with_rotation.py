@@ -298,7 +298,7 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         if action!='reset':
         
             # get current heading
-            action=1
+            action=0
             heading=np.array([world_module.envData['poseData'][2],world_module.envData['poseData'][3]])
             heading=heading/norm(heading)
             print('heading: ',heading)
@@ -306,49 +306,42 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             actual_node=self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode]
             neighbors=self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].neighbors
             
-            left_edge=None
-            right_edge=None
-            forward_edge=None
+            left_edges=[]
+            right_edges=[]
+            forward_edge=[]
             
             for n in neighbors:
-                
+                print(self.modules['spatial_representation'].currentNode,n.index)
                 if n.index!=-1:
                     actual_node_position=np.array([actual_node.x,actual_node.y])
                     
-                    print(n.index)
                     neighbor_position=np.array([n.x,n.y])
                     vec_edge=neighbor_position-actual_node_position
                     vec_edge=vec_edge/norm(vec_edge)
                     
                     angle=np.arctan2(heading[0]*vec_edge[1]-heading[1]*vec_edge[0],heading[0]*vec_edge[0]+heading[1]*vec_edge[1])
                     angle=angle/np.pi*180.0
-                    print('angle: ',angle)
+                    
+                    print('Neighbor: %d, angle: %f' % (n.index,angle)) 
+                    
                     if angle<-1e-5:
-                        if right_edge==None:
-                            right_edge=[n.index,vec_edge,angle]
-                            left_edge=[n.index,vec_edge,360.0+angle]
-                        else:
-                            if angle>right_edge[2]:
-                                right_edge=[n.index,vec_edge,angle]
-                                left_edge=[n.index,vec_edge,360+angle]
-                                
-                    else:
-                        if angle>1e-5:
-                            if left_edge==None:
-                                left_edge=[n.index,vec_edge,angle]
-                                right_edge=[n.index,vec_edge,360-angle]
-                            else:
-                                if angle<left_edge[2]:
-                                    left_edge=[n.index,vec_edge,angle] 
-                                    right_edge=[n.index,vec_edge,360-angle]
-                        else:
-                            forward_edge=[n.index,vec_edge]
+                        right_edges+=[[n.index,vec_edge,angle]]
+
+                
+                    if angle>1e-5:
+                        left_edges+=[[n.index,vec_edge,angle]]
+                    
+                    
+                    if angle<1e-5 and angle>-1e-5:
+                        forward_edge=[n.index,vec_edge,angle]
+                        
+                 
+            
+            
+            left_edges=sorted(left_edges,key=lambda element: element[2],reverse=False)
+            right_edges=sorted(right_edges,key=lambda element: element[2],reverse=True)
             
             print(forward_edge)
-            print(left_edge)
-            print(right_edge)
-            print(world_module.envData['timeData'])
-            print(action)
             
             previousNode=self.modules['spatial_representation'].currentNode
             
@@ -367,19 +360,27 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             
             # with action given, the next node can be computed
             if action==0:
+                angle=180.0/np.pi*np.arctan2(forward_edge[1][1],forward_edge[1][0])
                 self.modules['spatial_representation'].nextNode=forward_edge[0]
-            if action==1:
-                angle=180.0/np.pi*np.arctan2(left_edge[1][1],left_edge[1][0])
-                print(angle)
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
                 self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],forward_edge[1][0],forward_edge[1][1]])
+            
+                
+            if action==1:
+                angle=180.0/np.pi*np.arctan2(left_edges[0][1][1],left_edges[0][1][0])
+                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],left_edges[0][1][0],left_edges[0][1][1]])
             
             if action==2:
-                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],np.arctan2(right_edge[1][1],right_edge[1][0])])) 
-                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],np.arctan2(right_edge[1][1],right_edge[1][0])])) 
+                angle=180.0/np.pi*np.arctan2(right_edges[0][1][1],right_edges[0][1][0])
+                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+                self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],right_edges[0][1][0],right_edges[0][1][1]])
+            
         
             self.modules['observation'].update()
-            self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],left_edge[1][0],left_edge[1][1]])
             
             # make the current node the one the agent travelled to
             self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
@@ -401,8 +402,8 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
                     break
             
             nextNodePos=np.array([self.modules['spatial_representation'].nodes[nextNode].x,self.modules['spatial_representation'].nodes[nextNode].y])
-            self.modules['spatial_representation'].nextNode=nextNode
-            
+            self.modules['spatial_representation'].currentNode=nextNode
+            print(self.modules['spatial_representation'].currentNode)
         
         
         
