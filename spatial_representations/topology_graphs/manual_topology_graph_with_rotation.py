@@ -384,7 +384,6 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             # make the current node the one the agent travelled to
             self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
         
-            time.sleep(1)
             
             # here, next node is already set and the current node is set to this next node.
             callback_value['currentNode']=self.nodes[self.nextNode]
@@ -413,6 +412,8 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         # if possible try to update the visual debugging display
         if qt.QtGui.QApplication.instance() is not None:
             qt.QtGui.QApplication.instance().processEvents()
+
+        time.sleep(1)
         
         return callback_value
 
