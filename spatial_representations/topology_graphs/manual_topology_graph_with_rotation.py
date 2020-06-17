@@ -144,17 +144,6 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             self.plot.setXRange( self.world_limits[0,0], self.world_limits[0,1] )
             self.plot.setYRange( self.world_limits[1,0], self.world_limits[1,1] )
             self.plot.setAspectLocked()
-
-            
-           
-                
-            # set up indicator arrows for each node, except the goal node, and all nodes in active shock zones iff shock zones exist
-            for node in self.nodes:
-                if not node.goalNode:
-                    node.qIndicator=CogArrow(angle=0.0,headLen=20.0,tipAngle=25.0,tailLen=0.0,brush=(255,255,0))
-                    self.plot.addItem(node.qIndicator)
-            
-            
             
             
                 
@@ -206,46 +195,11 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             
         
     def updateVisualElements(self):
-        
-                            
-            
-            
-            ## overlay the policy arrows
-            
-            #if self.visual_output:
-                ## for all nodes in the topology graph
-                #for node in self.nodes:
-                    
-                    
-                    ## query the model at each node's position
-                    ## only for valid nodes!
-                    #if node.index!=-1:
-                        #observation=self.state_space[node.index]
-                        #data=np.array([[observation]])
-                        ## get the q-values at the queried node's position
-                        #q_values = self.rlAgent.agent.model.predict_on_batch(data)[0]
-                        
-                        ## find all neighbors that are actually valid (index != -1)
-                        #validIndex=0
-                        #for n_index in range(len(node.neighbors)):
-                            #if node.neighbors[n_index].index!=-1:
-                                #validIndex=n_index
-                        
-                        ## find the index of the neighboring node that is 'pointed to' by the highest q-value, AND is valid!
-                        #maxNeighNode=node.neighbors[np.argmax(q_values[0:validIndex+1])]
-                        ## find the direction of the selected neighboring node
-                        ## to node: maxNeighNode
-                        #toNode=np.array([maxNeighNode.x,maxNeighNode.y])
-                        ## from node: node
-                        #fromNode=np.array([node.x,node.y])
-                        ## the difference vector between to and from
-                        #vec=toNode-fromNode
-                        ## normalize the direction vector
-                        #l=np.linalg.norm(vec)
-                        #vec=vec/l
-                        ## make the corresponding indicator point in the direction of the difference vector
-                        #node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
-                        pass
+        # not currently used
+        pass
+    
+    
+    
 
     # This function updates the visual depiction of the agent(robot).
     # 
@@ -257,32 +211,9 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
 
 
     def sample_state_space(self):
-        
-        # the world module is required here
-        world_module=self.modules['world']
-        
-        # the observation module is required here
-        observation_module=self.modules['observation']
-        
-        # In this specific topology graph, a state is an image sampled from a specific node of the graph. There
-        # is no rotation, so one image per node is sufficient.
-        
-        self.state_space=[]
-        for node_index in range(len(self.nodes)):
-            node=self.nodes[node_index]
-            # set agent to x/y-position of 'node'
-            world_module.step_simulation_without_physics(node.x,node.y,90.0)
-            world_module.step_simulation_without_physics(node.x,node.y,90.0)
-            observation_module.update()
-            observation=observation_module.observation
-            self.state_space+=[observation]
-        return
+        # not currently used
+        pass
 
-
-
-
-    
-        
 
 
 
@@ -442,7 +373,8 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
             
         
-        
+            # update the observation
+            self.modules['observation'].update()
         
         
         
