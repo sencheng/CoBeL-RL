@@ -64,7 +64,6 @@ class RLPerformanceMonitorBaseline():
     logs:   information from the reinforcement learning subsystem
     '''
     def update(self,trial,logs):
-        print('update')
         # update the reward traces
         rlReward=logs['episode_reward']
         self.rlRewardTraceRaw[trial]=rlReward
