@@ -18,7 +18,7 @@ from numpy.linalg import norm
 from spatial_representations.spatial_representation import SpatialRepresentation
 
 import time
-
+import random
 
 
 
@@ -402,12 +402,10 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         # if a reset is performed
         else:
             # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
-            nextNode=-1
-            while True:
-                nrNodes=len(self.modules['spatial_representation'].nodes)
-                nextNode=np.random.random_integers(0,nrNodes-1)
-                if self.modules['spatial_representation'].nodes[nextNode].startNode:
-                    break
+            
+            nodes=self.modules['spatial_representation'].nodes
+            nodes_selection=[n for n in nodes if n.startNode==True]
+            nextNode=random.choice(nodes_selection).index
             
             nextNodePos=np.array([self.modules['spatial_representation'].nodes[nextNode].x,self.modules['spatial_representation'].nodes[nextNode].y])
             
