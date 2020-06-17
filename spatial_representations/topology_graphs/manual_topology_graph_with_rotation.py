@@ -405,15 +405,41 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
             
             nodes=self.modules['spatial_representation'].nodes
             nodes_selection=[n for n in nodes if n.startNode==True]
-            nextNode=random.choice(nodes_selection).index
             
-            nextNodePos=np.array([self.modules['spatial_representation'].nodes[nextNode].x,self.modules['spatial_representation'].nodes[nextNode].y])
+            # store the current node as previous node
+            previousNode=self.modules['spatial_representation'].currentNode
             
-            self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],90.0])) 
-            self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],90.0]))
-            self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],0.0,1.0])
-                
-            self.modules['spatial_representation'].currentNode=nextNode
+            self.modules['spatial_representation'].nextNode=random.choice(nodes_selection)
+            
+            nextNodePos=np.array([self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode.index].x,self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode.index].y])
+            
+            # from all heading directions available at the chosen node, select one randomly
+            
+            self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode.index
+            neighbors=self.modules['spatial_representation'].nextNode.neighbors
+            
+            # list for available neighbor directions
+            directions=[]
+            
+            for n in neighbors:
+                if n.index!=-1:
+                    # only parse valid neighbors
+                    next_node_position=np.array([self.modules['spatial_representation'].nextNode.x,self.modules['spatial_representation'].nextNode.y])
+                    neighbor_position=np.array([n.x,n.y])
+                    vec_edge=neighbor_position-next_node_position
+                    vec_edge=vec_edge/norm(vec_edge)
+                    world_angle=np.arctan2(vec_edge[1],vec_edge[0])
+                    directions+=[[n.index,vec_edge,world_angle]]
+                    
+            # select new heading randomly
+            new_heading_selection=random.choice(directions)
+            new_heading_angle=new_heading_selection[2]
+            new_heading_vector=new_heading_selection[1]
+            
+            # update the agents position and orientation (heading)
+            self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle])) 
+            self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle]))
+            self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
             
         
         
@@ -424,6 +450,9 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         if qt.QtGui.QApplication.instance() is not None:
             qt.QtGui.QApplication.instance().processEvents()
             qt.QtGui.QApplication.instance().processEvents()
+        
+        
+        
         
         return callback_value
 
