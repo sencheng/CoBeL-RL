@@ -31,3 +31,6 @@ e.g., **'/opt/blender2.79b/'**
 
 * go to **.../mySimulatorFolder/CoBel-RL/demo/simpleGridGraphDemo/**
 * start the demo project: **python3 simpleGridGraphDemo.py**
+
+
+Preliminary information, needs further checking: It seems there are some issues with tensorflow, version 1.5.0 and the employed python version. If you experience such compatibility problems and have a python version >=3.7, it might help to downgrade python to a version >=2.7 and <=3.6. However, this is just a preliminary hint, the issue will have to be further explored.
