@@ -1,14 +1,19 @@
-import tensorboard as tb
+import os
+import datetime
+import numpy as np
+from pathlib import Path
+
 import tensorflow as tf
 from keras import backend
-from agents.dqn_agents import RobotDQNAgent
-from agents.dqn_agents import DDPGAgentBaseline
-from interfaces.oai_gym_interface import unity_wrapper
-from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
-import os
+from agents.dqn_agents import ModularDQNAgentBaseline, sequential_memory_modul, sequential_model_modul
+
+from interfaces.oai_gym_interface import UnityInterface
+from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
+from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy
+
+import pyqtgraph as pg
 
 visualOutput = True
-
 
 def reward_callback(*args, **kwargs):
     """
@@ -22,7 +27,6 @@ def reward_callback(*args, **kwargs):
     raise NotImplementedError('This function is deprecated. These changes should either be encoded in the Academy '
                               'object of the environment, and triggered via a side channel, or in the Agent definition'
                               'inside Unity.')
-
 
 def trial_begin_callback(trial, rl_agent):
     """
@@ -44,11 +48,9 @@ def trial_end_callback(trial, rl_agent, logs):
     :param logs: output of the reinforcement learning subsystem
     :return:
     """
-    pass
-    #print("Episode end")
+    print("Episode end", logs)
 
-
-def single_run(environment_filename, n_train=1):
+def demo_run(environment_filename, n_train=1):
     """
     :param environment_filename: full path to a Unity executable
     :param n_train: amount of RL steps
@@ -57,41 +59,57 @@ def single_run(environment_filename, n_train=1):
     This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization
     mechanism (without visual output), or by a direct call (in this case, visual output can be used).
     """
-    tf.global_variables_initializer
 
     # set random seed
     seed = 42  # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works, try 13. The extra bad luck will cause a buffer overflow and then we're in. Pardon the PEP.
 
-    # setup a float side channel
-    float_properties_channel = FloatPropertiesChannel()
+    # create unity env
+    unity_env = UnityInterface(env_path=environment_filename, modules=None, withGUI=True,
+                                seed=seed, agent_action_type="discrete", nb_max_episode_steps=4000, decision_interval=10,
+                                performance_monitor=UnityPerformanceMonitor(update_rate=1))
 
-    unity_gym = unity_wrapper(env_path=environment_filename, modules=None, withGUI=visualOutput,
-                              seed=seed, agent_action_type="discrete", side_channels=[float_properties_channel])
+    unity_env.env_configuration_channel.set_property("platform_scale", 4)
 
-    rl_agent = RobotDQNAgent(interfaceOAI=unity_gym, trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
-
-    ''' THIS NEED MORE WORK
-    rl_agent = DDPGAgentBaseline(interfaceOAI=unity_gym,
-                                 memoryCapacity=5000,
-                                 trialBeginFcn=trial_begin_callback,
-                                 trialEndFcn=trial_end_callback
-                                 )
-                                 '''
-
+    """
     # set the experimental parameters
-    float_properties_channel.set_property("nb_max_episode_steps", 3000) # max steps of the agent
-    float_properties_channel.set_property("target_reached_radius", 10)  # distance at which the target is considered reached
-    float_properties_channel.set_property("target_spawn_distance", 30)  # spawn distance of the target
-    float_properties_channel.set_property("add_to_spawn_angle", 45)     # the change of the spawn angle, when successfully reached
-    unity_gym._reset()
+    float_properties_channel.set_property("maxStep", 500)                  
+    float_properties_channel.set_property("decision_interval", 10)
+
+    float_properties_channel.set_property("is_maze", 1)
+    float_properties_channel.set_property("size_x", 2)
+    float_properties_channel.set_property("size_y", 2)
+
+    float_properties_channel.set_property("target_reached_radius", 20)  
+    float_properties_channel.set_property("random_target_pos", 0)
+    float_properties_channel.set_property("random_rotation_mode", 0)
+    """
+
+    # initial reset
+    unity_env._reset()
+
+    # tensorboard log callback
+    log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H-%M-%S"))  # create OS-agnostic path
+    log_dir = str(log_dir)                                                               # extract as string
+    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
+
+    # create agent
+    rl_agent = ModularDQNAgentBaseline(interfaceOAI=unity_env,
+                                        policy=LinearAnnealedPolicy(EpsGreedyQPolicy(), "eps", 1., 0.1, 0.05, 50000),
+                                        nb_steps_warmup=10000, nb_max_episode_steps=4000,
+                                        create_memory_fcn=sequential_memory_modul(limit=50000), 
+                                        create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
+                                        action_repetition=1, train_interval=1, memory_window=4, memory_interval=1,
+                                        batch_size=32,
+                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback, 
+                                        callbacks=[tensorboard_callback])
 
     rl_agent.train(n_train)
 
-    rl_agent.agent.model.save_weights("models/robot.h5")
+    rl_agent.save("robot_test")
 
     backend.clear_session()
 
-    unity_gym.close()
+    unity_env.close()
 
 
 def get_cobel_rl_path():
@@ -106,10 +124,10 @@ def get_cobel_rl_path():
 
     return path
 
-
 if __name__ == "__main__":
     #TODO Make a loop and try out different hyperparamters
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    single_run(environment_filename=project+'/envs/win/Robot/UnityEnvironment', n_train=1000000)
+    demo_run(environment_filename=project+'/envs/win/experiments/robot_maze_discrete_visual/unityenvironment', n_train=100000)
     print('Start tensorboard from unity_mlagents_test/logs/fit to see that the environments are learnable.')
+    pg.QtGui.QApplication.exec_()

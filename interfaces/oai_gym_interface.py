@@ -1,15 +1,14 @@
+import sys
 import time
 import numpy as np
 import gym
-import PyQt5 as qt
+import math
+import pyqtgraph as pg
 
 from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
-
-from mpl_toolkits.mplot3d import Axes3D
-import matplotlib.pyplot as plt
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
 ### between the agent and the environment. The class descends from gym.Env, and is designed to be minimalistic (currently!).
@@ -77,7 +76,7 @@ class OAIGymInterface(gym.Env):
         self.modules['world'].actuateRobot(np.array([goalPosition[0],goalPosition[1],90.0]))
 
         if self.withGUI:
-            qt.QtGui.QApplication.instance().processEvents()
+            pg.QtGui.QApplication.instance().processEvents()
 
 
 
@@ -162,42 +161,49 @@ class OAIGymInterface(gym.Env):
         return self.modules['observation'].observation
 
 def unity_decorater(func):
+    """
+    wraps on internal errors raised by the unity python api
+    result in more readable error messages
+    """
     def wrapper(self, *args, **kwargs):
         try:
             return func(self, *args, **kwargs)
         except Exception as e:
-            print(f'Unity crashed. {e}')
+            print(f"Unity crashed. {e}")
     return wrapper
 
-class unity_wrapper(gym.Env):
+class UnityInterface(gym.Env):
     """
     Wrapper for Unity 3D with ML-agents
     """
+
     class EmptyClass:
+        """
+        this class is used as an info dictionary
+        """
         pass
 
-    def __init__(self, 
-                 env_path, 
-                 modules=None, 
-                 withGUI=True, 
-                 worker_id=None,
-                 seed=42,  
-                 timeout_wait=60, 
-                 side_channels=None, 
-                 time_scale=5.0, 
-                 agent_action_type='discrete'
+    def __init__(self, env_path, modules=None, 
+                    withGUI=True, worker_id=None, seed=42,  
+                    timeout_wait=60, side_channels=None, time_scale=5.0, 
+                    nb_max_episode_steps=0, decision_interval=5,
+                    agent_action_type='discrete', performance_monitor=None
+                 
                  ):
         """
-        :param env_path: full path to compiled unity executable
-        :param modules: the old CoBeL-RL modules. Currently unnecessary.
-        :param withGUI: graphics, bool
-        :param rewardCallback: TODO: implement if needed
-        :param worker_id: Port used to communicate with Unity
-        :param seed: Random seed. Keep at 42 for good luck.
-        :param timeout_wait: Time until Unity is declared ded
-        :param side_channels: possible channels to talk with the academy (to adjust environmental settings, e.g. light)
-        :param time_scale: Speed of the simulation
-        :param agent_action_type: the native action type of the agent.
+        Constructor
+
+        :param env_path:            full path to compiled unity executable
+        :param modules:             the old CoBeL-RL modules. Currently unnecessary.
+        :param withGUI:             graphics, bool
+        :param rewardCallback:      TODO: implement if needed
+        :param worker_id:           Port used to communicate with Unity
+        :param seed:                Random seed. Keep at 42 for good luck.
+        :param timeout_wait:        Time until Unity is declared ded
+        :param side_channels:       possible channels to talk with the academy (to adjust environmental settings, e.g. light)
+        :param time_scale:          Speed of the simulation
+        :param agent_action_type:   the native action type of the agent.
+        :param performance_monitor: the monitor used for visualizing the learning process
         """
 
         # setup communication port
@@ -219,16 +225,20 @@ class unity_wrapper(gym.Env):
         if side_channels is None:
             side_channels = []
 
+        # add engine config channel
         side_channels.append(self.engine_configuration_channel)
 
+        #step parameters
+        self.env_configuration_channel = FloatPropertiesChannel()
+        self.env_configuration_channel.set_property("max_step", nb_max_episode_steps)
+        self.env_configuration_channel.set_property("decision_interval", decision_interval)
+
+        # add env config channel
+        side_channels.append(self.env_configuration_channel)
+
         # connect python to executable environment
-        env = UnityEnvironment(file_name=env_path, 
-                               worker_id=worker_id, 
-                               seed=seed, 
-                               timeout_wait=timeout_wait,
-                               side_channels=side_channels, 
-                               no_graphics=not withGUI
-                               )
+        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, 
+                               timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not withGUI)
 
         # Reset the environment
         env.reset()
@@ -247,12 +257,13 @@ class unity_wrapper(gym.Env):
         self.observation_shape, self.observation_space = self.get_observation_specs(group_spec)
         self.action_shape, self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
-        # debug stuff
+        # plotting variables
         self.n_step = 0
         self.nb_episode = 0
-        self.episode_step = 0
-        self.cumulative_reward = 0
+        self.nb_episode_steps = 0
+        self.cumulativ_episode_reward = 0
         self.reward_plot = []
+        self.performance_monitor = performance_monitor
 
     def get_observation_specs(self, env_agent_specs):
         """
@@ -301,7 +312,6 @@ class unity_wrapper(gym.Env):
         if action_type is "discrete" and agent_action_type is "discrete":
             action_space = gym.spaces.Discrete(n=np.prod(action_shape)) # Unity uses branches of discrete action so we use all possible 
                                                                         # combinations of them as action_space for the DQN.
-
 
         elif action_type is "continuous" and agent_action_type is "discrete":
             action_space = gym.spaces.Box(low=-1*np.ones(shape=action_shape), high=np.ones(shape=action_shape))
@@ -370,7 +380,7 @@ class unity_wrapper(gym.Env):
         double_obs_error = False
         if not self.observation_shape == observation.shape:
             double_obs_error = True
-            print(f'double obs received {observation}')
+            print(f'double obs received')
             observation = observation[1]
 
         # DEBUG: used to check if the double obs occure only together with 'done'.
@@ -380,25 +390,33 @@ class unity_wrapper(gym.Env):
         if double_obs_error and not done:
             raise Exception("Double observation didn't occured as assumed.")
 
-        # update debug vars.
-        self.cumulative_reward += reward
-        self.episode_step += 1
+        #
+        #### PLOT SECTION #####################################################
+        #
+
+        # accumulate episode data
+        self.cumulativ_episode_reward += reward
+        self.nb_episode_steps += 1
+
+        # update step plotting data
+        self.performance_monitor.set_step_data(self.n_step, observation)
 
         if done:
-            # print episode info
-            print(f'total step = {self.n_step}, episode_step = {self.episode_step}, cumulative reward = {self.cumulative_reward}')
 
-            # plot episode info.
-            self.reward_plot.append((self.nb_episode, self.episode_step, self.cumulative_reward))
-
-            # reset debug vars
-            self.episode_step = 0
-            self.cumulative_reward = 0
+            # accumulate episodes
             self.nb_episode += 1
+
+            # plot learning params
+            self.performance_monitor.set_episode_data(self.nb_episode, self.nb_episode_steps, self.cumulativ_episode_reward)
+
+            # reset episode data
+            self.cumulativ_episode_reward = 0
+            self.nb_episode_steps = 0
+
+        self.performance_monitor.update(nb_step=self.n_step)
 
         return observation, reward, done, info
 
-    @unity_decorater
     def step_env(self, action):
         """
         Wrapper for the step functionality of the Unity env.
@@ -416,7 +434,6 @@ class unity_wrapper(gym.Env):
         # forward the simulation by a tick (and execute action)
         self.env.step()
 
-    @unity_decorater
     def get_step_results(self):
         """
         Wrapper for the get_step_result function of Unity.
@@ -428,9 +445,9 @@ class unity_wrapper(gym.Env):
         observation = self.format_observation(step_result.obs[0])
         reward = step_result.reward[0]
         done = step_result.done[0]
+
         return (observation, reward, done)
 
-    @unity_decorater
     def _reset(self):
         """
         Resets the environment to prepare for the start of a new episode (if environment calls for it)
@@ -443,6 +460,9 @@ class unity_wrapper(gym.Env):
         # get the intial observation from the env.
         observation, _ , _ = self.get_step_results()
 
+        self.performance_monitor.set_step_data(self.n_step, observation)
+        self.performance_monitor.update()
+
         return observation
 
     @unity_decorater
@@ -453,24 +473,6 @@ class unity_wrapper(gym.Env):
         :return:
         """
         self.env.close()
-
-        # debug plot
-        self.plot()
-
-    #TODO move this to the test.py?
-    def plot(self):
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        x, y, z = zip(*self.reward_plot)
-
-        ax.scatter(x, y, z, c='r', marker='o')
-
-        ax.set_xlabel('Episode')
-        ax.set_ylabel('Step')
-        ax.set_zlabel('Cumulativ Reward')
-
-        plt.show()
 
     def format_observation(self, obs):
         """
