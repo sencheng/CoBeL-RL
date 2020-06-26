@@ -418,7 +418,18 @@ class UnityInterface(gym.Env):
         # the shape of the observation is the sum over all single observations
         # even for a single agent multiple observations are delivered. one for each sensor in the env.
         # TODO: image observation + vector observations will be a problem
-        observation_shape = (sum([sum(shape) for shape in env_agent_specs.observation_shapes]), )
+
+        # if there are multiple sensors
+        if len(env_agent_specs.observation_shapes) > 1:
+
+            # calculate the size of the flattened vector
+            observation_shape = (sum([sum(shape) for shape in env_agent_specs.observation_shapes]),)
+
+        else:
+
+            # leave the shape as it is
+            observation_shape = env_agent_specs.observation_shapes[0]
+
         observation_space = np.zeros(shape=observation_shape)
 
         return observation_shape, observation_space
@@ -476,13 +487,18 @@ class UnityInterface(gym.Env):
         Format the received observation to work with cobel.
         At the moment we just remove the singleton dimensions.
 
-        :param obs: the observation received from env.step or env.reset
-        :return:    the formatted observation
+        :param observations: the observation received from env.step or env.reset
+        :return:            the formatted observation
         """
 
-        # get the first observation vector for each sensor and concatenate them to a single one
-        # we take the first because we support only a single agent
-        observations_list = np.concatenate([o[0] for o in observations])
+        # if there are multiple sensors, flatten them into a single vector
+        if len(observations) > 1:
+            observations_list = np.ndarray.flatten(np.array(observations))
+
+        # if we have a single sensor
+        else:
+            # remove singleton dimensions
+            observations_list = observations[0].squeeze()
 
         return observations_list
 
