@@ -124,6 +124,6 @@ if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparamters
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    demo_run(environment_filename=project + '/envs/lin/examples/basic/basic', n_train=1000)
+    demo_run(environment_filename=project + '/envs/lin/examples/3dball/3dball', n_train=1000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
     pg.QtGui.QApplication.exec_()
