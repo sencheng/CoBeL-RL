@@ -44,8 +44,7 @@ keras-rl==0.4.2
 kiwisolver==1.1.0
 Markdown==3.2.1
 MarkupSafe==1.1.1
-matplotlib==3.2.1
-MeshPy==2018.2.1
+matplotlib==3.0.3
 mistune==0.8.4
 mlagents==0.15.1
 mlagents-envs==0.15.1
@@ -97,8 +96,8 @@ Send2Trash==1.5.0
 Shapely==1.7.0
 six==1.14.0
 sklearn==0.0
-tensorboard==2.1.1
-tensorflow==1.5.0
+tensorboard==1.7.0
+tensorflow==1.7.0
 tensorflow-estimator==2.0.1
 tensorflow-tensorboard==1.5.1
 termcolor==1.1.0
