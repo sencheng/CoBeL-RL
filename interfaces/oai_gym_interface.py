@@ -4,6 +4,7 @@ import numpy as np
 import gym
 import math
 import pyqtgraph as pg
+from operator import mul
 
 from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
@@ -178,21 +179,22 @@ class UnityInterface(gym.Env):
                  with_gui=True, worker_id=None, seed=42,
                  timeout_wait=60, side_channels=None, time_scale=5.0,
                  nb_max_episode_steps=0, decision_interval=5,
-                 agent_action_type='discrete', performance_monitor=None
-
+                 agent_action_type='discrete', performance_monitor=None,
+                 flatten_observations=True
                  ):
         """
         Constructor
-        :param env_path:            full path to compiled unity executable
-        :param modules:             the old CoBeL-RL modules. Currently unnecessary.
-        :param with_gui:             graphics, bool
-        :param worker_id:           Port used to communicate with Unity
-        :param seed:                Random seed. Keep at 42 for good luck.
-        :param timeout_wait:        Time until Unity is declared ded
-        :param side_channels:       possible channels to talk with the academy (to adjust environmental settings, e.g. light)
-        :param time_scale:          Speed of the simulation
-        :param agent_action_type:   the native action type of the agent.
-        :param performance_monitor: the monitor used for visualizing the learning process
+        :param env_path:                full path to compiled unity executable
+        :param modules:                 the old CoBeL-RL modules. Currently unnecessary.
+        :param with_gui:                graphics, bool
+        :param worker_id:               Port used to communicate with Unity
+        :param seed:                    Random seed. Keep at 42 for good luck.
+        :param timeout_wait:            Time until Unity is declared ded
+        :param side_channels:           possible channels to talk with the academy
+        :param time_scale:              Speed of the simulation
+        :param agent_action_type:       the native action type of the agent.
+        :param performance_monitor:     the monitor used for visualizing the learning process
+        :param flatten_observations:    defines if all the sensor observations should be flattened to a single vector
         """
 
         # setup communication port
@@ -245,6 +247,7 @@ class UnityInterface(gym.Env):
         self.env = env
         self.group_name = group_name
         self.agent_action_type = agent_action_type
+        self.flatten_observations = flatten_observations
         self.observation_shape, self.observation_space = self.get_observation_specs(group_spec)
         self.action_shape, self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
@@ -253,7 +256,6 @@ class UnityInterface(gym.Env):
         self.nb_episode = 0
         self.nb_episode_steps = 0
         self.cumulative_episode_reward = 0
-        self.reward_plot = []
         self.performance_monitor = performance_monitor
 
     def _step(self, action, *args, **kwargs):
@@ -280,9 +282,9 @@ class UnityInterface(gym.Env):
         info = self.EmptyClass()
         info.items = lambda: iter({})  # don't ask why :/
 
-        #
+        """
         #### DEBUG SECTION #####################################################
-        #
+        """
 
         # WORKAROUND for extra observations:
         #
@@ -301,23 +303,23 @@ class UnityInterface(gym.Env):
             print(f'double obs received {self.observation_shape} != {observation.shape}')
             observation = observation[0]
 
-        # DEBUG: used to check if the double obs occure only together with 'done'.
+        # DEBUG: used to check if the double obs occur only together with 'done'.
         #
         # TODO: remove since always true.
         #
         if double_obs_error and not done:
-            raise Exception("Double observation didn't occured as assumed.")
+            raise Exception("Double observation didn't occurred as assumed!")
 
-        #
+        """
         #### PLOT SECTION #####################################################
-        #
+        """
 
         # accumulate episode data
         self.cumulative_episode_reward += reward
         self.nb_episode_steps += 1
 
         # update step plotting data
-        self.performance_monitor.set_step_data(self.n_step, observation)
+        self.performance_monitor.set_step_data(self.n_step)
 
         if done:
             # accumulate episodes
@@ -364,9 +366,11 @@ class UnityInterface(gym.Env):
         step_result = self.env.get_step_result(self.group_name)
 
         # format the observations
-        observation = self.format_observation(step_result.obs)
+        observations = self.format_observation(step_result.obs)
 
-        # some envs don't always deliver reset result
+        self.performance_monitor.set_obs(step_result.obs)
+
+        # some envs don't always deliver a reset result
         if len(step_result.reward) > 0:
             reward = step_result.reward[0]
             done = step_result.done[0]
@@ -374,9 +378,10 @@ class UnityInterface(gym.Env):
             print("Warning! No step result received. Padding with zeros.")
             reward = 0
             done = False
-            observation = np.zeros(shape=self.observation_shape)
+            observations = np.zeros(shape=self.observation_shape)
 
-        return observation, reward, done
+
+        return observations, reward, done
 
     def _reset(self):
         """
@@ -390,7 +395,7 @@ class UnityInterface(gym.Env):
         # get the initial observation from the env.
         observation, _, _ = self.get_step_results()
 
-        self.performance_monitor.set_step_data(self.n_step, observation)
+        self.performance_monitor.set_step_data(self.n_step)
         self.performance_monitor.update()
 
         return observation
@@ -415,21 +420,22 @@ class UnityInterface(gym.Env):
         and constructing the action space from the shape
         """
 
-        # the shape of the observation is the sum over all single observations
-        # even for a single agent multiple observations are delivered. one for each sensor in the env.
-        # TODO: image observation + vector observations will be a problem
+        # list of the sensor observation shapes
+        observation_shapes = env_agent_specs.observation_shapes
 
-        # if there are multiple sensors
-        if len(env_agent_specs.observation_shapes) > 1:
+        if self.flatten_observations:
 
             # calculate the size of the flattened vector
-            observation_shape = (sum([sum(shape) for shape in env_agent_specs.observation_shapes]),)
+            observation_shape = (sum([np.prod(shape) for shape in observation_shapes]),)
 
         else:
+            if len(observation_shapes) > 1:
+                print(">>> Warning! only multiple sensors are only supported if the observations are flattened.")
 
             # leave the shape as it is
-            observation_shape = env_agent_specs.observation_shapes[0]
+            observation_shape = observation_shapes[0]
 
+        # initialize observation space
         observation_space = np.zeros(shape=observation_shape)
 
         return observation_shape, observation_space
@@ -487,20 +493,21 @@ class UnityInterface(gym.Env):
         Format the received observation to work with cobel.
         At the moment we just remove the singleton dimensions.
 
-        :param observations: the observation received from env.step or env.reset
-        :return:            the formatted observation
+        :param observations:    the observations received from ml-agents
+        :return:                the formatted observation
         """
-
-        # if there are multiple sensors, flatten them into a single vector
-        if len(observations) > 1:
-            observations_list = np.ndarray.flatten(np.array(observations))
-
-        # if we have a single sensor
+        if self.flatten_observations:
+            # flatten all sensor observations into a single vector
+            formatted_observations = np.append(*[np.ravel(o) for o in observations])
+            print("Formatted: ", formatted_observations.shape)
         else:
-            # remove singleton dimensions
-            observations_list = observations[0].squeeze()
 
-        return observations_list
+            # remove singleton dimensions
+            # and use ONLY the first observation
+            # TODO support multiple vector observations
+            formatted_observations = observations[0].squeeze()
+
+        return formatted_observations
 
     def format_action(self, action):
         """

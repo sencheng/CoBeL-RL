@@ -300,6 +300,10 @@ def sequential_memory_modul(limit=10000):
     """
 
     def get_memory(memory_window):
+        """
+        this function is called by the ModularDQNAgent to instantiate it's network memory.
+        :memory_window: number of observations that are processed as a single input
+        """
         return SequentialMemory(limit=limit, window_length=memory_window)
 
     return get_memory
@@ -310,12 +314,19 @@ def sequential_model_modul(nb_units=64, nb_layers=4, activation="tanh"):
     returns a function that returns a model for given parameters
     """
 
-    def get_model(observation_shape, nb_actions, memory_window):
+    def get_model(observation_shapes, nb_actions, memory_window):
+        """
+        this function is called by the ModularDQNAgent to instantiate it's network model.
+        :param observation_shapes:  the shape of the observation space
+        TODO: extend to multiple observation shapes to support multiple sensors
+        :param nb_actions:          the size of the action space
+        :param memory_window:       number of observations that are processed as a single input
+        """
 
-        print("configured observation shape: ", observation_shape)
+        print("configured model input shape: ", observation_shapes)
 
-        # the input layer is a tensor with dimensions MEMORY_WINDOW x observation_vector.
-        network_input = Input((memory_window,) + observation_shape)
+        # the input layer is a tensor with dimensions MEMORY_WINDOW x observation shape.
+        network_input = Input((memory_window,) + observation_shapes)
 
         # this input tensor is flattened to a 1 x n vector.
         network = Flatten()(network_input)

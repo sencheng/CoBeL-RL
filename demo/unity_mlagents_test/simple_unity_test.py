@@ -72,7 +72,7 @@ def demo_run(environment_filename, n_train=1):
     # create unity env
     unity_env = UnityInterface(env_path=environment_filename, modules=None, with_gui=True,
                                seed=seed, agent_action_type="discrete", nb_max_episode_steps=4000, decision_interval=10,
-                               performance_monitor=UnityPerformanceMonitor(update_period=1))
+                               performance_monitor=UnityPerformanceMonitor(update_period=1), flatten_observations=False)
 
     # set experiment parameters
     unity_env.env_configuration_channel.set_property("platform_scale", 4)
@@ -92,16 +92,17 @@ def demo_run(environment_filename, n_train=1):
                                        create_memory_fcn=sequential_memory_modul(limit=50000),
                                        create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
                                        action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
-                                       batch_size=32,
                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
                                        other_callbacks=[tensorboard_callback])
 
+    # train the agent
     rl_agent.train(n_train)
 
+    # save the weights
     rl_agent.save("robot_test")
 
+    # clear session
     backend.clear_session()
-
     unity_env.close()
 
 
@@ -121,9 +122,9 @@ def get_cobel_rl_path():
 
 
 if __name__ == "__main__":
-    # TODO Make a loop and try out different hyperparamters
+    # TODO Make a loop and try out different hyperparameters.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    demo_run(environment_filename=project + '/envs/lin/examples/push_block/push_block', n_train=1000)
+    demo_run(environment_filename=project + '/envs/lin/examples/hallway/hallway', n_train=50000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
     pg.QtGui.QApplication.exec_()

@@ -92,7 +92,7 @@ class UnityPerformanceMonitor:
 
         # the observation plot will be initialized on receiving the
         # first observation and will adapt to the type of data given
-        self.observation_plot = None
+        self.observation_plots = []
         self.observation_plot_viewbox = pg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
         #
 
@@ -133,16 +133,15 @@ class UnityPerformanceMonitor:
 
             self.update_time_label.setText("Plotting time: " + str(round(time.perf_counter() - t1, 3)))
 
-    def set_step_data(self, nb_step, obs):
+    def set_step_data(self, nb_step):
         """
-        update the labels and the observation
+        update the labels
         this is very fast and is done every step
         :param nb_step: number of the current learning step
-        :param obs: the current observation
+        :return:
         """
         self.set_sps(int(nb_step / (time.perf_counter() - self.start_time)))
         self.set_nb_steps(nb_step)
-        self.set_obs(obs)
 
     def set_episode_data(self, nb_episode, nb_episode_steps, cumulative_reward):
         """
@@ -151,6 +150,7 @@ class UnityPerformanceMonitor:
         :param nb_episode: number of the current episode
         :param nb_episode_steps: the number of steps of this episode
         :param cumulative_reward: the reward for this episode
+        :return:
         """
         self.set_episode_plot(nb_episode, nb_episode_steps, cumulative_reward)
 
@@ -158,6 +158,7 @@ class UnityPerformanceMonitor:
         """
         set the sps value to the label
         :param sps: steps per second
+        :return:
         """
         self.sps_label.setText("steps per second: " + str(sps))
 
@@ -165,6 +166,7 @@ class UnityPerformanceMonitor:
         """
         set the number of steps to the label
         :param steps: total number of steps
+        :return:
         """
         self.total_steps_label.setText("elapsed steps: " + str(steps))
 
@@ -174,6 +176,7 @@ class UnityPerformanceMonitor:
         :param nb_episode: number of the current episode
         :param nb_episode_steps: the nubmer of steps of this episode
         :param episode_reward: the reward for this episode.
+        :return:
         """
         # append data
         self.reward_trace.append(episode_reward)
@@ -221,47 +224,63 @@ class UnityPerformanceMonitor:
                                                              + sys.getsizeof(
                     self.nb_episode_steps_variance_trace)) / 1000) + " MB")
 
-    def set_obs(self, observation):
-        """
-        displays the given observation
-        :param observation: observation to display
-        """
+    def instantiate_observation_plots(self, observations):
 
-        # if no observation was plotted before
-        if self.observation_plot is None:
+        # instantiate plot for each observation
+        for i, observation in enumerate(observations):
 
-            print("received observation shape:", observation.shape)
+            # remove singleton dimensions
+            observation = observation.squeeze()
 
             # analyse data dimensions
             if len(observation.shape) == 1:
 
                 # plot as vector
-                self.observation_plot = self.layout.addPlot(title="Vector observation", colspan=2,
-                                                            viewBox=self.observation_plot_viewbox)
+                vector_plot = self.layout.addPlot(title="Vector observation " + str(i), colspan=2).plot()
+                self.observation_plots.append(vector_plot)
 
             elif len(observation.shape) == 3:
 
                 # plot as image
-                self.observation_plot = pg.ImageItem(observation)
+                self.observation_plots.append(pg.ImageItem(observation))
                 self.layout.addItem(self.observation_plot_viewbox, colspan=2)
                 self.observation_plot_viewbox.setAspectLocked(lock=True)
-                self.observation_plot_viewbox.addItem(self.observation_plot)
+                self.observation_plot_viewbox.addItem(self.observation_plots[i])
 
-        # plot as image
-        if len(observation.shape) == 3:
+            print(f"observation plot {i} instantiated with shape {observation.shape}")
 
-            # mirror image
-            self.observation_plot.setImage(observation[::-1])
+            self.layout.nextRow()
 
-            # set color levels
-            self.observation_plot.setLevels([0, 1])
+    def set_obs(self, observations):
+        """
+        displays the given observation
+        :param observations: observation to display
+        :return:
+        """
 
-        # plot as vector
-        elif len(observation.shape) == 1:
-            self.observation_plot.plot(observation, clear=True)
+        # check if instantiated
+        if len(observations) > len(self.observation_plots):
+            self.instantiate_observation_plots(observations)
+
+        # plot observations
+        for i, observation in enumerate(observations):
+
+            # remove singleton dimensions
+            observation = observation.squeeze()
+
+            # plot as image
+            if len(observation.shape) == 3:
+                # mirror image
+                self.observation_plots[i].setImage(observation[::-1])
+                # set color levels
+                self.observation_plots[i].setLevels([0, 1])
+
+            # plot as vector
+            elif len(observation.shape) == 1:
+                self.observation_plots[i].setData(observation, clear=True)
 
 
-class RLPerformanceMonitorBaseline():
+class RLPerformanceMonitorBaseline:
     def __init__(self, rlAgent, guiParent, visualOutput):
 
         # store the rlAgent
