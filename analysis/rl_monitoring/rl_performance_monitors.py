@@ -51,10 +51,12 @@ class UnityPerformanceMonitor:
         # add labels
         self.sps_label = self.layout.addLabel("")
         self.total_steps_label = self.layout.addLabel("")
+
         self.layout.nextRow()
 
         self.update_time_label = self.layout.addLabel("")
         self.memory_usage_label = self.layout.addLabel("")
+        
         self.layout.nextRow()
 
         # pens
@@ -90,11 +92,10 @@ class UnityPerformanceMonitor:
 
         self.layout.nextRow()
 
-        # the observation plot will be initialized on receiving the
-        # first observation and will adapt to the type of data given
+        # the observation plots will be initialized on receiving the
+        # observation shapes and will adapt to the type of data given
         self.observation_plots = []
         self.observation_plot_viewbox = pg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
-        #
 
         # the episode range for calculating means and variances
         self.calculation_range = calculation_range
@@ -107,6 +108,7 @@ class UnityPerformanceMonitor:
         self.reward_variance_trace = []
         self.nb_episode_steps_variance_trace = []
 
+        # save start time for sps calculation
         self.start_time = time.perf_counter()
 
     def update(self, nb_step=None):
@@ -174,7 +176,7 @@ class UnityPerformanceMonitor:
         """
         calculates the mean and the variance and plots the values in the corresponding graphs.
         :param nb_episode: number of the current episode
-        :param nb_episode_steps: the nubmer of steps of this episode
+        :param nb_episode_steps: the number of steps of this episode
         :param episode_reward: the reward for this episode.
         :return:
         """
@@ -224,30 +226,32 @@ class UnityPerformanceMonitor:
                                                              + sys.getsizeof(
                     self.nb_episode_steps_variance_trace)) / 1000) + " MB")
 
-    def instantiate_observation_plots(self, observations):
+    def instantiate_observation_plots(self, observation_shapes):
+        """
+        Instantiates the observation plots
+        :param observation_shapes: a list of sensor observations shapes
+        :return:
+        """
 
         # instantiate plot for each observation
-        for i, observation in enumerate(observations):
-
-            # remove singleton dimensions
-            observation = observation.squeeze()
+        for i, shape in enumerate(observation_shapes):
 
             # analyse data dimensions
-            if len(observation.shape) == 1:
+            if len(shape) == 1:
 
                 # plot as vector
-                vector_plot = self.layout.addPlot(title="Vector observation " + str(i), colspan=2).plot()
+                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=2).plot()
                 self.observation_plots.append(vector_plot)
 
-            elif len(observation.shape) == 3:
+            elif len(shape) == 3 or len(shape) == 2:
 
                 # plot as image
-                self.observation_plots.append(pg.ImageItem(observation))
+                self.observation_plots.append(pg.ImageItem(np.zeros(shape=shape)))
                 self.layout.addItem(self.observation_plot_viewbox, colspan=2)
                 self.observation_plot_viewbox.setAspectLocked(lock=True)
                 self.observation_plot_viewbox.addItem(self.observation_plots[i])
 
-            print(f"observation plot {i} instantiated with shape {observation.shape}")
+            print(f"observation plot {i} instantiated with shape {shape}")
 
             self.layout.nextRow()
 
@@ -258,15 +262,8 @@ class UnityPerformanceMonitor:
         :return:
         """
 
-        # check if instantiated
-        if len(observations) > len(self.observation_plots):
-            self.instantiate_observation_plots(observations)
-
         # plot observations
         for i, observation in enumerate(observations):
-
-            # remove singleton dimensions
-            observation = observation.squeeze()
 
             # plot as image
             if len(observation.shape) == 3:

@@ -11,7 +11,6 @@ from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
 
 
-
 ### The reinforcement learing class. It wraps all functionality required to set up a RL agent.
 class DQNAgentBaseline():
     ### The nested visualization class that is required by 'KERAS-RL' to visualize the training success (by means of episode reward)
@@ -165,12 +164,13 @@ class ModularDQNAgentBaseline:
                  trial_begin_fcn=None, trial_end_fcn=None, other_callbacks=None):
         """
         Constructor
-        :param oai_env:            the env for the agent to act in
+
+        :param oai_env:                 the env for the agent to act in
         :param policy:                  the agents policy
         :param create_memory_fcn:       the memory modul func
         :param create_model_fcn:        the model modul func
         :param nb_steps_warmup:         the number of steps to act randomly before starting the rl process
-        :param nb_max_episode_steps:    the max steps per episode
+        :param nb_max_episode_steps:    the max steps per episode. note that this parameters can also be set in the env
         :param nb_max_start_steps:      the max steps to use the start policy at the beginning of each episode
         :param start_step_policy:       the policy to use at the start of every episode
         :param action_repetition:       how often to repeat an action
@@ -218,12 +218,11 @@ class ModularDQNAgentBaseline:
         # store the Open AI Gym interface
         self.interfaceOAI = oai_env
 
-        # prepare the model used in the reinforcement learner
-        # the number of actions, retrieved from the Open AI Gym interface
+        # prepare the model parameters
         nb_actions = self.interfaceOAI.action_space.n
-        observation_shape = self.interfaceOAI.observation_space.shape
+        observation_shape = self.interfaceOAI.observation_shape
 
-        # construct the agent.
+        # construct the agent
         self.agent = DQNAgent(nb_actions=nb_actions,
                               policy=self.policy,
                               memory=create_memory_fcn(self.memory_window),
@@ -241,7 +240,7 @@ class ModularDQNAgentBaseline:
         # compile the agent
         self.agent.compile(Adam(lr=self.learning_rate, ), metrics=self.metrics)
 
-        # add the callbacks
+        # merge the callbacks
         cobel_callback = self.callbacks(self, trial_begin_fcn, trial_end_fcn)
         other_callbacks.append(cobel_callback)
         self.callbacks = other_callbacks
@@ -249,29 +248,32 @@ class ModularDQNAgentBaseline:
     def save(self, name):
         """
         saves the agents weights to the folder models/
+
         :param name: name of the file
         """
         path = "models/" + name
         if os.path.exists(path):
             self.agent.model.save_weights(path)
-            print("Model saved to ", path)
+            print(">>> Model saved to ", path)
         else:
-            print("Model not saved.", path, "not found.")
+            print(">>> Model not saved.", path, "not found.")
 
     def load(self, path):
         """
         loads the agents weights from the given path
+
         :param path: the path
         """
         if os.path.exists(path):
             self.agent.model.load_weights(path)
-            print("Model loaded from ", path)
+            print(">>> Model loaded from ", path)
         else:
-            print("Model not loaded.", path, "not found.")
+            print(">>> Model not loaded.", path, "not found.")
 
     def train(self, nb_steps):
         """
         trains the agent
+
         :param nb_steps: how many steps to train
         """
         # call the fit method to start the RL learning process
@@ -284,6 +286,7 @@ class ModularDQNAgentBaseline:
     def test(self, nb_episodes):
         """
         tests the agent
+
         :param nb_episodes: how many episodes to test
         """
         #
@@ -297,12 +300,17 @@ class ModularDQNAgentBaseline:
 def sequential_memory_modul(limit=10000):
     """
     returns a function that returns a memory for given parameters
+
+    :param limit:   max number of stored experiences
+    :return:        function that creates a keras sequential memory
     """
 
     def get_memory(memory_window):
         """
         this function is called by the ModularDQNAgent to instantiate it's network memory.
-        :memory_window: number of observations that are processed as a single input
+
+        :param memory_window: number of observations that are processed as a single input
+        :return:        keras sequential memory
         """
         return SequentialMemory(limit=limit, window_length=memory_window)
 
@@ -312,21 +320,27 @@ def sequential_memory_modul(limit=10000):
 def sequential_model_modul(nb_units=64, nb_layers=4, activation="tanh"):
     """
     returns a function that returns a model for given parameters
+
+    :param nb_units:    number of units in a hidden layer
+    :param nb_layers:   number of hidden layers
+    :param activation:  hidden unit's activation
+    :return:            function that create a sequential keras model
     """
 
-    def get_model(observation_shapes, nb_actions, memory_window):
+    def get_model(observation_shape, nb_actions, memory_window):
         """
         this function is called by the ModularDQNAgent to instantiate it's network model.
-        :param observation_shapes:  the shape of the observation space
-        TODO: extend to multiple observation shapes to support multiple sensors
+
+        :param observation_shape:   the shape of the observation space
         :param nb_actions:          the size of the action space
         :param memory_window:       number of observations that are processed as a single input
+        :return:                    keras neural network model
         """
 
-        print("configured model input shape: ", observation_shapes)
+        print("configured observation shape:", observation_shape)
 
         # the input layer is a tensor with dimensions MEMORY_WINDOW x observation shape.
-        network_input = Input((memory_window,) + observation_shapes)
+        network_input = Input((memory_window,) + observation_shape)
 
         # this input tensor is flattened to a 1 x n vector.
         network = Flatten()(network_input)

@@ -176,25 +176,23 @@ class UnityInterface(gym.Env):
         pass
 
     def __init__(self, env_path, modules=None,
-                 with_gui=True, worker_id=None, seed=42,
-                 timeout_wait=60, side_channels=None, time_scale=5.0,
-                 nb_max_episode_steps=0, decision_interval=5,
-                 agent_action_type='discrete', performance_monitor=None,
-                 flatten_observations=True
-                 ):
+                 worker_id=None, seed=42, timeout_wait=60, side_channels=None,
+                 time_scale=1.0, nb_max_episode_steps=0, decision_interval=5,agent_action_type='discrete',
+                 performance_monitor=None, with_gui=True):
         """
         Constructor
         :param env_path:                full path to compiled unity executable
         :param modules:                 the old CoBeL-RL modules. Currently unnecessary.
-        :param with_gui:                graphics, bool
         :param worker_id:               Port used to communicate with Unity
         :param seed:                    Random seed. Keep at 42 for good luck.
-        :param timeout_wait:            Time until Unity is declared ded
-        :param side_channels:           possible channels to talk with the academy
-        :param time_scale:              Speed of the simulation
+        :param timeout_wait:            Time until Unity is declared ded.
+        :param side_channels:           possible channels to talk with the academy.
+        :param time_scale:              Speed of the simulation.
+        :param nb_max_episode_steps:    the number of maximum steps per episode.
+        :param decision_interval:       the number of simulation steps before entering the next rl cycle.
         :param agent_action_type:       the native action type of the agent.
-        :param performance_monitor:     the monitor used for visualizing the learning process
-        :param flatten_observations:    defines if all the sensor observations should be flattened to a single vector
+        :param performance_monitor:     the monitor used for visualizing the learning process.
+        :param with_gui:                whether or not show the performance monitor and the environment gui.
         """
 
         # setup communication port
@@ -231,15 +229,15 @@ class UnityInterface(gym.Env):
         env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed,
                                timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui)
 
-        # Reset the environment
+        # reset the environment
         env.reset()
 
         # Set the time scale of the engine
         self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=400, height=400)
 
         # receive environment information from environment
-        group_name = env.get_agent_groups()[0]  # get agent ID
-        group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
+        group_name = env.get_agent_groups()[0]              # get agent ID
+        group_spec = env.get_agent_group_spec(group_name)   # get agent specifications
 
         print("Specs received:", group_spec)
 
@@ -247,8 +245,7 @@ class UnityInterface(gym.Env):
         self.env = env
         self.group_name = group_name
         self.agent_action_type = agent_action_type
-        self.flatten_observations = flatten_observations
-        self.observation_shape, self.observation_space = self.get_observation_specs(group_spec)
+        self.observation_shape = self.get_observation_specs(group_spec)
         self.action_shape, self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
         # plotting variables
@@ -256,11 +253,19 @@ class UnityInterface(gym.Env):
         self.nb_episode = 0
         self.nb_episode_steps = 0
         self.cumulative_episode_reward = 0
+
         self.performance_monitor = performance_monitor
+
+        if not with_gui:
+            self.performance_monitor = None
+
+        # initialize the observation plots with the original observation shapes
+        if self.performance_monitor is not None:
+            self.performance_monitor.instantiate_observation_plots(group_spec.observation_shapes)
 
     def _step(self, action, *args, **kwargs):
         """
-        Make the simulation move forward one tick.
+        Make the simulation move forward until the next decision is requested.
 
         :param action:  integer corresponding to the index of a one-hot-vector that is one.
         :return:        (observation, reward, done, info), necessary to function as a gym
@@ -289,14 +294,11 @@ class UnityInterface(gym.Env):
         # WORKAROUND for extra observations:
         #
         # some unity envs send two observations when an agent is done with it's episode.
-        # this is due to instantly requesting a decision after the episode ends.
-        # resulting in adding two observations in one step to the agents data.
         #
-        # 3DBall and Robot env have been changed to achieve that requesting a decision
-        # and ending the episode is exclusive, but other demos will still send two observations,
+        # Most envs have been modified to achieve that this is prevented,
+        # but some will still send two observations.
         #
-        # by getting the observation at index 0, we get the last observation of the previous episode.
-        # a possible problem is that we lose an observation of the next episode.
+        # by getting the observation at index 0, we get the last observation of the episode.
         double_obs_error = False
         if not self.observation_shape == observation.shape:
             double_obs_error = True
@@ -319,21 +321,24 @@ class UnityInterface(gym.Env):
         self.nb_episode_steps += 1
 
         # update step plotting data
-        self.performance_monitor.set_step_data(self.n_step)
+        if self.performance_monitor is not None:
+            self.performance_monitor.set_step_data(self.n_step)
 
         if done:
             # accumulate episodes
             self.nb_episode += 1
 
-            # plot learning params
-            self.performance_monitor.set_episode_data(self.nb_episode, self.nb_episode_steps,
-                                                      self.cumulative_episode_reward)
+            # plot learning data
+            if self.performance_monitor is not None:
+                self.performance_monitor.set_episode_data(self.nb_episode, self.nb_episode_steps,
+                                                          self.cumulative_episode_reward)
 
             # reset episode data
             self.cumulative_episode_reward = 0
             self.nb_episode_steps = 0
 
-        self.performance_monitor.update(nb_step=self.n_step)
+        if self.performance_monitor is not None:
+            self.performance_monitor.update(nb_step=self.n_step)
 
         return observation, reward, done, info
 
@@ -362,32 +367,38 @@ class UnityInterface(gym.Env):
         :return: tuple observation, reward, done
         """
 
-        # get the result for our agent
+        # get the step result for our agent
         step_result = self.env.get_step_result(self.group_name)
 
+        # get the sensor observations and remove the singleton dimensions
+        squeezed_observations = [o.squeeze() for o in step_result.obs]
+
         # format the observations
-        observations = self.format_observation(step_result.obs)
+        observation = self.format_observations(squeezed_observations)
 
-        self.performance_monitor.set_obs(step_result.obs)
+        # this displays the sensor observations
+        # if multiple sensors are attached it displays a plot for each one.
+        if self.performance_monitor is not None:
+            self.performance_monitor.set_obs(squeezed_observations)
 
-        # some envs don't always deliver a reset result
+        # some crazy envs don't always deliver a result
         if len(step_result.reward) > 0:
             reward = step_result.reward[0]
             done = step_result.done[0]
+
         else:
-            print("Warning! No step result received. Padding with zeros.")
+            print(">>> Warning! No step result received. Padding with zeros.")
             reward = 0
             done = False
-            observations = np.zeros(shape=self.observation_shape)
+            observation = np.zeros(shape=self.observation_shapes)
 
-
-        return observations, reward, done
+        return observation, reward, done
 
     def _reset(self):
         """
-        Resets the environment to prepare for the start of a new episode (if environment calls for it)
+        Resets the environment and returns the initial observation
 
-        :return: the agents initial observation
+        :return: initial observation
         """
         # resets the ml-agents academy.
         self.env.reset()
@@ -395,8 +406,9 @@ class UnityInterface(gym.Env):
         # get the initial observation from the env.
         observation, _, _ = self.get_step_results()
 
-        self.performance_monitor.set_step_data(self.n_step)
-        self.performance_monitor.update()
+        if self.performance_monitor is not None:
+            self.performance_monitor.set_step_data(self.n_step)
+            self.performance_monitor.update()
 
         return observation
 
@@ -411,38 +423,34 @@ class UnityInterface(gym.Env):
 
     def get_observation_specs(self, env_agent_specs):
         """
-        Extract the information about the observation space from mlagents group_spec.
+        Extract the information about the observation space from ml-agents group_spec.
 
         :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
-        :return:                    tuple (observation_shape, observation_space)
-
-        getting the shape of the observation of the agent
-        and constructing the action space from the shape
+        :return:                    observation shape
         """
 
         # list of the sensor observation shapes
         observation_shapes = env_agent_specs.observation_shapes
 
-        if self.flatten_observations:
+        # this means we have multiple sensors attached
+        if len(observation_shapes) > 1:
 
-            # calculate the size of the flattened vector
+            # so we calculate the size of the concatenated flattened sensors observations.
             observation_shape = (sum([np.prod(shape) for shape in observation_shapes]),)
 
-        else:
-            if len(observation_shapes) > 1:
-                print(">>> Warning! only multiple sensors are only supported if the observations are flattened.")
+            print(">>> Warning! multiple sensor observations are only supported when flattened.\n"
+                  ">>> flattening the observations!!!")
 
-            # leave the shape as it is
+        else:
+
+            # select the single sensors observation shape
             observation_shape = observation_shapes[0]
 
-        # initialize observation space
-        observation_space = np.zeros(shape=observation_shape)
-
-        return observation_shape, observation_space
+        return observation_shape
 
     def get_action_specs(self, env_agent_specs, agent_action_type):
         """
-        Extract the information's about the action space from mlagents group_spec
+        Extract the information's about the action space from ml-agents group_spec
 
         :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
         :param agent_action_type:   the agent_action_type string
@@ -457,11 +465,10 @@ class UnityInterface(gym.Env):
 
         # instantiate the action space
         #
-        # depends on the type of agent you are using and the action space of the
-        # environment.
+        # depends on the type of agent you are using and the action space of the environment.
         #
         # if you are using an agent with a natively discrete space like a DQNAgent, you are not able to run
-        # a continuous example. For capability reasons, we set up a mapping to discretize the continuous space.
+        # a continuous example. For compatibility reasons, we set up a mapping to discretize the continuous space.
         # see: make_continuous
         #
         # we also need to process the action_space for discrete actions, since Unity uses branches to structure
@@ -469,14 +476,15 @@ class UnityInterface(gym.Env):
         # see: make_discrete
         #
         if action_type is "discrete" and agent_action_type is "discrete":
-            action_space = gym.spaces.Discrete(
-                n=np.prod(action_shape))  # Unity uses branches of discrete action so we use all possible
-            # combinations of them as action_space for the DQN.
+            # Unity uses branches of discrete actions so we use all possible combinations as action_space.
+            action_space = gym.spaces.Discrete(n=np.prod(action_shape))
 
         elif action_type is "continuous" and agent_action_type is "discrete":
             action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            action_space.n = action_shape * 2  # continuous actions in Unity are bidirectional,
-            # so we double the action space.
+            # continuous actions in Unity are bidirectional, so we double the action space.
+            action_space.n = action_shape * 2
+            print(">>> Warning!!! the environment requires a continuous action space\n"
+                  ">>> and you configured a discrete agent action space! You will not reach optimal precision!")
 
         elif action_type is "continuous" and agent_action_type is "continuous":
             action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
@@ -488,24 +496,24 @@ class UnityInterface(gym.Env):
 
         return action_shape, action_space, action_type
 
-    def format_observation(self, observations):
+    def format_observations(self, observations):
         """
         Format the received observation to work with cobel.
-        At the moment we just remove the singleton dimensions.
 
-        :param observations:    the observations received from ml-agents
+        :param observations:    the sensor observations received from ml-agents
         :return:                the formatted observation
         """
-        if self.flatten_observations:
+
+        # this means we have multiple sensors attached
+        if len(observations) > 1:
+
             # flatten all sensor observations into a single vector
-            formatted_observations = np.append(*[np.ravel(o) for o in observations])
-            print("Formatted: ", formatted_observations.shape)
+            formatted_observations = np.concatenate([np.ravel(o) for o in observations])
+
         else:
 
-            # remove singleton dimensions
-            # and use ONLY the first observation
-            # TODO support multiple vector observations
-            formatted_observations = observations[0].squeeze()
+            # use the single observation
+            formatted_observations = observations[0]
 
         return formatted_observations
 
@@ -517,7 +525,7 @@ class UnityInterface(gym.Env):
         :return:       the action formatted for unity.
 
         it's not possible to use a discrete agent like DQN with a
-        continuous env from out of the box. So for compability reasons,
+        continuous env from out of the box. So for compatibility reasons,
         we set up a mapping.
 
         there are four possible combinations:
@@ -624,6 +632,7 @@ class UnityInterface(gym.Env):
         the product of the action shape value.
         f.e. action_shape = (3,2) in Unity => (1,6) one hot vector
         by doing so we have all possible combinations of actions covered.
+        see get_action_specs
 
         the last step is to map this one hot vector back to the branches.
         for this we resize the one hot vector to the shape of the initial
@@ -633,9 +642,8 @@ class UnityInterface(gym.Env):
         in this case: x=1, y=0 and use them as the values for the branches.
 
         the output is then [1, 0] corresponding to branch0 action1, branch1 action0
-
-        this should work for all cases, n branches with m actions.
         """
+
         assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
         assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
 

@@ -54,52 +54,80 @@ def trial_end_callback(trial, rl_agent, logs):
     print("Episode end", logs)
 
 
-def demo_run(environment_filename, n_train=1):
+def single_run(environment_filename, n_train=1):
     """
     :param environment_filename: full path to a Unity executable
-    :param n_train: amount of RL steps
+    :param n_train: total number of rl steps. Note that it's affected by the number of action repetitions
     :return:
 
     This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization
     mechanism (without visual output), or by a direct call (in this case, visual output can be used).
+
+    In this case it acts as a tutorial for using the UnityInterface
     """
 
-    # set random seed
-    # 42 is used for good luck. If more luck is needed try 4, 20, or a combination. If absolutely nothing works,
-    # try 13. The extra bad luck will cause a buffer overflow and then we're in. Pardon the PEP.
-    seed = 42
-
-    # create unity env
+    # first you create your environment, you can check detailed parameter descriptions in the constructor docstring.
+    #
+    # note that the decision interval is set to 10.
+    # this means that cobel only observers and acts in every 10th simulation step. this is aka frame skipping.
+    # it increases the performance and is helpful when training envs where the consequence of an action can only
+    # be observed after some time.
     unity_env = UnityInterface(env_path=environment_filename, modules=None, with_gui=True,
-                               seed=seed, agent_action_type="discrete", nb_max_episode_steps=4000, decision_interval=10,
-                               performance_monitor=UnityPerformanceMonitor(update_period=1), flatten_observations=False)
+                               seed=42, agent_action_type="discrete", nb_max_episode_steps=3000, decision_interval=10,
+                               performance_monitor=UnityPerformanceMonitor(update_period=1))
 
-    # set experiment parameters
+    # then you can set some experiment parameters
+    # these are specific to the environment you've chosen. you can find the parameters for the examples here:
+    # https://github.com/Unity-Technologies/ml-agents/blob/0.15.1/docs/Learning-Environment-Examples.md
+    # below you can find the parameters for the custom envs
+    """
+    robot_maze parameters
+    
+    unity_env.env_configuration_channel.set_property("hasWalls", 1)                 # enable walls
+    unity_env.env_configuration_channel.set_property("maze_algorithm", 1)           # Random DFS Maze
+    unity_env.env_configuration_channel.set_property("size_x", 3)                   # set cell grid width
+    unity_env.env_configuration_channel.set_property("size_y", 4)                   # set cell grid height
+    unity_env.env_configuration_channel.set_property("random_target_pos", 0)        # disable target repositioning
+    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)     # enable random robot spawn rotation
+    unity_env.env_configuration_channel.set_property("max_velocity", 0)             # set max agent velocity
+    """
+
+    """
+    morris_water_maze parameters
+    """
+
+    # scale the water pool size. default is 150x150 cm
+    unity_env.env_configuration_channel.set_property("area_scale", 1)
+    # set the platform position (1 = north, 2 = north east, ...)
+    unity_env.env_configuration_channel.set_property("platform_direction", 1)
+    # the scale factor of the platform. default is 10x10 cm
     unity_env.env_configuration_channel.set_property("platform_scale", 4)
+    # whether of not the platform is visible to the rat agent
+    unity_env.env_configuration_channel.set_property("platform_visible", 1)
 
-    # initial reset
+    # don't forget to reset your env after setting the experimental parameters to apply them
     unity_env._reset()
 
-    # tensorboard log callback
+    # you can add some callbacks to the keras agent
     log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H-%M-%S"))  # create OS-agnostic path
-    log_dir = str(log_dir)  # extract as string
+    log_dir = str(log_dir)                                                               # extract as string
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
 
-    # create agent
+    # create your agent and use the env like any open ai gym
     rl_agent = ModularDQNAgentBaseline(oai_env=unity_env,
                                        policy=LinearAnnealedPolicy(EpsGreedyQPolicy(), "eps", 1., 0.1, 0.05, 50000),
-                                       nb_steps_warmup=10000, nb_max_episode_steps=4000,
+                                       nb_steps_warmup=10000,
                                        create_memory_fcn=sequential_memory_modul(limit=50000),
                                        create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
-                                       action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
+                                       action_repetition=4, train_interval=1, memory_window=4, memory_interval=1,
                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
                                        other_callbacks=[tensorboard_callback])
 
     # train the agent
     rl_agent.train(n_train)
 
-    # save the weights
-    rl_agent.save("robot_test")
+    # save the weights, if you like.
+    rl_agent.save("test")
 
     # clear session
     backend.clear_session()
@@ -125,6 +153,6 @@ if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    demo_run(environment_filename=project + '/envs/lin/examples/hallway/hallway', n_train=50000)
+    single_run(environment_filename=project + '/envs/lin/experiments/morris_water_maze/visual_morris_water_maze_discrete', n_train=1000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
     pg.QtGui.QApplication.exec_()
