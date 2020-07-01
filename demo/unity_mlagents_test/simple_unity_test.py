@@ -90,7 +90,7 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     unity_env.env_configuration_channel.set_property("size_y", 4)                   # set cell grid height
     unity_env.env_configuration_channel.set_property("random_target_pos", 0)        # disable target repositioning
     unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)     # enable random robot spawn rotation
-    unity_env.env_configuration_channel.set_property("max_velocity", 0)             # set max agent velocity
+    unity_env.env_configuration_channel.set_property("max_velocity", 0)             # disable max agent velocity
     """
 
     """
@@ -120,7 +120,7 @@ def single_run(environment_filename, scene_name=None, n_train=1):
                                        nb_steps_warmup=10000,
                                        create_memory_fcn=sequential_memory_modul(limit=100000),
                                        create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
-                                       batch_size=512,
+                                       batch_size=32,
                                        action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
                                        other_callbacks=[tensorboard_callback])
