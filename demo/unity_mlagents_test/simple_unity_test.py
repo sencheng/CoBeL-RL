@@ -54,10 +54,11 @@ def trial_end_callback(trial, rl_agent, logs):
     print("Episode end", logs)
 
 
-def single_run(environment_filename, n_train=1):
+def single_run(environment_filename, scene_name=None, n_train=1):
     """
-    :param environment_filename: full path to a Unity executable
-    :param n_train: total number of rl steps. Note that it's affected by the number of action repetitions
+    :param environment_filename:    full path to a Unity executable
+    :param scene_name:              the name of the scene to be loaded
+    :param n_train:                 total number of rl steps. Note that it's affected by the action repetition
     :return:
 
     This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization
@@ -72,8 +73,8 @@ def single_run(environment_filename, n_train=1):
     # this means that cobel only observers and acts in every 10th simulation step. this is aka frame skipping.
     # it increases the performance and is helpful when training envs where the consequence of an action can only
     # be observed after some time.
-    unity_env = UnityInterface(env_path=environment_filename, modules=None, with_gui=True,
-                               seed=42, agent_action_type="discrete", nb_max_episode_steps=3000, decision_interval=10,
+    unity_env = UnityInterface(env_path=environment_filename, scene_name=scene_name, modules=None, with_gui=True,
+                               seed=42, agent_action_type="discrete", nb_max_episode_steps=1000, decision_interval=10,
                                performance_monitor=UnityPerformanceMonitor(update_period=1))
 
     # then you can set some experiment parameters
@@ -117,9 +118,10 @@ def single_run(environment_filename, n_train=1):
     rl_agent = ModularDQNAgentBaseline(oai_env=unity_env,
                                        policy=LinearAnnealedPolicy(EpsGreedyQPolicy(), "eps", 1., 0.1, 0.05, 50000),
                                        nb_steps_warmup=10000,
-                                       create_memory_fcn=sequential_memory_modul(limit=50000),
+                                       create_memory_fcn=sequential_memory_modul(limit=100000),
                                        create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
-                                       action_repetition=4, train_interval=1, memory_window=4, memory_interval=1,
+                                       batch_size=512,
+                                       action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
                                        other_callbacks=[tensorboard_callback])
 
@@ -127,7 +129,7 @@ def single_run(environment_filename, n_train=1):
     rl_agent.train(n_train)
 
     # save the weights, if you like.
-    rl_agent.save("test")
+    rl_agent.save(get_cobel_rl_path()+"/models/test.h5")
 
     # clear session
     backend.clear_session()
@@ -153,6 +155,8 @@ if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    single_run(environment_filename=project + '/envs/lin/experiments/morris_water_maze/visual_morris_water_maze_discrete', n_train=1000)
+    single_run(environment_filename=project + '/envs/lin/experiments/unity_experiments',
+               scene_name="MorrisWaterMaze",
+               n_train=1000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
     pg.QtGui.QApplication.exec_()

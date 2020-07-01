@@ -175,7 +175,7 @@ class UnityInterface(gym.Env):
         """
         pass
 
-    def __init__(self, env_path, modules=None,
+    def __init__(self, env_path, scene_name=None, modules=None,
                  worker_id=None, seed=42, timeout_wait=60, side_channels=None,
                  time_scale=1.0, nb_max_episode_steps=0, decision_interval=5,agent_action_type='discrete',
                  performance_monitor=None, with_gui=True):
@@ -225,9 +225,15 @@ class UnityInterface(gym.Env):
         # add env config channel
         side_channels.append(self.env_configuration_channel)
 
+        # command line args
+        args = []
+        if scene_name is not None:
+            args = ["--mlagents-scene-name", scene_name]
+
         # connect python to executable environment
         env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed,
-                               timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui)
+                               timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
+                               args=args)
 
         # reset the environment
         env.reset()
@@ -390,7 +396,7 @@ class UnityInterface(gym.Env):
             print(">>> Warning! No step result received. Padding with zeros.")
             reward = 0
             done = False
-            observation = np.zeros(shape=self.observation_shapes)
+            observation = np.zeros(shape=self.observation_shape)
 
         return observation, reward, done
 

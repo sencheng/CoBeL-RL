@@ -245,13 +245,12 @@ class ModularDQNAgentBaseline:
         other_callbacks.append(cobel_callback)
         self.callbacks = other_callbacks
 
-    def save(self, name):
+    def save(self, path):
         """
         saves the agents weights to the folder models/
 
-        :param name: name of the file
+        :param path: the path
         """
-        path = "models/" + name
         if os.path.exists(path):
             self.agent.model.save_weights(path)
             print(">>> Model saved to ", path)
