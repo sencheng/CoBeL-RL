@@ -127,23 +127,7 @@ class OAIGymInterface(gym.Env):
     #
     def _reset(self):
 
-        # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
-        nextNode = -1
-        while True:
-            nrNodes = len(self.modules['topologyGraph'].nodes)
-            nextNode = np.random.random_integers(0, nrNodes - 1)
-            if self.modules['topologyGraph'].nodes[nextNode].startNode:
-                break
-
-        nextNodePos = np.array(
-            [self.modules['topologyGraph'].nodes[nextNode].x, self.modules['topologyGraph'].nodes[nextNode].y])
-
-        print('reset to node: %d' % nextNode)
-
-        # actually move the robot to the node
-        self.moveToPosition(nextNodePos)
-        # make the current node the one the agent travelled to
-        self.modules['topologyGraph'].currentNode = nextNode
+        self.modules['spatial_representation'].generate_behavior_from_action('reset')
 
         # return the observation
         return self.modules['observation'].observation
