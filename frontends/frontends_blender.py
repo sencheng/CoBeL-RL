@@ -415,8 +415,8 @@ class FrontendBlenderInterface():
         if actuatorCommand.shape[0]>2:
 
             # call the teleportation routine
-            [timeData,poseData,sensorData,imageData]=self.step_simulation_without_physics(actuatorCommand[0],actuatorCommand[1],90.0)
-
+            [timeData,poseData,sensorData,imageData]=self.step_simulation_without_physics(actuatorCommand[0],actuatorCommand[1],actuatorCommand[2])
+            
             # flag if the robot reached the goal (should always be the case after a teleportation)
             if self.goalPosition is not None:
                 print(np.linalg.norm(poseData[0:2]-self.goalPosition))

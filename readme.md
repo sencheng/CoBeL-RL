@@ -1,3 +1,6 @@
+![Screenshot](benchmark.png)
+
+--------------------------
 This is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" **(CoBeL-RL)**.
 
 Version by date:
@@ -66,6 +69,8 @@ terminal: (you can change the path name to whatever you want)
 * Start the demo project: 
 >python3 simpleGridGraphDemo.py
 
-* If you want to work with a GUI editor you will need to add the environment variable manually.
-In Pycharm this can be done by adding them to the Run configuration
-(Run -> Run... -> Edit Configurations... -> Environment variables)
+* go to **.../mySimulatorFolder/CoBel-RL/demo/simpleGridGraphDemo/**
+* start the demo project: **python3 simpleGridGraphDemo.py**
+
+
+Preliminary information, needs further checking: It seems there are some issues with 'tensorflow', version 1.5.0 and the employed 'python' version. If you experience such compatibility problems and have a 'python' version >=3.7, it might help to downgrade 'python' to a version >=2.7 and <=3.6. However, this is just a preliminary hint, the issue will have to be further explored.
