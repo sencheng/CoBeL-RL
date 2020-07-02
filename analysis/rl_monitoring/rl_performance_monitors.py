@@ -25,8 +25,8 @@ class UnityPerformanceMonitor:
     QtWindow for basic plotting
     """
 
-    def __init__(self, update_period=None, calculation_range=100, reward_plot_viewbox=(-1, 1, 20),
-                 steps_plot_viewbox=(0, 5000, 20)):
+    def __init__(self, update_period=None, calculation_range=100, reward_plot_viewbox=(-1, 1, 50),
+                 steps_plot_viewbox=(0, 1000, 50)):
         """
         Constructor
         :param update_period: number of steps to pass before updating the plot
@@ -133,7 +133,7 @@ class UnityPerformanceMonitor:
 
             pg.mkQApp().processEvents()
 
-            self.update_time_label.setText("Plotting time: " + str(round(time.perf_counter() - t1, 3)))
+            self.update_time_label.setText("plotting time: " + str(round(time.perf_counter() - t1, 3)))
 
     def set_step_data(self, nb_step):
         """
@@ -218,7 +218,7 @@ class UnityPerformanceMonitor:
         self.steps_graph.setData(self.nb_episode_steps_trace, pen=self.raw_pen)
         self.mean_steps_graph.setData(self.mean_nb_episode_steps_trace, pen=self.mean_pen)
 
-        self.memory_usage_label.setText("Plot data: " + str((sys.getsizeof(self.reward_trace)
+        self.memory_usage_label.setText("plot data: " + str((sys.getsizeof(self.reward_trace)
                                                              + sys.getsizeof(self.mean_rewards_trace)
                                                              + sys.getsizeof(self.nb_episode_steps_trace)
                                                              + sys.getsizeof(self.mean_nb_episode_steps_trace)
@@ -329,7 +329,6 @@ class RLPerformanceMonitorBaseline:
     trial:  the actual trial number
     logs:   information from the reinforcement learning subsystem
     '''
-
     def update(self, trial, logs):
         print('update')
         # update the reward traces
