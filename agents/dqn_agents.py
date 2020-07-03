@@ -1,9 +1,7 @@
-import numpy as np
-import tensorflow as tf
 import os
 from keras import callbacks
 from keras.models import Sequential, Model
-from keras.layers import Dense, Activation, Flatten, Input, Concatenate, Add
+from keras.layers import Dense, Flatten, Input
 from keras.optimizers import Adam
 
 from rl.agents import DQNAgent

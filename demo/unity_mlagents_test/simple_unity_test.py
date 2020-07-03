@@ -74,28 +74,31 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     # it increases the performance and is helpful when training envs where the consequence of an action can only
     # be observed after some time.
     unity_env = UnityInterface(env_path=environment_filename, scene_name=scene_name, modules=None, with_gui=True,
-                               seed=42, agent_action_type="discrete", nb_max_episode_steps=1000, decision_interval=10,
+                               seed=42, agent_action_type="discrete", nb_max_episode_steps=1000, decision_interval=15,
                                performance_monitor=UnityPerformanceMonitor(update_period=1))
 
     # then you can set some experiment parameters
     # these are specific to the environment you've chosen. you can find the parameters for the examples here:
     # https://github.com/Unity-Technologies/ml-agents/blob/0.15.1/docs/Learning-Environment-Examples.md
     # below you can find the parameters for the custom envs
+
     """
     robot_maze parameters
-    
-    unity_env.env_configuration_channel.set_property("hasWalls", 1)                 # enable walls
+    """
+
+    unity_env.env_configuration_channel.set_property("has_walls", 0)                 # enable walls
     unity_env.env_configuration_channel.set_property("maze_algorithm", 1)           # Random DFS Maze
-    unity_env.env_configuration_channel.set_property("size_x", 3)                   # set cell grid width
-    unity_env.env_configuration_channel.set_property("size_y", 4)                   # set cell grid height
+    unity_env.env_configuration_channel.set_property("size_x", 2)                   # set cell grid width
+    unity_env.env_configuration_channel.set_property("size_y", 2)                   # set cell grid height
     unity_env.env_configuration_channel.set_property("random_target_pos", 0)        # disable target repositioning
     unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)     # enable random robot spawn rotation
     unity_env.env_configuration_channel.set_property("max_velocity", 0)             # disable max agent velocity
-    """
+    unity_env.env_configuration_channel.set_property("target_reached_radius", 25)
+
 
     """
     morris_water_maze parameters
-    """
+    
 
     # scale the water pool size. default is 150x150 cm
     unity_env.env_configuration_channel.set_property("area_scale", 1)
@@ -105,6 +108,7 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     unity_env.env_configuration_channel.set_property("platform_scale", 4)
     # whether of not the platform is visible to the rat agent
     unity_env.env_configuration_channel.set_property("platform_visible", 1)
+    """
 
     # don't forget to reset your env after setting the experimental parameters to apply them
     unity_env._reset()
@@ -118,9 +122,9 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     rl_agent = ModularDQNAgentBaseline(oai_env=unity_env,
                                        policy=LinearAnnealedPolicy(EpsGreedyQPolicy(), "eps", 1., 0.1, 0.05, 50000),
                                        nb_steps_warmup=10000,
-                                       create_memory_fcn=sequential_memory_modul(limit=100000),
-                                       create_model_fcn=sequential_model_modul(nb_units=64, nb_layers=3),
-                                       batch_size=32,
+                                       create_memory_fcn=sequential_memory_modul(limit=50000),
+                                       create_model_fcn=sequential_model_modul(nb_units=192, nb_layers=4),
+                                       batch_size=64,
                                        action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
                                        trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
                                        other_callbacks=[tensorboard_callback])
@@ -155,8 +159,8 @@ if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
     project = get_cobel_rl_path()
     print('Testing environment 1')
-    single_run(environment_filename=project + '/envs/lin/experiments/unity_experiments',
-               scene_name="MorrisWaterMaze",
-               n_train=1000)
+    single_run(environment_filename=project + '/envs/lin/unity_env',
+               scene_name="PushBlock",
+               n_train=500000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
     pg.QtGui.QApplication.exec_()
