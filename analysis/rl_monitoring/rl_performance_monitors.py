@@ -329,8 +329,7 @@ class RLPerformanceMonitorBaseline:
     trial:  the actual trial number
     logs:   information from the reinforcement learning subsystem
     '''
-    def update(self, trial, logs):
-        print('update')
+    def update(self,trial,logs):
         # update the reward traces
         rlReward = logs['episode_reward']
         self.rlRewardTraceRaw[trial] = rlReward
