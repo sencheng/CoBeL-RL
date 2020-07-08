@@ -1,6 +1,3 @@
-import gym
-import logging
-import argparse
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -16,7 +13,7 @@ class ProbabilityDistribution(tf.keras.Model):
 class Model(tf.keras.Model):
   def __init__(self, num_actions):
     super().__init__('mlp_policy')
-    # Note: no tf.get_variable(), just simple Keras API!
+    
     self.hidden1 = layers.Dense(128, activation='relu')
     self.hidden2 = layers.Dense(128, activation='relu')
     self.value = layers.Dense(1, name='value')
