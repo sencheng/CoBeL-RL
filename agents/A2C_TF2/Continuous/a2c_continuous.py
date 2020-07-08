@@ -8,7 +8,7 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.losses as losses
 import tensorflow.keras.optimizers as optimizer
 
-from network_discrete import Model
+from network_continuous import Model
 
 class A2CAgent:
   def __init__(self, model, lr=7e-3, gamma=0.99, value_c=0.5, entropy_c=1e-4):
@@ -23,7 +23,7 @@ class A2CAgent:
 
   def train(self, env, batch_sz=64, updates=250):
     # Storage helpers for a single batch of data.
-    actions = np.empty((batch_sz,), dtype=np.int32)
+    actions = np.empty((batch_sz,), dtype=np.float32)
     rewards, dones, values = np.empty((3, batch_sz))
     observations = np.empty((batch_sz,) + env.observation_space.shape)
     # Training loop: collect samples, send to optimizer, repeat <updates> times.
@@ -33,14 +33,17 @@ class A2CAgent:
       for step in range(batch_sz):
         observations[step] = next_obs.copy()
         actions[step], values[step] = self.model.action_value(next_obs[None, :])
-        next_obs, rewards[step], dones[step], _ = env.step(actions[step])
-
+        actions[step] = np.clip(actions[step],env.action_space.low[0],env.action_space.high[0])
+        next_obs, rewards[step], dones[step], _ = env.step([actions[step]])
+        env.render()
         ep_rewards[-1] += rewards[step]
         if dones[step]:
           ep_rewards.append(0.0)
           next_obs = env.reset()
           logging.info("Episode: %03d, Reward: %03d" % (len(ep_rewards) - 1, ep_rewards[-2]))
 
+
+      #Neural Network Training
       _, next_value = self.model.action_value(next_obs[None, :])
       
       returns, advs = self._returns_advantages(rewards, dones, values, next_value)
@@ -87,7 +90,7 @@ class A2CAgent:
 
 if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
-    env = gym.make('CartPole-v0')
-    model = Model(num_actions=env.action_space.n)
+    env = gym.make("Pendulum-v0")
+    model = Model(num_actions=env.action_space.shape[0])
     agent = A2CAgent(model, 7e-3)
     agent.train(env, 64, 250)
