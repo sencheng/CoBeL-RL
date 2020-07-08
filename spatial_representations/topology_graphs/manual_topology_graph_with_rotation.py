@@ -206,7 +206,7 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
     # pose: the agent's pose to visualize
     def updateRobotPose(self,pose):
         if self.visual_output:
-            self.posMarker.setData(pose[0],pose[1],np.arctan2(pose[3],pose[2]))
+            self.posMarker.setData(pose[0],pose[1],np.rad2deg(np.arctan2(pose[3],pose[2])))
 
 
 
