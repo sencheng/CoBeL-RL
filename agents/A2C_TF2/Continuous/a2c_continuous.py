@@ -8,7 +8,10 @@ import tensorflow.keras.layers as layers
 import tensorflow.keras.losses as losses
 import tensorflow.keras.optimizers as optimizer
 
+import math
 from network_continuous import Model
+
+ENTROPY_BETA = 1e-4
 
 class A2CAgent:
   def __init__(self, model, lr=7e-3, gamma=0.99, value_c=0.5, entropy_c=1e-4):
@@ -19,13 +22,14 @@ class A2CAgent:
     self.entropy_c = entropy_c
 
     self.model = model
-    self.model.compile(optimizer=optimizer.RMSprop(lr=lr),loss=[self._logits_loss, self._value_loss])
+    self.actor_opt = optimizer.Adam(lr=0.0005)
 
   def train(self, env, batch_sz=64, updates=250):
     # Storage helpers for a single batch of data.
     actions = np.empty((batch_sz,), dtype=np.float32)
-    rewards, dones, values = np.empty((3, batch_sz))
-    observations = np.empty((batch_sz,) + env.observation_space.shape)
+    rewards, dones, values = np.empty((3, batch_sz), dtype=np.float32)
+    
+    observations = np.empty((batch_sz,) + env.observation_space.shape, dtype=np.float32)
     # Training loop: collect samples, send to optimizer, repeat <updates> times.
     ep_rewards = [0.0]
     next_obs = env.reset()
@@ -52,10 +56,29 @@ class A2CAgent:
       # Performs a full training step on the collected batch.
       # Note: no need to mess around with gradients, Keras API handles it.
       #[acts_and_advs, returns] <-> [logits, value]
-      losses = self.model.train_on_batch(observations, [acts_and_advs, returns])
+      #losses = self.model.train_on_batch(observations, [acts_and_advs, returns])
+      
+      self.train_networks(observations, acts_and_advs, returns,actions)
       logging.debug("[%d/%d] Losses: %s" % (update + 1, updates, losses))
 
     return ep_rewards
+
+  def train_networks(self,obs,acts_and_advs, returns,actions):
+    with tf.GradientTape() as tape:
+      mu , var, val = self.model.evaluate(obs)
+      loss_value = self.value_c * losses.mean_squared_error(returns, val)
+      adv = returns - val
+      log_prob = adv * self.calculate_logprobs(mu,var,actions)
+      loss_policy = - tf.math.reduce_mean(log_prob, axis=0)
+      entropy_loss = tf.math.reduce_mean(ENTROPY_BETA * (-(np.log(2*math.pi*var)+1)/2))
+      loss = loss_policy + entropy_loss + loss_value
+      grads = tape.gradient(loss,self.model.trainable_variables)
+      self.actor_opt.apply_gradients(zip(grads, self.model.trainable_variables))
+
+  def calculate_logprobs(self,mu,var,actions):
+    p1 = - ((mu - actions)**2) / (2*np.clip(var,1e-3,1000))
+    p2 = - np.log(np.sqrt(2 * math.pi * np.clip(var,1e-3,1000)))
+    return p1 + p2
 
   def _returns_advantages(self, rewards, dones, values, next_value):
     # `next_value` is the bootstrap value estimate of the future state (critic).

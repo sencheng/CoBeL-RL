@@ -10,12 +10,12 @@ class Model(tf.keras.Model):
     super().__init__('mlp_policy')
     
     #Vectorized Input or ConvNet...
-    self.base = layers.Dense(128, activation='relu')
+    self.base = layers.Dense(128, activation='relu',dtype='float32')
 
     #Output
-    self.mu = layers.Dense(num_actions, name='mu')
-    self.logstd = layers.Dense(num_actions, name='logstd')
-    self.value = layers.Dense(1, name='value')
+    self.mu = layers.Dense(num_actions, name='mu',dtype='float32')
+    self.logstd = layers.Dense(num_actions, name='logstd',dtype='float32')
+    self.value = layers.Dense(1, name='value',dtype='float32')
 
   def call(self, inputs, **kwargs):
     # Inputs is a numpy array, convert to a tensor.
@@ -30,4 +30,11 @@ class Model(tf.keras.Model):
     #Sample one more more action from the processed input data
     action = np.random.normal(mu,std)
     return action, np.squeeze(value, axis=-1)
+  
+  def evaluate(self, inputs, **kwargs):
+    # Inputs is a numpy array, convert to a tensor.
+    x = tf.convert_to_tensor(inputs)
+    x = self.base(x)
+    #Output
+    return np.squeeze(self.mu(x), axis=-1), np.squeeze(self.logstd(x), axis=-1), np.squeeze(self.value(x), axis=-1)
 
