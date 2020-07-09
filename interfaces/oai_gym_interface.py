@@ -123,7 +123,7 @@ class UnityInterface(gym.Env):
 
     def __init__(self, env_path, scene_name=None, modules=None,
                  worker_id=None, seed=42, timeout_wait=60, side_channels=None,
-                 time_scale=1.0, nb_max_episode_steps=0, decision_interval=5,agent_action_type='discrete',
+                 time_scale=2, nb_max_episode_steps=0, decision_interval=5,agent_action_type='discrete',
                  performance_monitor=None, with_gui=True):
         """
         Constructor
@@ -177,7 +177,7 @@ class UnityInterface(gym.Env):
             args = ["--mlagents-scene-name", scene_name]
 
         # connect python to executable environment
-        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed,
+        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, base_port=5004,
                                timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
                                args=args)
 
@@ -305,6 +305,10 @@ class UnityInterface(gym.Env):
         # format the action for unity.
         formatted_action = self.format_action(action)
 
+        # display the action
+        if self.performance_monitor is not None:
+            self.performance_monitor.display_actions(formatted_action)
+
         # setup action in the Unity environment
         self.env.set_actions(self.group_name, formatted_action)
 
@@ -331,7 +335,7 @@ class UnityInterface(gym.Env):
         # this displays the sensor observations
         # if multiple sensors are attached it displays a plot for each one.
         if self.performance_monitor is not None:
-            self.performance_monitor.set_obs(squeezed_observations)
+            self.performance_monitor.display_observations(squeezed_observations)
 
         # some crazy envs don't always deliver a result
         if len(step_result.reward) > 0:
@@ -378,7 +382,7 @@ class UnityInterface(gym.Env):
         Extract the information about the observation space from ml-agents group_spec.
 
         :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
-        :return:                    observation shape
+        :return:                    observation space
         """
 
         # list of the sensor observation shapes

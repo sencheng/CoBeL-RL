@@ -49,14 +49,10 @@ class UnityPerformanceMonitor:
         self.win.setCentralItem(self.layout)
 
         # add labels
-        self.sps_label = self.layout.addLabel("")
-        self.total_steps_label = self.layout.addLabel("")
+        self.sps_label = self.layout.addLabel()
+        self.nb_episodes_label = self.layout.addLabel()
+        self.total_steps_label = self.layout.addLabel()
 
-        self.layout.nextRow()
-
-        self.update_time_label = self.layout.addLabel("")
-        self.memory_usage_label = self.layout.addLabel("")
-        
         self.layout.nextRow()
 
         # pens
@@ -80,15 +76,27 @@ class UnityPerformanceMonitor:
         self.steps_plot_viewbox.setLimits(xMin=0)
 
         # episode plots
-        self.reward_plot_item = self.layout.addPlot(title="reward", viewBox=self.reward_plot_viewbox)
+        self.reward_plot_item = self.layout.addPlot(title="reward", viewBox=self.reward_plot_viewbox, colspan=3)
         self.reward_plot_item.showGrid(x=True, y=True)
         self.reward_graph = self.reward_plot_item.plot()
         self.mean_reward_graph = self.reward_plot_item.plot()
 
-        self.steps_plot_item = self.layout.addPlot(title="steps per episode", viewBox=self.steps_plot_viewbox)
+        self.layout.nextRow()
+
+        self.steps_plot_item = self.layout.addPlot(title="steps per episode", viewBox=self.steps_plot_viewbox, colspan=3)
         self.steps_plot_item.showGrid(x=True, y=True)
         self.steps_graph = self.steps_plot_item.plot()
         self.mean_steps_graph = self.steps_plot_item.plot()
+
+        self.layout.nextRow()
+
+        self.action_plot_item = self.layout.addPlot(title="actions", colspan=3)
+        self.action_plot_item.getViewBox().enableAutoRange(x=True, y=False)
+        self.action_plot_item.getViewBox().setYRange(min=-2, max=2)
+        self.action_plot_item.getViewBox().setXRange(min=-20, max=20)
+        self.action_plot_item.showGrid(x=True, y=True)
+        self.action_scatter_plot = pg.ScatterPlotItem()
+        self.action_plot_item.addItem(self.action_scatter_plot)
 
         self.layout.nextRow()
 
@@ -118,22 +126,15 @@ class UnityPerformanceMonitor:
         """
         # instant update
         if nb_step is None:
-
             pg.mkQApp().processEvents()
 
         # never update
         elif self.update_period is None:
-
             return
 
         # update after update_rate steps
         elif nb_step % self.update_period == 0:
-
-            t1 = time.perf_counter()
-
             pg.mkQApp().processEvents()
-
-            self.update_time_label.setText("plotting time: " + str(round(time.perf_counter() - t1, 3)))
 
     def set_step_data(self, nb_step):
         """
@@ -154,6 +155,7 @@ class UnityPerformanceMonitor:
         :param cumulative_reward: the reward for this episode
         :return:
         """
+        self.nb_episodes_label.setText(f'Episode: {nb_episode}')
         self.set_episode_plot(nb_episode, nb_episode_steps, cumulative_reward)
 
     def set_sps(self, sps):
@@ -218,14 +220,6 @@ class UnityPerformanceMonitor:
         self.steps_graph.setData(self.nb_episode_steps_trace, pen=self.raw_pen)
         self.mean_steps_graph.setData(self.mean_nb_episode_steps_trace, pen=self.mean_pen)
 
-        self.memory_usage_label.setText("plot data: " + str((sys.getsizeof(self.reward_trace)
-                                                             + sys.getsizeof(self.mean_rewards_trace)
-                                                             + sys.getsizeof(self.nb_episode_steps_trace)
-                                                             + sys.getsizeof(self.mean_nb_episode_steps_trace)
-                                                             + sys.getsizeof(self.reward_variance_trace)
-                                                             + sys.getsizeof(
-                    self.nb_episode_steps_variance_trace)) / 1000) + " MB")
-
     def instantiate_observation_plots(self, observation_shapes):
         """
         Instantiates the observation plots
@@ -240,14 +234,14 @@ class UnityPerformanceMonitor:
             if len(shape) == 1:
 
                 # plot as vector
-                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=2).plot()
+                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=3).plot()
                 self.observation_plots.append(vector_plot)
 
             elif len(shape) == 3 or len(shape) == 2:
 
                 # plot as image
                 self.observation_plots.append(pg.ImageItem(np.zeros(shape=shape)))
-                self.layout.addItem(self.observation_plot_viewbox, colspan=2)
+                self.layout.addItem(self.observation_plot_viewbox, colspan=3)
                 self.observation_plot_viewbox.setAspectLocked(lock=True)
                 self.observation_plot_viewbox.addItem(self.observation_plots[i])
 
@@ -255,7 +249,11 @@ class UnityPerformanceMonitor:
 
             self.layout.nextRow()
 
-    def set_obs(self, observations):
+    def display_actions(self, actions):
+        self.action_scatter_plot.clear()
+        self.action_scatter_plot.addPoints(x=range(len(actions[0])), y=actions[0])
+
+    def display_observations(self, observations):
         """
         displays the given observation
         :param observations: observation to display
@@ -329,7 +327,8 @@ class RLPerformanceMonitorBaseline:
     trial:  the actual trial number
     logs:   information from the reinforcement learning subsystem
     '''
-    def update(self,trial,logs):
+
+    def update(self, trial, logs):
         # update the reward traces
         rlReward = logs['episode_reward']
         self.rlRewardTraceRaw[trial] = rlReward
