@@ -16,8 +16,8 @@ class CogArrow(qg.ArrowItem):
     def setData(self,x,y,angle):
         
         # the angle has to be modified to suit the demands of the environment(?)
-        angle=-angle/np.pi*180.0+180.0
-        
+        #angle=-angle/np.pi*180.0+180.0
+        angle = 180.0 - angle
         # assemble a new temporary dict that is used for path construction
         tempOpts=dict()
         tempOpts['headLen']=self.opts['headLen']

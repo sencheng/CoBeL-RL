@@ -241,14 +241,14 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
                         l=np.linalg.norm(vec)
                         vec=vec/l
                         # make the corresponding indicator point in the direction of the difference vector
-                        node.qIndicator.setData(node.x,node.y,np.arctan2(vec[1],vec[0]))  
+                        node.qIndicator.setData(node.x,node.y,np.rad2deg(np.arctan2(vec[1],vec[0])))  
 
     # This function updates the visual depiction of the agent(robot).
     # 
     # pose: the agent's pose to visualize
     def updateRobotPose(self,pose):
         if self.visual_output:
-            self.posMarker.setData(pose[0],pose[1],np.arctan2(pose[3],pose[2]))
+            self.posMarker.setData(pose[0],pose[1],np.rad2deg(np.arctan2(pose[3],pose[2])))
 
 
 
