@@ -197,8 +197,8 @@ class UnityInterface(gym.Env):
         self.env = env
         self.group_name = group_name
         self.agent_action_type = agent_action_type
-        self.observation_shape = self.get_observation_specs(group_spec)
-        self.action_shape, self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
+        self.observation_space = self.get_observation_specs(group_spec)
+        self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
         # plotting variables
         self.n_step = 0
@@ -252,9 +252,9 @@ class UnityInterface(gym.Env):
         #
         # by getting the observation at index 0, we get the last observation of the episode.
         double_obs_error = False
-        if not self.observation_shape == observation.shape:
+        if not self.observation_space.shape == observation.shape:
             double_obs_error = True
-            print(f'double obs received {self.observation_shape} != {observation.shape}')
+            print(f'double obs received {self.observation_space.shape} != {observation.shape}')
             observation = observation[0]
 
         # DEBUG: used to check if the double obs occur only together with 'done'.
@@ -398,7 +398,9 @@ class UnityInterface(gym.Env):
             # select the single sensors observation shape
             observation_shape = observation_shapes[0]
 
-        return observation_shape
+        observation_space = gym.spaces.Box(low=0, high=1, shape=observation_shape)
+
+        return observation_space
 
     def get_action_specs(self, env_agent_specs, agent_action_type):
         """
@@ -446,10 +448,11 @@ class UnityInterface(gym.Env):
             raise NotImplementedError(
                 'This combination of action and agent type is not supported. Check the definitions')
 
-        return action_shape, action_space, action_type
+        return action_space, action_type
 
     def format_observations(self, observations):
         """
+        TODO: Move this to a keras processor subclass?
         Format the received observation to work with cobel.
 
         :param observations:    the sensor observations received from ml-agents
@@ -471,6 +474,7 @@ class UnityInterface(gym.Env):
 
     def format_action(self, action):
         """
+        TODO: Move this to a keras processor subclass?
         This is a wrapper for the action / agent_action_type logic.
 
         :param action: the action received from the agent.
@@ -514,13 +518,12 @@ class UnityInterface(gym.Env):
 
     def make_continuous(self, action_id):
         """
+        TODO: Move this to a keras processor subclass
         Takes an action represented by a positive integer and turns it into a representation suitable for continuous
         unity environments.
         
         :param action_id:   a positive value integer from 0 to N
         :return:            an array with the correct format and range to be used by the ML-Agents framework
-
-        TODO: Find a dumber way to do this
 
         :Reason of existence: The DQN outputs values that are integers. However, the ML-agents framework takes as
         inputs actions that also have negative values. Take for example an action space of 4 and an integer action id,
@@ -556,7 +559,7 @@ class UnityInterface(gym.Env):
         index = action_id // 2
 
         # make new action
-        new_action = np.zeros(self.action_shape)
+        new_action = np.zeros(self.action_space.shape)
 
         # put the new action in the correct bin
         new_action[index] = value
@@ -606,7 +609,7 @@ class UnityInterface(gym.Env):
         one_hot_vector[action_id] = 1
 
         # resize to be a branch matrix.
-        one_hot_vector.resize(self.action_shape)
+        one_hot_vector.resize(self.action_space.shape)
 
         # get the coordinate where the 1 was stored
         coordinates = np.where(one_hot_vector == 1)

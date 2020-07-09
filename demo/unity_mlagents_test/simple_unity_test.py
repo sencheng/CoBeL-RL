@@ -5,7 +5,8 @@ from pathlib import Path
 
 import tensorflow as tf
 from keras import backend
-from agents.dqn_agents import ModularDQNAgentBaseline, sequential_memory_modul, sequential_model_modul
+from agents.dqn_agents import DQNAgentBaseline
+from agents.modular_agents import ModularDQNAgent as MDQNAgent, Container
 
 from interfaces.oai_gym_interface import UnityInterface
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
@@ -86,15 +87,14 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     robot_maze parameters
     """
 
-    unity_env.env_configuration_channel.set_property("has_walls", 0)                 # enable walls
-    unity_env.env_configuration_channel.set_property("maze_algorithm", 1)           # Random DFS Maze
-    unity_env.env_configuration_channel.set_property("size_x", 2)                   # set cell grid width
-    unity_env.env_configuration_channel.set_property("size_y", 2)                   # set cell grid height
-    unity_env.env_configuration_channel.set_property("random_target_pos", 0)        # disable target repositioning
-    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)     # enable random robot spawn rotation
-    unity_env.env_configuration_channel.set_property("max_velocity", 0)             # disable max agent velocity
-    unity_env.env_configuration_channel.set_property("target_reached_radius", 25)
-
+    unity_env.env_configuration_channel.set_property("has_walls", 0)  # enable walls
+    unity_env.env_configuration_channel.set_property("maze_algorithm", 1)  # Random DFS Maze
+    unity_env.env_configuration_channel.set_property("size_x", 2)  # set cell grid width
+    unity_env.env_configuration_channel.set_property("size_y", 2)  # set cell grid height
+    unity_env.env_configuration_channel.set_property("random_target_pos", 0)  # disable target repositioning
+    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)  # enable random robot spawn rotation
+    unity_env.env_configuration_channel.set_property("max_velocity", 0)  # disable max agent velocity
+    unity_env.env_configuration_channel.set_property("target_reached_radius", 20)
 
     """
     morris_water_maze parameters
@@ -115,25 +115,14 @@ def single_run(environment_filename, scene_name=None, n_train=1):
 
     # you can add some callbacks to the keras agent
     log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H-%M-%S"))  # create OS-agnostic path
-    log_dir = str(log_dir)                                                               # extract as string
+    log_dir = str(log_dir)  # extract as string
     tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
 
-    # create your agent and use the env like any open ai gym
-    rl_agent = ModularDQNAgentBaseline(oai_env=unity_env,
-                                       policy=LinearAnnealedPolicy(EpsGreedyQPolicy(), "eps", 1., 0.1, 0.05, 50000),
-                                       nb_steps_warmup=10000,
-                                       create_memory_fcn=sequential_memory_modul(limit=50000),
-                                       create_model_fcn=sequential_model_modul(nb_units=192, nb_layers=4),
-                                       batch_size=64,
-                                       action_repetition=1, train_interval=1, memory_window=1, memory_interval=1,
-                                       trial_begin_fcn=trial_begin_callback, trial_end_fcn=trial_end_callback,
-                                       other_callbacks=[tensorboard_callback])
+    # create your agent
+    rl_agent = DQNAgentBaseline(unity_env, trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
     # train the agent
     rl_agent.train(n_train)
-
-    # save the weights, if you like.
-    rl_agent.save(get_cobel_rl_path()+"/models/test.h5")
 
     # clear session
     backend.clear_session()
@@ -144,6 +133,7 @@ def get_cobel_rl_path():
     """
     returns the cobel project path
     """
+
     paths = os.environ['PYTHONPATH'].split(os.pathsep)
     path = None
     for p in paths:
@@ -160,7 +150,6 @@ if __name__ == "__main__":
     project = get_cobel_rl_path()
     print('Testing environment 1')
     single_run(environment_filename=project + '/envs/lin/unity_env',
-               scene_name="PushBlock",
-               n_train=500000)
+               scene_name="VisualRandomRobotMaze",
+               n_train=1000)
     print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
-    pg.QtGui.QApplication.exec_()
