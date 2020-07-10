@@ -1,12 +1,10 @@
-import os
 from keras import callbacks
-from keras.models import Sequential, Model
-from keras.layers import Dense, Flatten, Input
+from keras.layers import Dense, Flatten
+from keras.models import Sequential
 from keras.optimizers import Adam
-
 from rl.agents import DQNAgent
-from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
+from rl.policy import EpsGreedyQPolicy
 
 
 ### The reinforcement learing class. It wraps all functionality required to set up a RL agent.
