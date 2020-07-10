@@ -249,9 +249,10 @@ class UnityPerformanceMonitor:
 
             self.layout.nextRow()
 
-    def display_actions(self, actions):
+    def display_actions(self, action):
+
         self.action_scatter_plot.clear()
-        self.action_scatter_plot.addPoints(x=range(len(actions[0])), y=actions[0])
+        self.action_scatter_plot.addPoints(pos=list(enumerate(action[0])))
 
     def display_observations(self, observations):
         """
