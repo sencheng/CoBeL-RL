@@ -1,11 +1,8 @@
-import sys
+import os
 import time
 import numpy as np
 import gym
-import math
-import pyqtgraph as pg
-from operator import mul
-
+import subprocess
 from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
@@ -98,7 +95,7 @@ class OAIGymInterface(gym.Env):
 def unity_decorater(func):
     """
     wraps on internal errors raised by the unity python api
-    result in more readable error messages
+    results in more readable error messages
     """
 
     def wrapper(self, *args, **kwargs):
@@ -121,9 +118,9 @@ class UnityInterface(gym.Env):
         """
         pass
 
-    def __init__(self, env_path, scene_name=None, modules=None,
+    def __init__(self, env_path, scene_name=None, modules=None, start_editor_manual=False,
                  worker_id=None, seed=42, timeout_wait=60, side_channels=None,
-                 time_scale=2, nb_max_episode_steps=0, decision_interval=5,agent_action_type='discrete',
+                 time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
                  performance_monitor=None, with_gui=True):
         """
         Constructor
@@ -140,6 +137,13 @@ class UnityInterface(gym.Env):
         :param performance_monitor:     the monitor used for visualizing the learning process.
         :param with_gui:                whether or not show the performance monitor and the environment gui.
         """
+
+        if env_path is None:
+            print(">>> waiting for editor <<<")
+
+            if not start_editor_manual:
+                subprocess.run(os.environ['UNITY_EXECUTABLE_PATH'])
+
 
         # setup communication port
         if worker_id is None:
@@ -505,6 +509,15 @@ class UnityInterface(gym.Env):
         action_type = discrete, agent = continuous
         -> not supported at the moment.
         """
+
+        if isinstance(action[0], np.floating):
+            assert self.agent_action_type is 'continuous', f'the agent_action_type is set to {self.agent_action_type}' \
+                                                           f', but the action is {type(action[0])}'
+
+        if isinstance(action[0], np.integer):
+            assert self.agent_action_type is 'discrete', f'the agent_action_type is set to {self.agent_action_type}' \
+                                                         f', but the action is {type(action[0])}'
+
         if self.action_type is 'continuous' and self.agent_action_type is 'discrete':
             action = self.make_continuous(action)
 
@@ -516,7 +529,7 @@ class UnityInterface(gym.Env):
 
         else:
             raise NotImplementedError(
-                'This combination of action and agent type is not supported. Check the definitions.')
+                'This combination of action and agent type is not supported.')
 
         return action
 
