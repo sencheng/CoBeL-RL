@@ -1,0 +1,74 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: class UnityPerformanceMonitor</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><strong>analysis.rl_monitoring.rl_performance_monitors.UnityPerformanceMonitor</strong> = <a name="analysis.rl_monitoring.rl_performance_monitors.UnityPerformanceMonitor">class UnityPerformanceMonitor</a>(<a href="builtins.html#object">builtins.object</a>)</font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>QtWindow&nbsp;for&nbsp;basic&nbsp;plotting<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="UnityPerformanceMonitor-__init__"><strong>__init__</strong></a>(self, update_period=None, calculation_range=100, reward_plot_viewbox=(-1, 1, 50), steps_plot_viewbox=(0, 1000, 50))</dt><dd><tt>Constructor<br>
+:param&nbsp;update_period:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;number&nbsp;of&nbsp;steps&nbsp;to&nbsp;pass&nbsp;before&nbsp;updating&nbsp;the&nbsp;plot.<br>
+:param&nbsp;calculation_range:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;defines&nbsp;how&nbsp;many&nbsp;episodes&nbsp;will&nbsp;be&nbsp;used&nbsp;for&nbsp;calculating&nbsp;the&nbsp;means.<br>
+:param&nbsp;reward_plot_viewbox:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;tuple&nbsp;of&nbsp;shape&nbsp;(min_y,&nbsp;max_y,&nbsp;x_range)&nbsp;used&nbsp;for&nbsp;defining&nbsp;the&nbsp;initial&nbsp;viewbox<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of&nbsp;the&nbsp;reward&nbsp;plot.<br>
+:param&nbsp;steps_plot_viewbox:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;a&nbsp;tuple&nbsp;of&nbsp;shape&nbsp;(min_y,&nbsp;max_y,&nbsp;x_range)&nbsp;used&nbsp;for&nbsp;defining&nbsp;the&nbsp;initial&nbsp;viewbox<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;of&nbsp;the&nbsp;steps&nbsp;plot.<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-display_actions"><strong>display_actions</strong></a>(self, action)</dt><dd><tt>displays&nbsp;the&nbsp;given&nbsp;action<br>
+:param&nbsp;action:&nbsp;a&nbsp;list&nbsp;with&nbsp;the&nbsp;actions<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-display_observations"><strong>display_observations</strong></a>(self, observations)</dt><dd><tt>displays&nbsp;the&nbsp;given&nbsp;observation<br>
+:param&nbsp;observations:&nbsp;observation&nbsp;to&nbsp;display<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-instantiate_observation_plots"><strong>instantiate_observation_plots</strong></a>(self, observation_shapes)</dt><dd><tt>Instantiates&nbsp;the&nbsp;observation&nbsp;plots<br>
+:param&nbsp;observation_shapes:&nbsp;a&nbsp;list&nbsp;of&nbsp;sensor&nbsp;observations&nbsp;shapes<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-set_episode_data"><strong>set_episode_data</strong></a>(self, nb_episode, nb_episode_steps, cumulative_reward)</dt><dd><tt>update&nbsp;the&nbsp;episode&nbsp;data&nbsp;plots<br>
+this&nbsp;is&nbsp;rather&nbsp;slow&nbsp;and&nbsp;is&nbsp;just&nbsp;done&nbsp;on&nbsp;the&nbsp;end&nbsp;of&nbsp;an&nbsp;episode<br>
+:param&nbsp;nb_episode:&nbsp;number&nbsp;of&nbsp;the&nbsp;current&nbsp;episode<br>
+:param&nbsp;nb_episode_steps:&nbsp;the&nbsp;number&nbsp;of&nbsp;steps&nbsp;of&nbsp;this&nbsp;episode<br>
+:param&nbsp;cumulative_reward:&nbsp;the&nbsp;reward&nbsp;for&nbsp;this&nbsp;episode<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-set_episode_plot"><strong>set_episode_plot</strong></a>(self, nb_episode, nb_episode_steps, episode_reward)</dt><dd><tt>calculates&nbsp;the&nbsp;mean&nbsp;and&nbsp;the&nbsp;variance&nbsp;and&nbsp;plots&nbsp;the&nbsp;values&nbsp;in&nbsp;the&nbsp;corresponding&nbsp;graphs.<br>
+:param&nbsp;nb_episode:&nbsp;number&nbsp;of&nbsp;the&nbsp;current&nbsp;episode<br>
+:param&nbsp;nb_episode_steps:&nbsp;the&nbsp;number&nbsp;of&nbsp;steps&nbsp;of&nbsp;this&nbsp;episode<br>
+:param&nbsp;episode_reward:&nbsp;the&nbsp;reward&nbsp;for&nbsp;this&nbsp;episode.<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-set_nb_steps"><strong>set_nb_steps</strong></a>(self, steps)</dt><dd><tt>set&nbsp;the&nbsp;number&nbsp;of&nbsp;steps&nbsp;to&nbsp;the&nbsp;label<br>
+:param&nbsp;steps:&nbsp;total&nbsp;number&nbsp;of&nbsp;steps<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-set_sps"><strong>set_sps</strong></a>(self, sps)</dt><dd><tt>set&nbsp;the&nbsp;sps&nbsp;value&nbsp;to&nbsp;the&nbsp;label<br>
+:param&nbsp;sps:&nbsp;steps&nbsp;per&nbsp;second<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-set_step_data"><strong>set_step_data</strong></a>(self, nb_step)</dt><dd><tt>update&nbsp;the&nbsp;labels<br>
+this&nbsp;is&nbsp;very&nbsp;fast&nbsp;and&nbsp;is&nbsp;done&nbsp;every&nbsp;step<br>
+:param&nbsp;nb_step:&nbsp;number&nbsp;of&nbsp;the&nbsp;current&nbsp;learning&nbsp;step<br>
+:return:</tt></dd></dl>
+
+<dl><dt><a name="UnityPerformanceMonitor-update"><strong>update</strong></a>(self, nb_step=None)</dt><dd><tt>update&nbsp;is&nbsp;called&nbsp;in&nbsp;every&nbsp;step<br>
+:param&nbsp;nb_step:&nbsp;the&nbsp;number&nbsp;of&nbsp;learning&nbsp;iterations.&nbsp;set&nbsp;none&nbsp;for&nbsp;instant&nbsp;update.</tt></dd></dl>
+
+<hr>
+Data descriptors defined here:<br>
+<dl><dt><strong>__dict__</strong></dt>
+<dd><tt>dictionary&nbsp;for&nbsp;instance&nbsp;variables&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+<dl><dt><strong>__weakref__</strong></dt>
+<dd><tt>list&nbsp;of&nbsp;weak&nbsp;references&nbsp;to&nbsp;the&nbsp;object&nbsp;(if&nbsp;defined)</tt></dd>
+</dl>
+</td></tr></table>
+</body></html>

@@ -29,8 +29,13 @@ class UnityPerformanceMonitor:
                  steps_plot_viewbox=(0, 1000, 50)):
         """
         Constructor
-        :param update_period: number of steps to pass before updating the plot
-        :nb_trace_length: defines how many episodes will be shown in the plot
+        :param update_period:           number of steps to pass before updating the plot.
+        :param calculation_range:       defines how many episodes will be used for calculating the means.
+        :param reward_plot_viewbox:     a tuple of shape (min_y, max_y, x_range) used for defining the initial viewbox
+                                        of the reward plot.
+        :param steps_plot_viewbox:      a tuple of shape (min_y, max_y, x_range) used for defining the initial viewbox
+                                        of the steps plot.
+        :return:
         """
 
         # set update params
@@ -250,6 +255,11 @@ class UnityPerformanceMonitor:
             self.layout.nextRow()
 
     def display_actions(self, action):
+        """
+        displays the given action
+        :param action: a list with the actions
+        :return:
+        """
         self.action_scatter_plot.clear()
         self.action_scatter_plot.addPoints(pos=list(enumerate(action[0])))
 
