@@ -85,12 +85,15 @@ If you want to try the unity interface demo, you need to perform the the steps a
 
 Then you got two options to run a demo.
 
+Password for all sciebo downloads: cobel_rl 
+
 *  You can use the precompiled versions of the unity environments. Download them from here:
 
     * Linux 
+    
     **https://ruhr-uni-bochum.sciebo.de/s/3iFYDgzGxLJ57tv**
     
-    * Windows **LINK**
+    * Windows **LINK COMING SOON**
     
     You have to set a system variable named 'UNITY_ENVIRONMENT_EXECUTABLE' to the path of the downloaded environments
     
@@ -103,15 +106,19 @@ Then you got two options to run a demo.
 * The other option is to install the unity editor and connect the interface directly with the editor.
 
     * you need to download and install the 'Unity Hub' 
+    
     **https://docs.unity3d.com/Manual/GettingStartedInstallingHub.html**
     
     * the adapted version of mlagents 
+    
     **https://ruhr-uni-bochum.sciebo.de/s/8GUszMEC7LgzS7V**
     
     * and the unitypackage for the environments.
+    
     **https://ruhr-uni-bochum.sciebo.de/s/gdphysRY1P7pAyT**
     
     Then you set up a new project with unity. See:
+    
     **https://docs.unity3d.com/560/Documentation/Manual/GettingStarted.html**
     
     To import the 'mlagents' framework into your project you select the 'Window/PackageManager' menu item in the editor, 
