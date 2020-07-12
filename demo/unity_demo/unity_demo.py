@@ -4,6 +4,7 @@ from agents.dqn_agents import DQNAgentBaseline
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 from interfaces.oai_gym_interface import UnityInterface
 from interfaces.oai_gym_interface import get_cobel_path, get_env_path
+import pydoc
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
 visualOutput = True
@@ -59,7 +60,6 @@ def single_run(env_exec_path, scene_name=None, n_train=1):
 
     In this case it acts as a tutorial for using the UnityInterface
     """
-
     # first you create your environment, you can check detailed parameter descriptions in the constructor docstring.
     #
     # note that the decision interval is set to 10.
@@ -67,7 +67,7 @@ def single_run(env_exec_path, scene_name=None, n_train=1):
     # it increases the performance and is helpful when training envs where the consequence of an action can only
     # be observed after some time.
     unity_env = UnityInterface(env_path=env_exec_path, scene_name=scene_name,
-                               nb_max_episode_steps=1000, decision_interval=10, agent_action_type="discrete",
+                               nb_max_episode_steps=100, decision_interval=10, agent_action_type="discrete",
                                performance_monitor=UnityPerformanceMonitor(update_period=1), with_gui=True)
 
     # then you can set some experiment parameters
@@ -122,4 +122,4 @@ if __name__ == "__main__":
     env_path = get_env_path()
     single_run(env_exec_path=env_path,  # if env_exec_path is None, CoBeL-RL will connect to a running editor instance.
                scene_name="VisualRandomRobotMaze",
-               n_train=1000)
+               n_train=500)
