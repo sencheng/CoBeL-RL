@@ -12,4 +12,4 @@ venv
 CoBeL_RL.egg-info
 build
 dist
-demo/unity_mlagents_test/logsfreeze
+demo/unity_demo/logsfreeze

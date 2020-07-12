@@ -3,6 +3,7 @@ from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 from interfaces.oai_gym_interface import UnityInterface
+from interfaces.oai_gym_interface import get_cobel_path, get_env_path
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
 visualOutput = True
@@ -117,7 +118,8 @@ def single_run(env_exec_path, scene_name=None, n_train=1):
 
 if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
-    project = UnityInterface.get_cobel_path()
-    single_run(env_exec_path=None,  # if env_exec_path is None, CoBeL-RL will connect to a running editor instance.
+    project = get_cobel_path()
+    env_path = get_env_path()
+    single_run(env_exec_path=env_path,  # if env_exec_path is None, CoBeL-RL will connect to a running editor instance.
                scene_name="VisualRandomRobotMaze",
                n_train=1000)

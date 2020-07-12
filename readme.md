@@ -74,3 +74,43 @@ terminal: (you can change the path name to whatever you want)
 
 
 Preliminary information, needs further checking: It seems there are some issues with 'tensorflow', version 1.5.0 and the employed 'python' version. If you experience such compatibility problems and have a 'python' version >=3.7, it might help to downgrade 'python' to a version >=2.7 and <=3.6. However, this is just a preliminary hint, the issue will have to be further explored.
+
+---------------
+
+If you want to try the unity interface demo, you need to perform the the steps above first.
+
+Then you got two options to run a demo.
+
+*  You can use the precompiled versions of the unity environments. Download them from here:
+
+    * Linux **LINK**
+    
+    * Windows **LINK**
+    
+    Then you have to set a system variable named 'UNITY_ENVIRONMENT_EXECUTABLE' to the path of the downloaded environments
+    and run the unity_demo.py in the demo/unity_demo folder
+    
+* The other option is to install the unity editor and connect the interface directly with the editor.
+
+    * you need to download and install the 'Unity Hub' 
+    **https://docs.unity3d.com/Manual/GettingStartedInstallingHub.html**
+    
+    * the adapted version of mlagents 
+    
+    * and the unitypackage for the environments.
+    
+    Then you set up a new project with unity. See:
+    **https://docs.unity3d.com/560/Documentation/Manual/GettingStarted.html**
+    
+    To import the 'mlagents' framework into your project you select the 'Window/PackageManager' menu item in the editor, 
+    then choose 'Add Package From Disk' in the top left corner and open the 'package.json' in the 'ml-agents/com.unity.ml-agents' folder.
+    
+    To import the environments you select the menu item 'Assets/Import Package/Custom Package' in the editor and open the 
+    'unity_resources.unitypackage' you downloaded.
+    
+    You start training an environment by opening a scene in the 'Assets/Scenes' folder with the 'Project Explorer' of the editor, 
+    running the unity_demo.py and pressing the 'Play' button at the top of the editor screen. In this order.
+    
+    **Note: that that the demo tries to do option 1) automatically when 'UNITY_ENVIRONMENT_EXECUTABLE' variable is set.**
+    
+     
