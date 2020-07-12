@@ -83,9 +83,11 @@ ________________________________________________________________________________
 
 If you want to try the unity interface demo, you need to perform the the steps described above first.
 
-You got two options to run a demo.
+Please report all bugs you find :)
 
 **Password for all 'Sciebo' downloads: cobel_rl**
+
+You got two options to run a demo.
 
 *  You can use the precompiled versions of the unity environments.
 
