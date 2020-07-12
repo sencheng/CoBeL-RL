@@ -1,19 +1,10 @@
 import os
-import datetime
-import numpy as np
-from pathlib import Path
-
-import tensorflow as tf
 from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
-from agents.modular_agents import ModularDQNAgent as MDQNAgent, Container
-
-from interfaces.oai_gym_interface import UnityInterface
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
-from rl.policy import EpsGreedyQPolicy, LinearAnnealedPolicy
+from interfaces.oai_gym_interface import UnityInterface
 
-import pyqtgraph as pg
-
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
 visualOutput = True
 
 
@@ -55,9 +46,9 @@ def trial_end_callback(trial, rl_agent, logs):
     print("Episode end", logs)
 
 
-def single_run(environment_filename, scene_name=None, n_train=1):
+def single_run(env_exec_path, scene_name=None, n_train=1):
     """
-    :param environment_filename:    full path to a Unity executable
+    :param env_exec_path:           full path to a Unity executable
     :param scene_name:              the name of the scene to be loaded
     :param n_train:                 total number of rl steps. Note that it's affected by the action repetition
     :return:
@@ -74,9 +65,9 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     # this means that cobel only observers and acts in every 10th simulation step. this is aka frame skipping.
     # it increases the performance and is helpful when training envs where the consequence of an action can only
     # be observed after some time.
-    unity_env = UnityInterface(env_path=environment_filename, scene_name=scene_name, modules=None, with_gui=True,
-                               seed=42, agent_action_type="discrete", nb_max_episode_steps=1000, decision_interval=15,
-                               performance_monitor=UnityPerformanceMonitor(update_period=1))
+    unity_env = UnityInterface(env_path=env_exec_path, scene_name=scene_name,
+                               nb_max_episode_steps=1000, decision_interval=10, agent_action_type="discrete",
+                               performance_monitor=UnityPerformanceMonitor(update_period=1), with_gui=True)
 
     # then you can set some experiment parameters
     # these are specific to the environment you've chosen. you can find the parameters for the examples here:
@@ -85,21 +76,21 @@ def single_run(environment_filename, scene_name=None, n_train=1):
 
     """
     robot_maze parameters
-    """
-
+    
     unity_env.env_configuration_channel.set_property("has_walls", 0)  # enable walls
-    unity_env.env_configuration_channel.set_property("maze_algorithm", 1)  # Random DFS Maze
+    unity_env.env_configuration_channel.set_property("maze_algorithm", 0)  # Random DFS Maze
     unity_env.env_configuration_channel.set_property("size_x", 2)  # set cell grid width
     unity_env.env_configuration_channel.set_property("size_y", 2)  # set cell grid height
     unity_env.env_configuration_channel.set_property("random_target_pos", 0)  # disable target repositioning
     unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)  # enable random robot spawn rotation
     unity_env.env_configuration_channel.set_property("max_velocity", 0)  # disable max agent velocity
     unity_env.env_configuration_channel.set_property("target_reached_radius", 20)
+    unity_env.env_configuration_channel.set_property("target_visible", 1)
+    """
 
     """
     morris_water_maze parameters
     
-
     # scale the water pool size. default is 150x150 cm
     unity_env.env_configuration_channel.set_property("area_scale", 1)
     # set the platform position (1 = north, 2 = north east, ...)
@@ -113,11 +104,6 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     # don't forget to reset your env after setting the experimental parameters to apply them
     unity_env._reset()
 
-    # you can add some callbacks to the keras agent
-    log_dir = Path("logs/fit/" + datetime.datetime.now().strftime("%Y.%m.%d-%H-%M-%S"))  # create OS-agnostic path
-    log_dir = str(log_dir)  # extract as string
-    tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=0)
-
     # create your agent
     rl_agent = DQNAgentBaseline(unity_env, trialBeginFcn=trial_begin_callback, trialEndFcn=trial_end_callback)
 
@@ -129,27 +115,9 @@ def single_run(environment_filename, scene_name=None, n_train=1):
     unity_env.close()
 
 
-def get_cobel_rl_path():
-    """
-    returns the cobel project path
-    """
-
-    paths = os.environ['PYTHONPATH'].split(os.pathsep)
-    path = None
-    for p in paths:
-        if 'CoBeL-RL' in p:
-            full_path = p
-            base_folder = full_path.split(sep='CoBeL-RL')[0]
-            path = base_folder + 'CoBeL-RL'
-            break
-    return path
-
-
 if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
-    project = get_cobel_rl_path()
-    print('Testing environment 1')
-    single_run(environment_filename=project + '/envs/lin/unity_env',
+    project = UnityInterface.get_cobel_path()
+    single_run(env_exec_path=None,  # if env_exec_path is None, CoBeL-RL will connect to a running editor instance.
                scene_name="VisualRandomRobotMaze",
                n_train=1000)
-    print('Start tensorboard from unity_ml-agents_test/logs/fit to see that the environments are learnable.')
