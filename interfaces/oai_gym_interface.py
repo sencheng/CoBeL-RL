@@ -136,13 +136,9 @@ class UnityInterface(gym.Env):
         pass
 
     def __init__(self, env_path, scene_name=None,
-                 modules=None,
-                 # disabled
-                 # start_editor_manual=False,
-                 # resource_path=None,
-                 # scene_path=None,
-                 seed=42, timeout_wait=60, side_channels=None,
                  time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
+                 modules=None,
+                 seed=42, timeout_wait=60, side_channels=None,
                  performance_monitor=None, with_gui=True):
         """
         Constructor
