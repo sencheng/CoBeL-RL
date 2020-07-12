@@ -79,15 +79,15 @@ Preliminary information, needs further checking: It seems there are some issues 
 
 ________________________________________________________________________________________________
 
+**Unity Interface**
 
+If you want to try the unity interface demo, you need to perform the the steps described above first.
 
-If you want to try the unity interface demo, you need to perform the the steps above first.
+You got two options to run a demo.
 
-Then you got two options to run a demo.
+**Password for all 'Sciebo' downloads: cobel_rl**
 
-**Password for all sciebo downloads: cobel_rl**
-
-*  You can use the precompiled versions of the unity environments. Download them from here:
+*  You can use the precompiled versions of the unity environments.
 
     * Linux: **https://ruhr-uni-bochum.sciebo.de/s/3iFYDgzGxLJ57tv**
     
