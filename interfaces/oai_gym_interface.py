@@ -3,6 +3,7 @@ import time
 import numpy as np
 import gym
 import subprocess
+import signal
 from gym import spaces
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
@@ -19,7 +20,6 @@ class OAIGymInterface(gym.Env):
     # rewardCallback:   this callback function is invoked in the step routine in order to get the appropriate reward w.r.t. the experimental design
 
     def __init__(self, modules, withGUI=True, rewardCallback=None):
-
         # store the modules
         self.modules = modules
 
@@ -112,21 +112,43 @@ class UnityInterface(gym.Env):
     Wrapper for Unity 3D with ML-agents
     """
 
+    @staticmethod
+    def get_cobel_path():
+        """
+        returns the cobel project path
+        TODO move this to some kind of utility class?
+        """
+
+        paths = os.environ['PYTHONPATH'].split(os.pathsep)
+        path = None
+        for p in paths:
+            if 'CoBeL-RL' in p:
+                full_path = p
+                base_folder = full_path.split(sep='CoBeL-RL')[0]
+                path = base_folder + 'CoBeL-RL'
+                break
+        return path
+
     class EmptyClass:
         """
         this class is used as an info dictionary
         """
         pass
 
-    def __init__(self, env_path, scene_name=None, modules=None, start_editor_manual=False,
-                 worker_id=None, seed=42, timeout_wait=60, side_channels=None,
+    def __init__(self, env_path, scene_name=None,
+                 modules=None,
+                 # disabled
+                 # start_editor_manual=False,
+                 # resource_path=None,
+                 # scene_path=None,
+                 seed=42, timeout_wait=60, side_channels=None,
                  time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
                  performance_monitor=None, with_gui=True):
         """
         Constructor
-        :param env_path:                full path to compiled unity executable
+        :param env_path:                full path to compiled unity executable, if None mlagents waits for the editor
+                                        to connect.
         :param modules:                 the old CoBeL-RL modules. Currently unnecessary.
-        :param worker_id:               Port used to communicate with Unity
         :param seed:                    Random seed. Keep at 42 for good luck.
         :param timeout_wait:            Time until Unity is declared ded.
         :param side_channels:           possible channels to talk with the academy.
@@ -138,31 +160,15 @@ class UnityInterface(gym.Env):
         :param with_gui:                whether or not show the performance monitor and the environment gui.
         """
 
-        if env_path is None:
-            print(">>> waiting for editor <<<")
-
-            if not start_editor_manual:
-                subprocess.run(os.environ['UNITY_EXECUTABLE_PATH'])
-
-
-        # setup communication port
-        if worker_id is None:
-            # There is an issue in Linux where the worker id becomes available only after some time has passed since the
-            # last usage. In order to mitigate the issue, a (hopefully) new worker id is automatically selected unless
-            # specifically instructed not to.
-            # Implementation note: two consecutive samples between 0 and 1200 have an immediate 1/1200 chance of
-            # being the same. By using the modulo of unix time we arrive to that likelihood only after an hour, by when
-            # the port has hopefully been released.
-            # Additional notes: The ML-agents framework adds 5005 to the worker_id internally, so no need to worry about
-            # port collision with the OS.
-            worker_id = round(time.time()) % 1200
-
-        # setup engine channel
-        self.engine_configuration_channel = EngineConfigurationChannel()
+        #
+        self.editor_process = None
 
         # setup side channels
         if side_channels is None:
             side_channels = []
+
+        # setup engine channel
+        self.engine_configuration_channel = EngineConfigurationChannel()
 
         # add engine config channel
         side_channels.append(self.engine_configuration_channel)
@@ -177,13 +183,47 @@ class UnityInterface(gym.Env):
 
         # command line args
         args = []
+
+        # when env is an executable mlagents can load a given scene.
         if scene_name is not None:
             args = ["--mlagents-scene-name", scene_name]
 
-        # connect python to executable environment
-        env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, base_port=5004,
-                               timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
-                               args=args)
+        # when no env_path is given mlagents waits for a editor instance to connect on port 5004
+        if env_path is None:
+
+            # set port to 5004
+            worker_id = 0
+
+            """
+            disabled, since this feature requires more work
+            
+            # when the user doesn't want to connect a running editor instance
+            if not start_editor_manual:
+                self.start_unity_process(resource_path=resource_path, scene_path=scene_path, scene_name=scene_name)
+            """
+        else:
+            # select random worker id.
+            # There is an issue in Linux where the worker id becomes available only after some time has passed since the
+            # last usage. In order to mitigate the issue, a (hopefully) new worker id is automatically selected unless
+            # specifically instructed not to.
+            # Implementation note: two consecutive samples between 0 and 1200 have an immediate 1/1200 chance of
+            # being the same. By using the modulo of unix time we arrive to that likelihood only after an hour, by when
+            # the port has hopefully been released.
+            # Additional notes: The ML-agents framework adds 5004 to the worker_id internally, so no need to worry about
+            # port collision with the OS.
+            worker_id = round(time.time()) % 1200
+
+        # try to start the python api
+        try:
+            print(">>> waiting for editor <<<")
+            # connect python to executable environment
+            env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, base_port=5004,
+                                   timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
+                                   args=args)
+
+        # when failed, kill unity process
+        except:
+            self.kill_editor_process()
 
         # reset the environment
         env.reset()
@@ -192,8 +232,8 @@ class UnityInterface(gym.Env):
         self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=400, height=400)
 
         # receive environment information from environment
-        group_name = env.get_agent_groups()[0]              # get agent ID
-        group_spec = env.get_agent_group_spec(group_name)   # get agent specifications
+        group_name = env.get_agent_groups()[0]  # get agent ID
+        group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
 
         print("Specs received:", group_spec)
 
@@ -380,6 +420,25 @@ class UnityInterface(gym.Env):
         :return:
         """
         self.env.close()
+        self.kill_editor_process()
+
+    def start_unity_process(self, resource_path, scene_path, scene_name):
+        assert resource_path is not None
+        assert scene_path is not None
+        assert scene_name is not None
+
+        print(f'>>> starting editor process <<<"\nResources at: {resource_path}\nScene {scene_name} at: {scene_path}')
+        self.editor_process = subprocess.Popen([os.environ['UNITY_EXECUTABLE_PATH'],
+                                                '-createProject',
+                                                '/home/philip/dev/unity_folder/projects/temp',
+                                                '-executeMethod', 'PackageImporter.Import',
+                                                '-resourcePath', resource_path,
+                                                '-scenePath', scene_path,
+                                                '-sceneName', scene_name])
+
+    def kill_editor_process(self):
+        if self.editor_process is not None:
+            os.killpg(os.getpgid(self.editor_process.pid), signal.SIGINT)
 
     def get_observation_specs(self, env_agent_specs):
         """
