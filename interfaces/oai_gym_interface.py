@@ -167,7 +167,7 @@ class UnityInterface(gym.Env):
         :param with_gui:                whether or not show the performance monitor and the environment gui.
         """
 
-        #
+        # storage for editor process
         self.editor_process = None
 
         # setup side channels
@@ -245,7 +245,7 @@ class UnityInterface(gym.Env):
             self.group_name = group_name
             self.agent_action_type = agent_action_type
             self.observation_space = self.get_observation_specs(group_spec)
-            self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
+            self.action_space, self.action_shape, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
             # plotting variables
             self.n_step = 0
@@ -490,7 +490,7 @@ class UnityInterface(gym.Env):
         :return:                    tuple (action_shape, action_space, action_type) used by CoBeL-RL.
         """
         # extract action specs.
-        # to get the action_shape just fetch the action_shape from the spec object.
+        # to get the action_shape. fetch the action_shape from the spec object.
         action_shape = env_agent_specs.action_shape
 
         # get the action type by examining the action_type string of the spec object.
@@ -527,7 +527,7 @@ class UnityInterface(gym.Env):
             raise NotImplementedError(
                 'This combination of action and agent type is not supported. Check the definitions')
 
-        return action_space, action_type
+        return action_space, action_shape, action_type
 
     def format_observations(self, observations):
         """
@@ -660,7 +660,7 @@ class UnityInterface(gym.Env):
         """
         Encodes positive one hot integer into Unity acceptable format
 
-        :param action_id:   a positive integer in the range of 0, N
+        :param action_id:      a positive integer in the range of 0, N
         :return:            correctly formatted action.
 
         Adaptation to Unity branching system.
@@ -699,7 +699,7 @@ class UnityInterface(gym.Env):
         one_hot_vector[action_id] = 1
 
         # resize to be a branch matrix.
-        one_hot_vector.resize(self.action_space.shape)
+        one_hot_vector.resize(self.action_shape)
 
         # get the coordinate where the 1 was stored
         coordinates = np.where(one_hot_vector == 1)
