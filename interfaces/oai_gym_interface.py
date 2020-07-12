@@ -108,27 +108,34 @@ def unity_decorater(func):
     return wrapper
 
 
+def get_cobel_path():
+    """
+    returns the cobel project path
+    TODO move this to some kind of utility class?
+    """
+
+    paths = os.environ['PYTHONPATH'].split(os.pathsep)
+    path = None
+    for p in paths:
+        if 'CoBeL-RL' in p:
+            full_path = p
+            base_folder = full_path.split(sep='CoBeL-RL')[0]
+            path = base_folder + 'CoBeL-RL'
+            break
+    return path
+
+
+def get_env_path():
+    if 'UNITY_ENVIRONMENT_EXECUTABLE' in os.environ.keys():
+        return os.environ['UNITY_ENVIRONMENT_EXECUTABLE']
+    else:
+        return None
+
+
 class UnityInterface(gym.Env):
     """
     Wrapper for Unity 3D with ML-agents
     """
-
-    @staticmethod
-    def get_cobel_path():
-        """
-        returns the cobel project path
-        TODO move this to some kind of utility class?
-        """
-
-        paths = os.environ['PYTHONPATH'].split(os.pathsep)
-        path = None
-        for p in paths:
-            if 'CoBeL-RL' in p:
-                full_path = p
-                base_folder = full_path.split(sep='CoBeL-RL')[0]
-                path = base_folder + 'CoBeL-RL'
-                break
-        return path
 
     class EmptyClass:
         """
@@ -613,6 +620,7 @@ class UnityInterface(gym.Env):
         :Future: This method will likely need to be extended, and perhaps moved inside the individual agent scripts
         inside Unity. Also, if you can think of an easier way to do this, you should probably rewrite this function.
         """
+
         assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
         assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
 
