@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module demo.unity_demo.unity_demo</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong><a href="demo.html"><font color="#ffffff">demo</font></a>.<a href="demo.unity_demo.html"><font color="#ffffff">unity_demo</font></a>.unity_demo</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/home/philip/dev/workspace/CoBeL-RL/demo/unity_demo/unity_demo.py">/home/philip/dev/workspace/CoBeL-RL/demo/unity_demo/unity_demo.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="keras.backend.html">keras.backend</a><br>
+</td><td width="25%" valign=top><a href="os.html">os</a><br>
+</td><td width="25%" valign=top><a href="pydoc.html">pydoc</a><br>
+</td><td width="25%" valign=top></td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#eeaa77">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Functions</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#eeaa77"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl><dt><a name="-reward_callback"><strong>reward_callback</strong></a>(*args, **kwargs)</dt><dd><tt>ATTENTION:&nbsp;This&nbsp;function&nbsp;is&nbsp;deprecated.<br>
+These&nbsp;changes&nbsp;should&nbsp;be&nbsp;encoded&nbsp;in&nbsp;the&nbsp;Academy&nbsp;object&nbsp;of&nbsp;the&nbsp;environment,&nbsp;and&nbsp;triggered&nbsp;via&nbsp;a&nbsp;side&nbsp;channel,&nbsp;or&nbsp;in<br>
+the&nbsp;Agent&nbsp;definition&nbsp;inside&nbsp;Unity.<br>
+&nbsp;<br>
+:return:&nbsp;None</tt></dd></dl>
+ <dl><dt><a name="-single_run"><strong>single_run</strong></a>(env_exec_path, scene_name=None, n_train=1)</dt><dd><tt>:param&nbsp;env_exec_path:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;full&nbsp;path&nbsp;to&nbsp;a&nbsp;Unity&nbsp;executable<br>
+:param&nbsp;scene_name:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;the&nbsp;name&nbsp;of&nbsp;the&nbsp;scene&nbsp;to&nbsp;be&nbsp;loaded<br>
+:param&nbsp;n_train:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;total&nbsp;number&nbsp;of&nbsp;rl&nbsp;steps.&nbsp;Note&nbsp;that&nbsp;it's&nbsp;affected&nbsp;by&nbsp;the&nbsp;action&nbsp;repetition<br>
+:return:<br>
+&nbsp;<br>
+This&nbsp;method&nbsp;performs&nbsp;a&nbsp;single&nbsp;experimental&nbsp;run,&nbsp;i.e.&nbsp;one&nbsp;experiment.&nbsp;It&nbsp;has&nbsp;to&nbsp;be&nbsp;called&nbsp;by&nbsp;either&nbsp;a&nbsp;parallelization<br>
+mechanism&nbsp;(without&nbsp;visual&nbsp;output),&nbsp;or&nbsp;by&nbsp;a&nbsp;direct&nbsp;call&nbsp;(in&nbsp;this&nbsp;case,&nbsp;visual&nbsp;output&nbsp;can&nbsp;be&nbsp;used).<br>
+&nbsp;<br>
+In&nbsp;this&nbsp;case&nbsp;it&nbsp;acts&nbsp;as&nbsp;a&nbsp;tutorial&nbsp;for&nbsp;using&nbsp;the&nbsp;UnityInterface</tt></dd></dl>
+ <dl><dt><a name="-trial_begin_callback"><strong>trial_begin_callback</strong></a>(trial, rl_agent)</dt><dd><tt>This&nbsp;is&nbsp;a&nbsp;callback&nbsp;function&nbsp;that&nbsp;is&nbsp;called&nbsp;in&nbsp;the&nbsp;beginning&nbsp;of&nbsp;each&nbsp;trial.&nbsp;Here,&nbsp;experimental&nbsp;behavior&nbsp;can&nbsp;be<br>
+defined&nbsp;(ABA&nbsp;renewal&nbsp;and&nbsp;the&nbsp;like).<br>
+:param&nbsp;trial:&nbsp;the&nbsp;number&nbsp;of&nbsp;the&nbsp;finished&nbsp;trial<br>
+:param&nbsp;rl_agent:&nbsp;the&nbsp;employed&nbsp;reinforcement&nbsp;learning&nbsp;agent<br>
+:return:&nbsp;None</tt></dd></dl>
+ <dl><dt><a name="-trial_end_callback"><strong>trial_end_callback</strong></a>(trial, rl_agent, logs)</dt><dd><tt>This&nbsp;is&nbsp;a&nbsp;callback&nbsp;routine&nbsp;that&nbsp;is&nbsp;called&nbsp;when&nbsp;a&nbsp;single&nbsp;trial&nbsp;ends.&nbsp;Here,&nbsp;functionality&nbsp;for&nbsp;performance&nbsp;evaluation<br>
+can&nbsp;be&nbsp;introduced.<br>
+:param&nbsp;trial:&nbsp;the&nbsp;number&nbsp;of&nbsp;the&nbsp;finished&nbsp;trial<br>
+:param&nbsp;rl_agent:&nbsp;the&nbsp;employed&nbsp;reinforcement&nbsp;learning&nbsp;agent<br>
+:param&nbsp;logs:&nbsp;output&nbsp;of&nbsp;the&nbsp;reinforcement&nbsp;learning&nbsp;subsystem<br>
+:return:</tt></dd></dl>
+</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>visualOutput</strong> = True</td></tr></table>
+</body></html>
