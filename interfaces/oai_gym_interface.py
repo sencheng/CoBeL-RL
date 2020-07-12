@@ -5,6 +5,7 @@ import gym
 import subprocess
 import signal
 from gym import spaces
+from mlagents_envs.exception import UnityWorkerInUseException
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
@@ -209,7 +210,7 @@ class UnityInterface(gym.Env):
             # port collision with the OS.
             worker_id = round(time.time()) % 1200
 
-        # try to start the python api
+        # try to start the communicator
         try:
             print(">>> waiting for editor <<<")
             # connect python to executable environment
@@ -217,43 +218,42 @@ class UnityInterface(gym.Env):
                                    timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
                                    args=args)
 
-        # when failed, kill unity process
-        except:
-            self.kill_editor_process()
+            # reset the environment
+            env.reset()
 
-        # reset the environment
-        env.reset()
+            # Set the time scale of the engine
+            self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=400, height=400)
 
-        # Set the time scale of the engine
-        self.engine_configuration_channel.set_configuration_parameters(time_scale=time_scale, width=400, height=400)
+            # receive environment information from environment
+            group_name = env.get_agent_groups()[0]  # get agent ID
+            group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
 
-        # receive environment information from environment
-        group_name = env.get_agent_groups()[0]  # get agent ID
-        group_spec = env.get_agent_group_spec(group_name)  # get agent specifications
+            print("Specs received:", group_spec)
 
-        print("Specs received:", group_spec)
+            # save environment variables
+            self.env = env
+            self.group_name = group_name
+            self.agent_action_type = agent_action_type
+            self.observation_space = self.get_observation_specs(group_spec)
+            self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
-        # save environment variables
-        self.env = env
-        self.group_name = group_name
-        self.agent_action_type = agent_action_type
-        self.observation_space = self.get_observation_specs(group_spec)
-        self.action_space, self.action_type = self.get_action_specs(group_spec, agent_action_type)
+            # plotting variables
+            self.n_step = 0
+            self.nb_episode = 0
+            self.nb_episode_steps = 0
+            self.cumulative_episode_reward = 0
 
-        # plotting variables
-        self.n_step = 0
-        self.nb_episode = 0
-        self.nb_episode_steps = 0
-        self.cumulative_episode_reward = 0
+            self.performance_monitor = performance_monitor
 
-        self.performance_monitor = performance_monitor
+            if not with_gui:
+                self.performance_monitor = None
 
-        if not with_gui:
-            self.performance_monitor = None
+            # initialize the observation plots with the original observation shapes
+            if self.performance_monitor is not None:
+                self.performance_monitor.instantiate_observation_plots(group_spec.observation_shapes)
 
-        # initialize the observation plots with the original observation shapes
-        if self.performance_monitor is not None:
-            self.performance_monitor.instantiate_observation_plots(group_spec.observation_shapes)
+        except UnityWorkerInUseException as e:
+            print("the desired port is still in use. please retry after a few seconds.")
 
     def _step(self, action, *args, **kwargs):
         """
@@ -524,12 +524,9 @@ class UnityInterface(gym.Env):
 
         # this means we have multiple sensors attached
         if len(observations) > 1:
-
             # flatten all sensor observations into a single vector
             formatted_observations = np.concatenate([np.ravel(o) for o in observations])
-
         else:
-
             # use the single observation
             formatted_observations = observations[0]
 
@@ -565,6 +562,10 @@ class UnityInterface(gym.Env):
         -> not supported at the moment.
         """
 
+        # if action is a single int we wrap it in a list for compatibility
+        if action is not list:
+            action = [action]
+
         if isinstance(action[0], np.floating):
             assert self.agent_action_type is 'continuous', f'the agent_action_type is set to {self.agent_action_type}' \
                                                            f', but the action is {type(action[0])}'
@@ -574,13 +575,13 @@ class UnityInterface(gym.Env):
                                                          f', but the action is {type(action[0])}'
 
         if self.action_type is 'continuous' and self.agent_action_type is 'discrete':
-            action = self.make_continuous(action)
+            action = self.make_continuous(action[0])
 
         elif self.action_type is 'continuous' and self.agent_action_type is 'continuous':
             action = np.array([action])
 
         elif self.action_type is 'discrete' and self.agent_action_type is 'discrete':
-            action = self.make_discrete(action)
+            action = self.make_discrete(action[0])
 
         else:
             raise NotImplementedError(
