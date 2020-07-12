@@ -278,7 +278,7 @@ class UnityPerformanceMonitor:
                 # mirror image
                 self.observation_plots[i].setImage(observation[::-1])
                 # set color levels
-                self.observation_plots[i].setLevels([0, 1])
+                self.observation_plots[i].setLevels([0.0, 1.0])
 
             # plot as vector
             elif len(observation.shape) == 1:
