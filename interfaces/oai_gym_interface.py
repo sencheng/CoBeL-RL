@@ -150,6 +150,9 @@ class UnityInterface(gym.Env):
                  performance_monitor=None, with_gui=True):
         """
         Constructor
+
+        connects to a given environment executable or to the unity editor and acts as a gym for keras agents.
+
         :param env_path:                full path to compiled unity executable, if None mlagents waits for the editor
                                         to connect.
         :param modules:                 the old CoBeL-RL modules. Currently unnecessary.
@@ -426,6 +429,9 @@ class UnityInterface(gym.Env):
         self.kill_editor_process()
 
     def start_unity_process(self, resource_path, scene_path, scene_name):
+        """
+        starts the unity editor by calling the executable at 'UNITY_EXECUTABLE_PATH'
+        """
         assert resource_path is not None
         assert scene_path is not None
         assert scene_name is not None
@@ -440,6 +446,9 @@ class UnityInterface(gym.Env):
                                                 '-sceneName', scene_name])
 
     def kill_editor_process(self):
+        """
+        stops the editor process.
+        """
         if self.editor_process is not None:
             os.killpg(os.getpgid(self.editor_process.pid), signal.SIGINT)
 
@@ -499,18 +508,18 @@ class UnityInterface(gym.Env):
         # the actions.
         # see: make_discrete
         #
-        if action_type is "discrete" and agent_action_type is "discrete":
+        if action_type == "discrete" and agent_action_type == "discrete":
             # Unity uses branches of discrete actions so we use all possible combinations as action_space.
             action_space = gym.spaces.Discrete(n=np.prod(action_shape))
 
-        elif action_type is "continuous" and agent_action_type is "discrete":
+        elif action_type == "continuous" and agent_action_type == "discrete":
             action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
             # continuous actions in Unity are bidirectional, so we double the action space.
             action_space.n = action_shape * 2
             print(">>> Warning!!! the environment requires a continuous action space\n"
                   ">>> and you configured a discrete agent action space! You will not reach optimal precision!")
 
-        elif action_type is "continuous" and agent_action_type is "continuous":
+        elif action_type == "continuous" and agent_action_type == "continuous":
             action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
             action_space.n = action_shape
 
@@ -581,13 +590,13 @@ class UnityInterface(gym.Env):
             assert self.agent_action_type is 'discrete', f'the agent_action_type is set to {self.agent_action_type}' \
                                                          f', but the action is {type(action[0])}'
 
-        if self.action_type is 'continuous' and self.agent_action_type is 'discrete':
+        if self.action_type == 'continuous' and self.agent_action_type == 'discrete':
             action = self.make_continuous(action[0])
 
-        elif self.action_type is 'continuous' and self.agent_action_type is 'continuous':
+        elif self.action_type == 'continuous' and self.agent_action_type == 'continuous':
             action = np.array([action])
 
-        elif self.action_type is 'discrete' and self.agent_action_type is 'discrete':
+        elif self.action_type == 'discrete' and self.agent_action_type == 'discrete':
             action = self.make_discrete(action[0])
 
         else:
