@@ -579,7 +579,7 @@ class UnityInterface(gym.Env):
         """
 
         # if action is a single int we wrap it in a list for compatibility
-        if action is not list:
+        if action is np.integer:
             action = [action]
 
         if isinstance(action[0], np.floating):
