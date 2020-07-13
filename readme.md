@@ -93,7 +93,7 @@ You got two options to run a demo.
 
     * Linux: **https://ruhr-uni-bochum.sciebo.de/s/3iFYDgzGxLJ57tv**
     
-    * Windows **LINK COMING SOON**
+    * Windows **https://ruhr-uni-bochum.sciebo.de/s/F56wugRAdWRfTj3**
     
     You have to set a system variable named 'UNITY_ENVIRONMENT_EXECUTABLE' to the path of the downloaded environments
     
