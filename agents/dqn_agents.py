@@ -59,7 +59,7 @@ class DQNAgentBaseline():
     # epsilon:          the epsilon value for the epsilon greedy policy
     # trialBeginFcn:    the callback function called at the beginning of each trial, defined for more flexibility in scenario control
     # trialEndFcn:      the callback function called at the end of each trial, defined for more flexibility in scenario control
-    def __init__(self, interfaceOAI, memoryCapacity=10000, epsilon=0.3, trialBeginFcn=None, trialEndFcn=None):
+    def __init__(self, interfaceOAI, memoryCapacity=10000, epsilon=0.3, processor=None, trialBeginFcn=None, trialEndFcn=None):
 
         # store the Open AI Gym interface
         self.interfaceOAI = interfaceOAI
@@ -88,7 +88,7 @@ class DQNAgentBaseline():
         # Retrieve the agent's parameters from the agentParams dictionary
         self.agent = DQNAgent(model=self.model, nb_actions=self.nb_actions, memory=self.memory, nb_steps_warmup=100,
                               enable_dueling_network=False, dueling_type='avg', target_model_update=1e-2,
-                              policy=policyEpsGreedy, batch_size=32)
+                              policy=policyEpsGreedy, batch_size=32, processor=processor)
 
         # compile the agent
         self.agent.compile(Adam(lr=.001, ), metrics=['mse'])

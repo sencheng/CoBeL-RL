@@ -269,7 +269,6 @@ class UnityPerformanceMonitor:
         :param observations: observation to display
         :return:
         """
-
         # plot observations
         for i, observation in enumerate(observations):
 

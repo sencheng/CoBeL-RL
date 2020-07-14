@@ -9,6 +9,7 @@ from mlagents_envs.exception import UnityWorkerInUseException
 from mlagents_envs.side_channel.engine_configuration_channel import EngineConfigurationChannel
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
+from rl.core import Processor
 
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
@@ -126,6 +127,10 @@ def get_cobel_path():
 
 
 def get_env_path():
+    """
+    returns the unity env path
+    TODO move this to some kind of utility class?
+    """
     if 'UNITY_ENVIRONMENT_EXECUTABLE' in os.environ.keys():
         return os.environ['UNITY_ENVIRONMENT_EXECUTABLE']
     else:
@@ -143,11 +148,246 @@ class UnityInterface(gym.Env):
         """
         pass
 
+    class UnityProcessor(Processor):
+        """
+        keras processor for the unity interface
+        """
+        def __init__(self, agent_action_type, env_action_type, action_shape, nb_actions, observation_space):
+            self.agent_action_type = agent_action_type
+            self.env_action_type = env_action_type
+            self.action_shape = action_shape
+            self.nb_actions = nb_actions
+            self.observation_space = observation_space
+
+        def process_observation(self, observation):
+            """Processes the observation as obtained from the environment for use in an agent and
+            returns it.
+            # Arguments
+                observation (object): An observation as obtained by the environment
+            # Returns
+                Observation obtained by the environment processed
+            """
+            observation = self.format_observations(observation)
+
+            # WORKAROUND for extra observations:
+            #
+            # some unity envs send two observations when an agent is done with it's episode.
+            #
+            # Most envs have been modified to achieve that this is prevented,
+            # but some will still send two observations.
+            #
+            # by getting the observation at index 0, we get the last observation of the episode.
+            if not self.observation_space.shape == observation.shape:
+                print(f'double obs! expected: {self.observation_space.shape} !=  received: {observation.shape}')
+                observation = observation[0]
+
+            return observation
+
+        def format_observations(self, observations):
+            """
+            Format the received observation to work with cobel.
+
+            :param observations:    the sensor observations received from ml-agents
+            :return:                the formatted observation
+            """
+            # this means we have multiple sensors attached
+            if len(observations) > 1:
+                # flatten all sensor observations into a single vector
+                formatted_observations = np.concatenate([np.ravel(o) for o in observations])
+            else:
+                # use the single observation
+                formatted_observations = observations[0]
+
+            return formatted_observations
+
+        def process_action(self, action):
+            """Processes an action predicted by an agent but before execution in an environment.
+            # Arguments
+                action (int): Action given to the environment
+            # Returns
+                Processed action given to the environment
+            """
+            action = self.format_action(action)
+            return action
+
+        def format_action(self, action):
+            """
+            This is a wrapper for the action / agent_action_type logic.
+
+            :param action: the action received from the agent.
+            :return:       the action formatted for unity.
+
+            it's not possible to use a discrete agent like DQN with a
+            continuous env from out of the box. So for compatibility reasons,
+            we set up a mapping.
+
+            there are four possible combinations:
+
+            action_type = continuous, agent_action_type = discrete
+            -> we map the discrete action to a continuous action
+            see: make_continuous
+
+            action_type = continuous, agent_action_type = continuous
+            -> nothing to do, just wrap the action.
+
+            action_type = discrete, agent = discrete
+            -> Unity uses branches to structure the actions,
+            so we map our one-hot-vector accordingly.
+            see: make_discrete
+
+            action_type = discrete, agent = continuous
+            -> not supported at the moment.
+            """
+
+            # if action is a single int we wrap it in a list for compatibility
+            if isinstance(action, np.integer):
+                action = [action]
+
+            if isinstance(action[0], np.floating):
+                assert self.agent_action_type is 'continuous', f'the agent_action_type is set to {self.agent_action_type}' \
+                                                               f', but the action is {type(action[0])}'
+
+            if isinstance(action[0], np.integer):
+                assert self.agent_action_type is 'discrete', f'the agent_action_type is set to {self.agent_action_type}' \
+                                                             f', but the action is {type(action[0])}'
+
+            if self.env_action_type == 'continuous' and self.agent_action_type == 'discrete':
+                action = self.make_continuous(action[0])
+
+            elif self.env_action_type == 'continuous' and self.agent_action_type == 'continuous':
+                action = np.array([action])
+
+            elif self.env_action_type == 'discrete' and self.agent_action_type == 'discrete':
+                action = self.make_discrete(action[0])
+
+            else:
+                raise NotImplementedError(
+                    'This combination of action and agent type is not supported.')
+
+            return action
+
+        def make_continuous(self, action):
+            """
+            Takes an action represented by a positive integer and turns it into a representation suitable for continuous
+            unity environments.
+
+            :param action:   a positive value integer from 0 to N
+            :return:            an array with the correct format and range to be used by the ML-Agents framework
+
+            :Reason of existence: The DQN outputs values that are integers. However, the ML-agents framework takes as
+            inputs actions that also have negative values. Take for example an action space of 4 and an integer action id,
+            for example the DQN outputs action 0 from possible actions [0,1,2,3].
+            This would normally correspond to an one-hot array
+            a=[1,0,0,0]
+            But since the ML-agents framework makes use of negative values in continuous inputs, the correct array should be
+            a=[1,0]
+            (and for action 1 -> [-1,0], for action 2 -> [0,1], and for action 3 -> [0,-1]
+
+            :High-level view of implementation: Take an integer alpha. If alpha is odd, it has a negative value. If it
+             is even, the value is positive. Its index in the actions array is alpha divided by two and rounded down.
+
+            :Future: This method will likely need to be extended, and perhaps moved inside the individual agent scripts
+            inside Unity. Also, if you can think of an easier way to do this, you should probably rewrite this function.
+            """
+
+            assert action >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
+            assert int(action) == action, 'Unexpected input. Expected integer, received {}'.format(type(action))
+
+            # check if odd
+            value = action % 2
+
+            # spread range from 0,1 to 0,2
+            value = value * 2
+
+            # adjust range to -1, 1
+            value -= 1
+
+            # flip signs so that evens corresponds to positive and odds corresponds to negative
+            value = -value
+
+            # get the correct bin by rounding down via the old python division
+            index = action // 2
+
+            # make new action
+            new_action = np.zeros(self.action_shape)
+
+            # put the new action in the correct bin
+            new_action[index] = value
+
+            return np.array([new_action])
+
+        def make_discrete(self, action):
+            """
+            Encodes positive one hot integer into Unity acceptable format
+
+            :param action:      a positive integer in the range of 0, N
+            :return:            correctly formatted action.
+
+            Adaptation to Unity branching system.
+
+            In Unity you can specify branches for an discrete actions.
+            f.e. a moving branch where you got the options
+            0 = stay, 1 = left, 2 = right
+            and maybe another action
+            0 = no jump, 1 = jump
+
+            but from our dqn agent we only get out a one hot vector.
+
+            in order to map this we set the action space to
+            the product of the action shape value.
+            f.e. action_shape = (3,2) in Unity => (1,6) one hot vector
+            by doing so we have all possible combinations of actions covered.
+            see get_action_specs
+
+            the last step is to map this one hot vector back to the branches.
+            for this we resize the one hot vector to the shape of the initial
+            action space ...
+            f.e. [0, 0, 1, 0, 0, 0] => [[0, 0], [1, 0], [0, 0]]]
+            and the calculate the indices where it is one.
+            in this case: x=1, y=0 and use them as the values for the branches.
+
+            the output is then [1, 0] corresponding to branch0 action1, branch1 action0
+            """
+
+            assert action >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
+            assert int(action) == action, 'Unexpected input. Expected integer, received {}'.format(type(action))
+
+            # setup a one-hot vector with all possible combinations of actions.
+            one_hot_vector = np.zeros(self.nb_actions)
+
+            # set the chosen action to 1.
+            one_hot_vector[action] = 1
+
+            # resize to be a branch matrix.
+            one_hot_vector.resize(self.action_shape)
+
+            # get the coordinate where the 1 was stored
+            coordinates = np.where(one_hot_vector == 1)
+
+            # store the coordinates as values in the branches.
+            branches = []
+            for arr in coordinates:
+                branches.append(arr[0])
+
+            # wrap and return.
+            return np.array([branches])
+
+        def process_reward(self, reward):
+            """Processes the reward as obtained from the environment for use in an agent and
+            returns it.
+            # Arguments
+                reward (float): A reward as obtained by the environment
+            # Returns
+                Reward obtained by the environment processed
+            """
+            return reward
+
     def __init__(self, env_path, scene_name=None,
                  time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
                  modules=None,
                  seed=42, timeout_wait=60, side_channels=None,
                  performance_monitor=None, with_gui=True):
+
         """
         Constructor
 
@@ -197,17 +437,9 @@ class UnityInterface(gym.Env):
 
         # when no env_path is given mlagents waits for a editor instance to connect on port 5004
         if env_path is None:
-
             # set port to 5004
             worker_id = 0
-
-            """
-            disabled, since this feature requires more work
-            
-            # when the user doesn't want to connect a running editor instance
-            if not start_editor_manual:
-                self.start_unity_process(resource_path=resource_path, scene_path=scene_path, scene_name=scene_name)
-            """
+            print(">>> waiting for editor <<<")
         else:
             # select random worker id.
             # There is an issue in Linux where the worker id becomes available only after some time has passed since the
@@ -222,7 +454,6 @@ class UnityInterface(gym.Env):
 
         # try to start the communicator
         try:
-            print(">>> waiting for editor <<<")
             # connect python to executable environment
             env = UnityEnvironment(file_name=env_path, worker_id=worker_id, seed=seed, base_port=5004,
                                    timeout_wait=timeout_wait, side_channels=side_channels, no_graphics=not with_gui,
@@ -246,6 +477,13 @@ class UnityInterface(gym.Env):
             self.agent_action_type = agent_action_type
             self.observation_space = self.get_observation_specs(group_spec)
             self.action_space, self.action_shape, self.action_type = self.get_action_specs(group_spec, agent_action_type)
+
+            # setup processor
+            self.processor = self.UnityProcessor(self.agent_action_type,
+                                                 self.action_type,
+                                                 self.action_shape,
+                                                 self.action_space.n,
+                                                 self.observation_space)
 
             # plotting variables
             self.n_step = 0
@@ -290,31 +528,6 @@ class UnityInterface(gym.Env):
         info.items = lambda: iter({})  # don't ask why :/
 
         """
-        #### DEBUG SECTION #####################################################
-        """
-
-        # WORKAROUND for extra observations:
-        #
-        # some unity envs send two observations when an agent is done with it's episode.
-        #
-        # Most envs have been modified to achieve that this is prevented,
-        # but some will still send two observations.
-        #
-        # by getting the observation at index 0, we get the last observation of the episode.
-        double_obs_error = False
-        if not self.observation_space.shape == observation.shape:
-            double_obs_error = True
-            print(f'double obs received {self.observation_space.shape} != {observation.shape}')
-            observation = observation[0]
-
-        # DEBUG: used to check if the double obs occur only together with 'done'.
-        #
-        # TODO: remove since always true.
-        #
-        if double_obs_error and not done:
-            raise Exception("Double observation didn't occurred as assumed!")
-
-        """
         #### PLOT SECTION #####################################################
         """
 
@@ -352,15 +565,12 @@ class UnityInterface(gym.Env):
         :param action:  the action provided by an agent.
         :return:        
         """
-        # format the action for unity.
-        formatted_action = self.format_action(action)
-
         # display the action
         if self.performance_monitor is not None:
-            self.performance_monitor.display_actions(formatted_action)
+            self.performance_monitor.display_actions(action)
 
         # setup action in the Unity environment
-        self.env.set_actions(self.group_name, formatted_action)
+        self.env.set_actions(self.group_name, action)
 
         # forward the simulation by a tick (and execute action)
         self.env.step()
@@ -376,29 +586,21 @@ class UnityInterface(gym.Env):
         # get the step result for our agent
         step_result = self.env.get_step_result(self.group_name)
 
-        # get the sensor observations and remove the singleton dimensions
-        squeezed_observations = [o.squeeze() for o in step_result.obs]
+        # get the sensor observations
+        observations = step_result.obs
 
-        # format the observations
-        observation = self.format_observations(squeezed_observations)
+        # remove the singleton dimensions
+        observations = [o.squeeze() for o in observations]
 
         # this displays the sensor observations
         # if multiple sensors are attached it displays a plot for each one.
         if self.performance_monitor is not None:
-            self.performance_monitor.display_observations(squeezed_observations)
+            self.performance_monitor.display_observations(observations)
 
-        # some crazy envs don't always deliver a result
-        if len(step_result.reward) > 0:
-            reward = step_result.reward[0]
-            done = step_result.done[0]
+        reward = step_result.reward[0]
+        done = step_result.done[0]
 
-        else:
-            print(">>> Warning! No step result received. Padding with zeros.")
-            reward = 0
-            done = False
-            observation = np.zeros(shape=self.observation_shape)
-
-        return observation, reward, done
+        return observations, reward, done
 
     def _reset(self):
         """
@@ -427,30 +629,6 @@ class UnityInterface(gym.Env):
         """
         self.env.close()
         self.kill_editor_process()
-
-    def start_unity_process(self, resource_path, scene_path, scene_name):
-        """
-        starts the unity editor by calling the executable at 'UNITY_EXECUTABLE_PATH'
-        """
-        assert resource_path is not None
-        assert scene_path is not None
-        assert scene_name is not None
-
-        print(f'>>> starting editor process <<<"\nResources at: {resource_path}\nScene {scene_name} at: {scene_path}')
-        self.editor_process = subprocess.Popen([os.environ['UNITY_EXECUTABLE_PATH'],
-                                                '-createProject',
-                                                '/home/philip/dev/unity_folder/projects/temp',
-                                                '-executeMethod', 'PackageImporter.Import',
-                                                '-resourcePath', resource_path,
-                                                '-scenePath', scene_path,
-                                                '-sceneName', scene_name])
-
-    def kill_editor_process(self):
-        """
-        stops the editor process.
-        """
-        if self.editor_process is not None:
-            os.killpg(os.getpgid(self.editor_process.pid), signal.SIGINT)
 
     def get_observation_specs(self, env_agent_specs):
         """
@@ -529,185 +707,28 @@ class UnityInterface(gym.Env):
 
         return action_space, action_shape, action_type
 
-    def format_observations(self, observations):
+    def start_editor_process(self, resource_path, scene_path, scene_name):
         """
-        TODO: Move this to a keras processor subclass?
-        Format the received observation to work with cobel.
-
-        :param observations:    the sensor observations received from ml-agents
-        :return:                the formatted observation
+        starts the unity editor by calling the executable at 'UNITY_EXECUTABLE_PATH'
         """
+        assert resource_path is not None
+        assert scene_path is not None
+        assert scene_name is not None
 
-        # this means we have multiple sensors attached
-        if len(observations) > 1:
-            # flatten all sensor observations into a single vector
-            formatted_observations = np.concatenate([np.ravel(o) for o in observations])
-        else:
-            # use the single observation
-            formatted_observations = observations[0]
+        print(f'>>> starting editor process <<<"\nResources at: {resource_path}\nScene {scene_name} at: {scene_path}')
+        self.editor_process = subprocess.Popen([os.environ['UNITY_EXECUTABLE_PATH'],
+                                                '-createProject',
+                                                '/home/philip/dev/unity_folder/projects/temp',
+                                                '-executeMethod', 'PackageImporter.Import',
+                                                '-resourcePath', resource_path,
+                                                '-scenePath', scene_path,
+                                                '-sceneName', scene_name])
 
-        return formatted_observations
-
-    def format_action(self, action):
+    def kill_editor_process(self):
         """
-        TODO: Move this to a keras processor subclass?
-        This is a wrapper for the action / agent_action_type logic.
-
-        :param action: the action received from the agent.
-        :return:       the action formatted for unity.
-
-        it's not possible to use a discrete agent like DQN with a
-        continuous env from out of the box. So for compatibility reasons,
-        we set up a mapping.
-
-        there are four possible combinations:
-
-        action_type = continuous, agent_action_type = discrete
-        -> we map the discrete action to a continuous action
-        see: make_continuous
-
-        action_type = continuous, agent_action_type = continuous
-        -> nothing to do, just wrap the action.
-
-        action_type = discrete, agent = discrete
-        -> Unity uses branches to structure the actions,
-        so we map our one-hot-vector accordingly.
-        see: make_discrete
-
-        action_type = discrete, agent = continuous
-        -> not supported at the moment.
+        stops the editor process.
         """
+        if self.editor_process is not None:
+            os.killpg(os.getpgid(self.editor_process.pid), signal.SIGINT)
 
-        # if action is a single int we wrap it in a list for compatibility
-        if action is np.integer:
-            action = [action]
 
-        if isinstance(action[0], np.floating):
-            assert self.agent_action_type is 'continuous', f'the agent_action_type is set to {self.agent_action_type}' \
-                                                           f', but the action is {type(action[0])}'
-
-        if isinstance(action[0], np.integer):
-            assert self.agent_action_type is 'discrete', f'the agent_action_type is set to {self.agent_action_type}' \
-                                                         f', but the action is {type(action[0])}'
-
-        if self.action_type == 'continuous' and self.agent_action_type == 'discrete':
-            action = self.make_continuous(action[0])
-
-        elif self.action_type == 'continuous' and self.agent_action_type == 'continuous':
-            action = np.array([action])
-
-        elif self.action_type == 'discrete' and self.agent_action_type == 'discrete':
-            action = self.make_discrete(action[0])
-
-        else:
-            raise NotImplementedError(
-                'This combination of action and agent type is not supported.')
-
-        return action
-
-    def make_continuous(self, action_id):
-        """
-        TODO: Move this to a keras processor subclass
-        Takes an action represented by a positive integer and turns it into a representation suitable for continuous
-        unity environments.
-        
-        :param action_id:   a positive value integer from 0 to N
-        :return:            an array with the correct format and range to be used by the ML-Agents framework
-
-        :Reason of existence: The DQN outputs values that are integers. However, the ML-agents framework takes as
-        inputs actions that also have negative values. Take for example an action space of 4 and an integer action id,
-        for example the DQN outputs action 0 from possible actions [0,1,2,3].
-        This would normally correspond to an one-hot array
-        a=[1,0,0,0]
-        But since the ML-agents framework makes use of negative values in continuous inputs, the correct array should be
-        a=[1,0]
-        (and for action 1 -> [-1,0], for action 2 -> [0,1], and for action 3 -> [0,-1]
-
-        :High-level view of implementation: Take an integer alpha. If alpha is odd, it has a negative value. If it
-         is even, the value is positive. Its index in the actions array is alpha divided by two and rounded down.
-
-        :Future: This method will likely need to be extended, and perhaps moved inside the individual agent scripts
-        inside Unity. Also, if you can think of an easier way to do this, you should probably rewrite this function.
-        """
-
-        assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
-        assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
-
-        # check if odd
-        value = action_id % 2
-
-        # spread range from 0,1 to 0,2
-        value = value * 2
-
-        # adjust range to -1, 1
-        value -= 1
-
-        # flip signs so that evens corresponds to positive and odds corresponds to negative
-        value = -value
-
-        # get the correct bin by rounding down via the old python division
-        index = action_id // 2
-
-        # make new action
-        new_action = np.zeros(self.action_space.shape)
-
-        # put the new action in the correct bin
-        new_action[index] = value
-
-        return np.array([new_action])
-
-    def make_discrete(self, action_id):
-        """
-        Encodes positive one hot integer into Unity acceptable format
-
-        :param action_id:      a positive integer in the range of 0, N
-        :return:            correctly formatted action.
-
-        Adaptation to Unity branching system.
-
-        In Unity you can specify branches for an discrete actions.
-        f.e. a moving branch where you got the options
-        0 = stay, 1 = left, 2 = right
-        and maybe another action 
-        0 = no jump, 1 = jump
-
-        but from our dqn agent we only get out a one hot vector.
-
-        in order to map this we set the action space to
-        the product of the action shape value.
-        f.e. action_shape = (3,2) in Unity => (1,6) one hot vector
-        by doing so we have all possible combinations of actions covered.
-        see get_action_specs
-
-        the last step is to map this one hot vector back to the branches.
-        for this we resize the one hot vector to the shape of the initial
-        action space ...
-        f.e. [0, 0, 1, 0, 0, 0] => [[0, 0], [1, 0], [0, 0]]]
-        and the calculate the indices where it is one.
-        in this case: x=1, y=0 and use them as the values for the branches.
-
-        the output is then [1, 0] corresponding to branch0 action1, branch1 action0
-        """
-
-        assert action_id >= 0, 'This function assumes that actions are enumerated in the domain of positive integers.'
-        assert int(action_id) == action_id, 'Unexpected input. Expected integer, received {}'.format(type(action_id))
-
-        # setup a one-hot vector with all possible combinations of actions.
-        one_hot_vector = np.zeros(self.action_space.n)
-
-        # set the chosen action to 1.
-        one_hot_vector[action_id] = 1
-
-        # resize to be a branch matrix.
-        one_hot_vector.resize(self.action_shape)
-
-        # get the coordinate where the 1 was stored
-        coordinates = np.where(one_hot_vector == 1)
-
-        # store the coordinates as values in the branches.
-        branches = []
-        for arr in coordinates:
-            branches.append(arr[0])
-
-        # wrap and return.
-        return np.array([branches])
