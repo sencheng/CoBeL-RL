@@ -188,7 +188,7 @@ class UnityInterface(gym.Env):
 
             return observation_space
 
-        def get_action_space(self, env_agent_specs, agent_action_type):
+        def __get_action_space(self, env_agent_specs, agent_action_type):
             """
             Extract the information's about the action space from ml-agents group_spec
 
@@ -260,7 +260,27 @@ class UnityInterface(gym.Env):
 
             return observation
 
-        def format_observations(self, observations):
+        def process_action(self, action):
+            """Processes an action predicted by an agent but before execution in an environment.
+            # Arguments
+                action (int): Action given to the environment
+            # Returns
+                Processed action given to the environment
+            """
+            action = self.__format_action(action)
+            return action
+
+        def process_reward(self, reward):
+            """Processes the reward as obtained from the environment for use in an agent and
+            returns it.
+            # Arguments
+                reward (float): A reward as obtained by the environment
+            # Returns
+                Reward obtained by the environment processed
+            """
+            return reward
+
+        def __format_observations(self, observations):
             """
             Format the received observation to work with cobel.
 
@@ -277,17 +297,7 @@ class UnityInterface(gym.Env):
 
             return formatted_observations
 
-        def process_action(self, action):
-            """Processes an action predicted by an agent but before execution in an environment.
-            # Arguments
-                action (int): Action given to the environment
-            # Returns
-                Processed action given to the environment
-            """
-            action = self.format_action(action)
-            return action
-
-        def format_action(self, action):
+        def __format_action(self, action):
             """
             This is a wrapper for the action / agent_action_type logic.
 
@@ -329,13 +339,13 @@ class UnityInterface(gym.Env):
                                                              f', but the action is {type(action[0])}'
 
             if self.env_action_type == 'continuous' and self.agent_action_type == 'discrete':
-                action = self.make_continuous(action[0])
+                action = self.__make_continuous(action[0])
 
             elif self.env_action_type == 'continuous' and self.agent_action_type == 'continuous':
                 action = np.array([action])
 
             elif self.env_action_type == 'discrete' and self.agent_action_type == 'discrete':
-                action = self.make_discrete(action[0])
+                action = self.__make_discrete(action[0])
 
             else:
                 raise NotImplementedError(
@@ -343,7 +353,7 @@ class UnityInterface(gym.Env):
 
             return action
 
-        def make_continuous(self, action):
+        def __make_continuous(self, action):
             """
             Takes an action represented by a positive integer and turns it into a representation suitable for continuous
             unity environments.
@@ -393,7 +403,7 @@ class UnityInterface(gym.Env):
 
             return np.array([new_action])
 
-        def make_discrete(self, action):
+        def __make_discrete(self, action):
             """
             Encodes positive one hot integer into Unity acceptable format
 
@@ -448,16 +458,6 @@ class UnityInterface(gym.Env):
 
             # wrap and return.
             return np.array([branches])
-
-        def process_reward(self, reward):
-            """Processes the reward as obtained from the environment for use in an agent and
-            returns it.
-            # Arguments
-                reward (float): A reward as obtained by the environment
-            # Returns
-                Reward obtained by the environment processed
-            """
-            return reward
 
     def __init__(self, env_path, scene_name=None,
                  time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
@@ -554,7 +554,8 @@ class UnityInterface(gym.Env):
 
             # setup processor
             self.processor = self.UnityProcessor(env_agent_specs=group_spec,
-                                                 agent_action_type=agent_action_type)
+                                                 agent_action_type=agent_action_type,
+                                                 use_grey_scale=True)
 
             # get the spaces from processor
             self.observation_space = self.processor.observation_space
@@ -587,14 +588,14 @@ class UnityInterface(gym.Env):
         """
 
         # step the env with the provided action.
-        self.step_env(action)
+        self.__step_env(action)
 
         # accumulate steps
         self.n_step += 1
 
         # get results
         # at the moment only one agent in the environment is supported.
-        observation, reward, done = self.get_step_results()
+        observation, reward, done = self.__get_step_results()
 
         # Instantiate info var
         # This is currently unused, but required by gym/core.py. At some point, useful information could be stored here
@@ -687,7 +688,7 @@ class UnityInterface(gym.Env):
         self.env.reset()
 
         # get the initial observation from the env.
-        observation, _, _ = self.get_step_results()
+        observation, _, _ = self.__get_step_results()
 
         if self.performance_monitor is not None:
             self.performance_monitor.set_step_data(self.n_step)
@@ -703,9 +704,54 @@ class UnityInterface(gym.Env):
         :return:
         """
         self.env.close()
-        self.kill_editor_process()
+        self.__kill_editor_process()
 
-    def start_editor_process(self, resource_path, scene_path, scene_name):
+    def __step_env(self, action):
+        """
+        Wrapper for the step functionality of the Unity env.
+        We format the action, set it and step the env.
+
+        :param action:  the action provided by an agent.
+        :return:
+        """
+        # display the action
+        if self.performance_monitor is not None:
+            self.performance_monitor.display_actions(action)
+
+        # setup action in the Unity environment
+        self.env.set_actions(self.group_name, action)
+
+        # forward the simulation by a tick (and execute action)
+        self.env.step()
+
+    def __get_step_results(self):
+        """
+        Wrapper for the get_step_result function of Unity.
+        We only use the first result of each type, since we only support one agent.
+
+        :return: tuple observation, reward, done
+        """
+
+        # get the step result for our agent
+        step_result = self.env.get_step_result(self.group_name)
+
+        # get the sensor observations
+        observations = step_result.obs
+
+        # remove the singleton dimensions
+        observations = [o.squeeze() for o in observations]
+
+        # this displays the sensor observations
+        # if multiple sensors are attached it displays a plot for each one.
+        if self.performance_monitor is not None:
+            self.performance_monitor.display_observations(observations)
+
+        reward = step_result.reward[0]
+        done = step_result.done[0]
+
+        return observations, reward, done
+
+    def __start_editor_process(self, resource_path, scene_path, scene_name):
         """
         starts the unity editor by calling the executable at 'UNITY_EXECUTABLE_PATH'
         """
@@ -722,7 +768,7 @@ class UnityInterface(gym.Env):
                                                 '-scenePath', scene_path,
                                                 '-sceneName', scene_name])
 
-    def kill_editor_process(self):
+    def __kill_editor_process(self):
         """
         stops the editor process.
         """

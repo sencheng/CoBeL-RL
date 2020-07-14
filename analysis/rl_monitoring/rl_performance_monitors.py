@@ -1,9 +1,6 @@
-import sys
 import numpy as np
 import pyqtgraph as pg
-from pyqtgraph.Qt import QtGui
 import time
-from time import perf_counter
 
 
 def measure_time_decorator(func):
@@ -149,8 +146,8 @@ class UnityPerformanceMonitor:
         :param nb_step: number of the current learning step
         :return:
         """
-        self.set_sps(int(nb_step / (time.perf_counter() - self.start_time)))
-        self.set_nb_steps(nb_step)
+        self.__set_sps(int(nb_step / (time.perf_counter() - self.start_time)))
+        self.__set_nb_steps(nb_step)
 
     def set_episode_data(self, nb_episode, nb_episode_steps, cumulative_reward):
         """
@@ -162,9 +159,9 @@ class UnityPerformanceMonitor:
         :return:
         """
         self.nb_episodes_label.setText(f'Episode: {nb_episode}')
-        self.set_episode_plot(nb_episode, nb_episode_steps, cumulative_reward)
+        self.__set_episode_plot(nb_episode, nb_episode_steps, cumulative_reward)
 
-    def set_sps(self, sps):
+    def __set_sps(self, sps):
         """
         set the sps value to the label
         :param sps: steps per second
@@ -172,7 +169,7 @@ class UnityPerformanceMonitor:
         """
         self.sps_label.setText("steps per second: " + str(sps))
 
-    def set_nb_steps(self, steps):
+    def __set_nb_steps(self, steps):
         """
         set the number of steps to the label
         :param steps: total number of steps
@@ -180,7 +177,7 @@ class UnityPerformanceMonitor:
         """
         self.total_steps_label.setText("elapsed steps: " + str(steps))
 
-    def set_episode_plot(self, nb_episode, nb_episode_steps, episode_reward):
+    def __set_episode_plot(self, nb_episode, nb_episode_steps, episode_reward):
         """
         calculates the mean and the variance and plots the values in the corresponding graphs.
         :param nb_episode: number of the current episode
