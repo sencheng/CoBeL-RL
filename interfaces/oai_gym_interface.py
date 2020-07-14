@@ -10,6 +10,7 @@ from mlagents_envs.side_channel.engine_configuration_channel import EngineConfig
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
 from rl.core import Processor
+from PIL import Image
 
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
@@ -471,7 +472,8 @@ class UnityInterface(gym.Env):
             return np.array([branches])
 
     def __init__(self, env_path, scene_name=None,
-                 time_scale=2.0, nb_max_episode_steps=0, decision_interval=5, agent_action_type='discrete',
+                 time_scale=2.0, nb_max_episode_steps=0, decision_interval=5,
+                 agent_action_type='discrete', use_grey_scale_images=False,
                  modules=None,
                  seed=42, timeout_wait=60, side_channels=None,
                  performance_monitor=None, with_gui=True):
@@ -566,7 +568,7 @@ class UnityInterface(gym.Env):
             # setup processor
             self.processor = self.UnityProcessor(env_agent_specs=group_spec,
                                                  agent_action_type=agent_action_type,
-                                                 use_grey_scale=True)
+                                                 use_grey_scale=use_grey_scale_images)
 
             # get the spaces from processor
             self.observation_space = self.processor.observation_space
@@ -643,51 +645,6 @@ class UnityInterface(gym.Env):
             self.performance_monitor.update(nb_step=self.n_step)
 
         return observation, reward, done, info
-
-    def step_env(self, action):
-        """
-        Wrapper for the step functionality of the Unity env.
-        We format the action, set it and step the env.
-
-        :param action:  the action provided by an agent.
-        :return:        
-        """
-        # display the action
-        if self.performance_monitor is not None:
-            self.performance_monitor.display_actions(action)
-
-        # setup action in the Unity environment
-        self.env.set_actions(self.group_name, action)
-
-        # forward the simulation by a tick (and execute action)
-        self.env.step()
-
-    def get_step_results(self):
-        """
-        Wrapper for the get_step_result function of Unity.
-        We only use the first result of each type, since we only support one agent.
-
-        :return: tuple observation, reward, done
-        """
-
-        # get the step result for our agent
-        step_result = self.env.get_step_result(self.group_name)
-
-        # get the sensor observations
-        observations = step_result.obs
-
-        # remove the singleton dimensions
-        observations = [o.squeeze() for o in observations]
-
-        # this displays the sensor observations
-        # if multiple sensors are attached it displays a plot for each one.
-        if self.performance_monitor is not None:
-            self.performance_monitor.display_observations(observations)
-
-        reward = step_result.reward[0]
-        done = step_result.done[0]
-
-        return observations, reward, done
 
     def _reset(self):
         """
