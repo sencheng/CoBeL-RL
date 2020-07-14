@@ -153,13 +153,14 @@ class UnityInterface(gym.Env):
         """
         keras processor for the unity interface
         """
+
         def __init__(self, env_agent_specs,
                      agent_action_type,
-                     use_grey_scale=False,
+                     use_gray_scale=False,
                      performance_monitor=None):
 
             self.agent_action_type = agent_action_type
-            self.grey_scale = use_grey_scale
+            self.gray_scale = use_gray_scale
             self.performance_monitor = performance_monitor
 
             self.observation_space = self.__get_observation_space(env_agent_specs)
@@ -191,7 +192,7 @@ class UnityInterface(gym.Env):
                 observation_shape = observation_shapes[0]
 
                 if len(observation_shape) == 3:
-                    if self.grey_scale:
+                    if self.gray_scale:
                         observation_shape = observation_shape[:2]
 
             observation_space = gym.spaces.Box(low=0, high=1, shape=observation_shape)
@@ -254,7 +255,7 @@ class UnityInterface(gym.Env):
             # Returns
                 Observation obtained by the environment processed
             """
-            observation = self.__format_observations(observation)
+            observation = self.__process_observations(observation)
 
             # WORKAROUND for extra observations:
             #
@@ -279,7 +280,7 @@ class UnityInterface(gym.Env):
             # Returns
                 Processed action given to the environment
             """
-            action = self.__format_action(action)
+            action = self.__process_action(action)
             return action
 
         def process_reward(self, reward):
@@ -292,7 +293,7 @@ class UnityInterface(gym.Env):
             """
             return reward
 
-        def __format_observations(self, observations):
+        def __process_observations(self, observations):
             """
             Format the received observation to work with cobel.
 
@@ -302,20 +303,32 @@ class UnityInterface(gym.Env):
             # this means we have multiple sensors attached
             if len(observations) > 1:
                 # flatten all sensor observations into a single vector
-                formatted_observations = np.concatenate([np.ravel(o) for o in observations])
+                processed_observation = np.concatenate([np.ravel(o) for o in observations])
             else:
                 # use the single observation
-                formatted_observations = observations[0]
+                processed_observation = observations[0]
 
-                if len(formatted_observations.shape) == 3:
-                    if self.grey_scale:
-                        grey_scale_image = np.sum(formatted_observations, axis=2) / formatted_observations.shape[2]
+                # apply when observation is an image
+                if len(processed_observation.shape) == 3:
+                    if self.gray_scale:
+                        processed_observation = self.__to_gray_scale_image(processed_observation)
 
-                    formatted_observations = grey_scale_image
+            return processed_observation
 
-            return formatted_observations
+        def __to_gray_scale_image(self, image_array):
+            """
+            converts a 3D image array to a 2D grayscale image array
+            """
+            assert len(image_array.shape) == 3, 'provided image does not match the expected shape'
+            # convert to greyscale
+            gray_scale_image = np.sum(image_array[:, :, :3], axis=2) / image_array.shape[2]
+            # adjust contrast
+            contrast = 1
+            gray_scale_image = contrast * (gray_scale_image - 0.5) + 0.5
 
-        def __format_action(self, action):
+            return gray_scale_image
+
+        def __process_action(self, action):
             """
             This is a wrapper for the action / agent_action_type logic.
 
@@ -357,13 +370,13 @@ class UnityInterface(gym.Env):
                                                              f', but the action is {type(action[0])}'
 
             if self.env_action_type == 'continuous' and self.agent_action_type == 'discrete':
-                action = self.__make_continuous(action[0])
+                action = self.__to_continuous(action[0])
 
             elif self.env_action_type == 'continuous' and self.agent_action_type == 'continuous':
                 action = np.array([action])
 
             elif self.env_action_type == 'discrete' and self.agent_action_type == 'discrete':
-                action = self.__make_discrete(action[0])
+                action = self.__to_discrete(action[0])
 
             else:
                 raise NotImplementedError(
@@ -371,7 +384,7 @@ class UnityInterface(gym.Env):
 
             return action
 
-        def __make_continuous(self, action):
+        def __to_continuous(self, action):
             """
             Takes an action represented by a positive integer and turns it into a representation suitable for continuous
             unity environments.
@@ -421,7 +434,7 @@ class UnityInterface(gym.Env):
 
             return np.array([new_action])
 
-        def __make_discrete(self, action):
+        def __to_discrete(self, action):
             """
             Encodes positive one hot integer into Unity acceptable format
 
@@ -576,7 +589,7 @@ class UnityInterface(gym.Env):
             # setup processor
             self.processor = self.UnityProcessor(env_agent_specs=group_spec,
                                                  agent_action_type=agent_action_type,
-                                                 use_grey_scale=use_grey_scale_images,
+                                                 use_gray_scale=use_grey_scale_images,
                                                  performance_monitor=performance_monitor)
 
             # get the spaces from processor
@@ -751,5 +764,3 @@ class UnityInterface(gym.Env):
         """
         if self.editor_process is not None:
             os.killpg(os.getpgid(self.editor_process.pid), signal.SIGINT)
-
-
