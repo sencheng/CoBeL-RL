@@ -99,6 +99,7 @@ class UnityPerformanceMonitor:
         self.action_plot_item.getViewBox().enableAutoRange(x=True, y=False)
         self.action_plot_item.getViewBox().setYRange(min=-2, max=2)
         self.action_plot_item.getViewBox().setXRange(min=-20, max=20)
+        self.action_plot_item.getViewBox().setLimits(xMin=0)
         self.action_plot_item.showGrid(x=True, y=True)
         self.action_scatter_plot = pg.ScatterPlotItem()
         self.action_plot_item.addItem(self.action_scatter_plot)
@@ -261,7 +262,7 @@ class UnityPerformanceMonitor:
         :return:
         """
         self.action_scatter_plot.clear()
-        self.action_scatter_plot.addPoints(pos=list(enumerate(action[0])))
+        self.action_scatter_plot.addPoints(pos=list(enumerate(action[0], 1)))
 
     def display_observations(self, observations):
         """
