@@ -152,12 +152,89 @@ class UnityInterface(gym.Env):
         """
         keras processor for the unity interface
         """
-        def __init__(self, agent_action_type, env_action_type, action_shape, nb_actions, observation_space):
+        def __init__(self, env_agent_specs,
+                     agent_action_type):
+
             self.agent_action_type = agent_action_type
-            self.env_action_type = env_action_type
-            self.action_shape = action_shape
-            self.nb_actions = nb_actions
-            self.observation_space = observation_space
+            self.observation_space = self.get_observation_space(env_agent_specs)
+            self.action_space, self.action_shape, self.env_action_type = self.get_action_space(env_agent_specs,
+                                                                                               agent_action_type)
+
+        def get_observation_space(self, env_agent_specs):
+            """
+            Extract the information about the observation space from ml-agents group_spec.
+
+            :return:                    observation space
+            """
+
+            # list of the sensor observation shapes
+            observation_shapes = env_agent_specs.observation_shapes
+
+            # this means we have multiple sensors attached
+            if len(observation_shapes) > 1:
+
+                # so we calculate the size of the concatenated flattened sensors observations.
+                observation_shape = (sum([np.prod(shape) for shape in observation_shapes]),)
+
+                print(">>> Warning! multiple sensor observations are only supported when flattened.\n"
+                      ">>> flattening the observations!!!")
+
+            else:
+
+                # select the single sensors observation shape
+                observation_shape = observation_shapes[0]
+
+            observation_space = gym.spaces.Box(low=0, high=1, shape=observation_shape)
+
+            return observation_space
+
+        def get_action_space(self, env_agent_specs, agent_action_type):
+            """
+            Extract the information's about the action space from ml-agents group_spec
+
+            :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
+            :param agent_action_type:   the agent_action_type string
+            :return:                    tuple (action_shape, action_space, action_type) used by CoBeL-RL.
+            """
+            # extract action specs.
+            # to get the action_shape. fetch the action_shape from the spec object.
+            action_shape = env_agent_specs.action_shape
+
+            # get the action type by examining the action_type string of the spec object.
+            action_type = "discrete" if 'DISCRETE' in str(env_agent_specs.action_type) else "continuous"
+
+            # instantiate the action space
+            #
+            # depends on the type of agent you are using and the action space of the environment.
+            #
+            # if you are using an agent with a natively discrete space like a DQNAgent, you are not able to run
+            # a continuous example. For compatibility reasons, we set up a mapping to discretize the continuous space.
+            # see: make_continuous
+            #
+            # we also need to process the action_space for discrete actions, since Unity uses branches to structure
+            # the actions.
+            # see: make_discrete
+            #
+            if action_type == "discrete" and agent_action_type == "discrete":
+                # Unity uses branches of discrete actions so we use all possible combinations as action_space.
+                action_space = gym.spaces.Discrete(n=np.prod(action_shape))
+
+            elif action_type == "continuous" and agent_action_type == "discrete":
+                action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+                # continuous actions in Unity are bidirectional, so we double the action space.
+                action_space.n = action_shape * 2
+                print(">>> Warning!!! the environment requires a continuous action space\n"
+                      ">>> and you configured a discrete agent action space! You will not reach optimal precision!")
+
+            elif action_type == "continuous" and agent_action_type == "continuous":
+                action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
+                action_space.n = action_shape
+
+            else:
+                raise NotImplementedError(
+                    'This combination of action and agent type is not supported. Check the definitions')
+
+            return action_space, action_shape, action_type
 
         def process_observation(self, observation):
             """Processes the observation as obtained from the environment for use in an agent and
@@ -353,7 +430,7 @@ class UnityInterface(gym.Env):
             assert int(action) == action, 'Unexpected input. Expected integer, received {}'.format(type(action))
 
             # setup a one-hot vector with all possible combinations of actions.
-            one_hot_vector = np.zeros(self.nb_actions)
+            one_hot_vector = np.zeros(self.action_space.n)
 
             # set the chosen action to 1.
             one_hot_vector[action] = 1
@@ -474,16 +551,14 @@ class UnityInterface(gym.Env):
             # save environment variables
             self.env = env
             self.group_name = group_name
-            self.agent_action_type = agent_action_type
-            self.observation_space = self.get_observation_specs(group_spec)
-            self.action_space, self.action_shape, self.action_type = self.get_action_specs(group_spec, agent_action_type)
 
             # setup processor
-            self.processor = self.UnityProcessor(self.agent_action_type,
-                                                 self.action_type,
-                                                 self.action_shape,
-                                                 self.action_space.n,
-                                                 self.observation_space)
+            self.processor = self.UnityProcessor(env_agent_specs=group_spec,
+                                                 agent_action_type=agent_action_type)
+
+            # get the spaces from processor
+            self.observation_space = self.processor.observation_space
+            self.action_space = self.processor.action_space
 
             # plotting variables
             self.n_step = 0
@@ -629,83 +704,6 @@ class UnityInterface(gym.Env):
         """
         self.env.close()
         self.kill_editor_process()
-
-    def get_observation_specs(self, env_agent_specs):
-        """
-        Extract the information about the observation space from ml-agents group_spec.
-
-        :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
-        :return:                    observation space
-        """
-
-        # list of the sensor observation shapes
-        observation_shapes = env_agent_specs.observation_shapes
-
-        # this means we have multiple sensors attached
-        if len(observation_shapes) > 1:
-
-            # so we calculate the size of the concatenated flattened sensors observations.
-            observation_shape = (sum([np.prod(shape) for shape in observation_shapes]),)
-
-            print(">>> Warning! multiple sensor observations are only supported when flattened.\n"
-                  ">>> flattening the observations!!!")
-
-        else:
-
-            # select the single sensors observation shape
-            observation_shape = observation_shapes[0]
-
-        observation_space = gym.spaces.Box(low=0, high=1, shape=observation_shape)
-
-        return observation_space
-
-    def get_action_specs(self, env_agent_specs, agent_action_type):
-        """
-        Extract the information's about the action space from ml-agents group_spec
-
-        :param env_agent_specs:     the group_spec object for the agent transmitted by ml agents env.
-        :param agent_action_type:   the agent_action_type string
-        :return:                    tuple (action_shape, action_space, action_type) used by CoBeL-RL.
-        """
-        # extract action specs.
-        # to get the action_shape. fetch the action_shape from the spec object.
-        action_shape = env_agent_specs.action_shape
-
-        # get the action type by examining the action_type string of the spec object.
-        action_type = "discrete" if 'DISCRETE' in str(env_agent_specs.action_type) else "continuous"
-
-        # instantiate the action space
-        #
-        # depends on the type of agent you are using and the action space of the environment.
-        #
-        # if you are using an agent with a natively discrete space like a DQNAgent, you are not able to run
-        # a continuous example. For compatibility reasons, we set up a mapping to discretize the continuous space.
-        # see: make_continuous
-        #
-        # we also need to process the action_space for discrete actions, since Unity uses branches to structure
-        # the actions.
-        # see: make_discrete
-        #
-        if action_type == "discrete" and agent_action_type == "discrete":
-            # Unity uses branches of discrete actions so we use all possible combinations as action_space.
-            action_space = gym.spaces.Discrete(n=np.prod(action_shape))
-
-        elif action_type == "continuous" and agent_action_type == "discrete":
-            action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            # continuous actions in Unity are bidirectional, so we double the action space.
-            action_space.n = action_shape * 2
-            print(">>> Warning!!! the environment requires a continuous action space\n"
-                  ">>> and you configured a discrete agent action space! You will not reach optimal precision!")
-
-        elif action_type == "continuous" and agent_action_type == "continuous":
-            action_space = gym.spaces.Box(low=-1 * np.ones(shape=action_shape), high=np.ones(shape=action_shape))
-            action_space.n = action_shape
-
-        else:
-            raise NotImplementedError(
-                'This combination of action and agent type is not supported. Check the definitions')
-
-        return action_space, action_shape, action_type
 
     def start_editor_process(self, resource_path, scene_path, scene_name):
         """
