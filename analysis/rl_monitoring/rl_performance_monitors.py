@@ -52,9 +52,12 @@ class UnityPerformanceMonitor:
         self.win.setCentralItem(self.layout)
 
         # add labels
-        self.sps_label = self.layout.addLabel(col=2)
-        self.nb_episodes_label = self.layout.addLabel("Episode: 0", col=3)
-        self.total_steps_label = self.layout.addLabel(col=4)
+        self.sps_label = self.layout.addLabel(col=2, justify='center')
+        self.sps_label.setFixedHeight(h=10)
+        self.nb_episodes_label = self.layout.addLabel("Episode: 0", col=3, justify='center')
+        self.nb_episodes_label.setFixedHeight(h=10)
+        self.total_steps_label = self.layout.addLabel(col=4, justify='center')
+        self.total_steps_label.setFixedHeight(h=10)
 
         # pens
         self.raw_pen = pg.mkPen((255, 255, 255), width=1)
