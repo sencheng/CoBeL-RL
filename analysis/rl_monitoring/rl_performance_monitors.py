@@ -40,10 +40,11 @@ class UnityPerformanceMonitor:
 
         # set image axis mode
         pg.setConfigOptions(imageAxisOrder='row-major')
+        pg.setConfigOptions()
 
         # qt window
         self.win = pg.GraphicsWindow()
-        self.win.resize(1000, 800)
+        self.win.resize(1800, 600)
         self.win.setWindowTitle("Unity Environment Plot")
 
         # layout
@@ -51,11 +52,9 @@ class UnityPerformanceMonitor:
         self.win.setCentralItem(self.layout)
 
         # add labels
-        self.sps_label = self.layout.addLabel()
-        self.nb_episodes_label = self.layout.addLabel()
-        self.total_steps_label = self.layout.addLabel()
-
-        self.layout.nextRow()
+        self.sps_label = self.layout.addLabel(col=2)
+        self.nb_episodes_label = self.layout.addLabel("Episode: 0", col=3)
+        self.total_steps_label = self.layout.addLabel(col=4)
 
         # pens
         self.raw_pen = pg.mkPen((255, 255, 255), width=1)
@@ -78,21 +77,20 @@ class UnityPerformanceMonitor:
         self.steps_plot_viewbox.setLimits(xMin=0)
 
         # episode plots
-        self.reward_plot_item = self.layout.addPlot(title="reward", viewBox=self.reward_plot_viewbox, colspan=3)
+        self.reward_plot_item = self.layout.addPlot(title="reward", viewBox=self.reward_plot_viewbox,
+                                                    colspan=3, col=2, row=1)
         self.reward_plot_item.showGrid(x=True, y=True)
         self.reward_graph = self.reward_plot_item.plot()
         self.mean_reward_graph = self.reward_plot_item.plot()
 
-        self.layout.nextRow()
-
-        self.steps_plot_item = self.layout.addPlot(title="steps per episode", viewBox=self.steps_plot_viewbox, colspan=3)
+        self.steps_plot_item = self.layout.addPlot(title="steps per episode", viewBox=self.steps_plot_viewbox,
+                                                   colspan=3, col=2, row=2)
         self.steps_plot_item.showGrid(x=True, y=True)
         self.steps_graph = self.steps_plot_item.plot()
         self.mean_steps_graph = self.steps_plot_item.plot()
 
-        self.layout.nextRow()
-
-        self.action_plot_item = self.layout.addPlot(title="actions", colspan=3)
+        self.action_plot_item = self.layout.addPlot(title="actions",
+                                                    colspan=3, col=2, row=3)
         self.action_plot_item.getViewBox().enableAutoRange(x=True, y=False)
         self.action_plot_item.getViewBox().setYRange(min=-2, max=2)
         self.action_plot_item.getViewBox().setXRange(min=-20, max=20)
@@ -107,6 +105,10 @@ class UnityPerformanceMonitor:
         # observation shapes and will adapt to the type of data given
         self.observation_plots = []
         self.observation_plot_viewbox = pg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
+
+        self.processed_observation_plot = None
+        self.processed_observation_plot_viewbox = pg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
+        self.processed_observation_plot_viewbox.setAspectLocked(lock=True)
 
         # the episode range for calculating means and variances
         self.calculation_range = calculation_range
@@ -237,14 +239,14 @@ class UnityPerformanceMonitor:
             if len(shape) == 1:
 
                 # plot as vector
-                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=3).plot()
+                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=2, row=i).plot()
                 self.observation_plots.append(vector_plot)
 
             elif len(shape) == 3 or len(shape) == 2:
 
                 # plot as image
                 self.observation_plots.append(pg.ImageItem(np.zeros(shape=shape)))
-                self.layout.addItem(self.observation_plot_viewbox, colspan=3)
+                self.layout.addItem(self.observation_plot_viewbox, colspan=2, rowspan=2, row=i)
                 self.observation_plot_viewbox.setAspectLocked(lock=True)
                 self.observation_plot_viewbox.addItem(self.observation_plots[i])
 
@@ -280,6 +282,34 @@ class UnityPerformanceMonitor:
             # plot as vector
             elif len(observation.shape) == 1:
                 self.observation_plots[i].setData(observation, clear=True)
+
+    def display_processed_observation(self, observation):
+        """
+        displays the processed observation.
+        """
+        # initialize plot
+        if self.processed_observation_plot is None:
+            if len(observation.shape) == 1:
+                self.processed_observation_plot = self.layout.addPlot(colspan=2, rowspan=2, col=0,
+                                                                      title='processed observation').plot()
+
+            elif len(observation.shape) == 2 or len(observation.shape) == 3:
+                # init plot
+                self.processed_observation_plot = pg.ImageItem(np.zeros(shape=observation.shape))
+                # add to viewbox
+                self.processed_observation_plot_viewbox.addItem(self.processed_observation_plot)
+                # add viewbox to layout
+                self.layout.addItem(self.processed_observation_plot_viewbox, colspan=2, rowspan=2, col=0)
+
+        # plot processed observation
+        if len(observation.shape) == 1:
+            self.processed_observation_plot.setData(observation, clear=True)
+
+        elif len(observation.shape) == 2 or len(observation.shape) == 3:
+            # set mirror image
+            self.processed_observation_plot.setImage(observation[::-1])
+            # set color levels
+            self.processed_observation_plot.setLevels([0.0, 1.0])
 
 
 class RLPerformanceMonitorBaseline:

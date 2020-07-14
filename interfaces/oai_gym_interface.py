@@ -155,10 +155,13 @@ class UnityInterface(gym.Env):
         """
         def __init__(self, env_agent_specs,
                      agent_action_type,
-                     use_grey_scale=False):
+                     use_grey_scale=False,
+                     performance_monitor=None):
 
             self.agent_action_type = agent_action_type
             self.grey_scale = use_grey_scale
+            self.performance_monitor = performance_monitor
+
             self.observation_space = self.__get_observation_space(env_agent_specs)
             self.action_space, self.action_shape, self.env_action_type = self.__get_action_space(env_agent_specs,
                                                                                                  agent_action_type)
@@ -265,6 +268,8 @@ class UnityInterface(gym.Env):
                 print(f'double obs! expected: {self.observation_space.shape} !=  received: {observation.shape}')
                 observation = observation[0]
 
+            self.performance_monitor.display_processed_observation(observation)
+
             return observation
 
         def process_action(self, action):
@@ -304,8 +309,9 @@ class UnityInterface(gym.Env):
 
                 if len(formatted_observations.shape) == 3:
                     if self.grey_scale:
-                        img = Image.fromarray(formatted_observations, mode='RGBA').convert(mode='L')
-                        formatted_observations = np.array(img)
+                        grey_scale_image = np.sum(formatted_observations, axis=2) / formatted_observations.shape[2]
+
+                    formatted_observations = grey_scale_image
 
             return formatted_observations
 
@@ -493,6 +499,8 @@ class UnityInterface(gym.Env):
         :param nb_max_episode_steps:    the number of maximum steps per episode.
         :param decision_interval:       the number of simulation steps before entering the next rl cycle.
         :param agent_action_type:       the native action type of the agent.
+        :param use_grey_scale_images:   make the processor convert images to greyscale domain,
+                                        this is required when working with convolutional models.
         :param performance_monitor:     the monitor used for visualizing the learning process.
         :param with_gui:                whether or not show the performance monitor and the environment gui.
         """
@@ -568,7 +576,8 @@ class UnityInterface(gym.Env):
             # setup processor
             self.processor = self.UnityProcessor(env_agent_specs=group_spec,
                                                  agent_action_type=agent_action_type,
-                                                 use_grey_scale=use_grey_scale_images)
+                                                 use_grey_scale=use_grey_scale_images,
+                                                 performance_monitor=performance_monitor)
 
             # get the spaces from processor
             self.observation_space = self.processor.observation_space
