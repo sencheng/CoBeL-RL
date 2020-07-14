@@ -153,14 +153,16 @@ class UnityInterface(gym.Env):
         keras processor for the unity interface
         """
         def __init__(self, env_agent_specs,
-                     agent_action_type):
+                     agent_action_type,
+                     use_grey_scale=False):
 
             self.agent_action_type = agent_action_type
-            self.observation_space = self.get_observation_space(env_agent_specs)
-            self.action_space, self.action_shape, self.env_action_type = self.get_action_space(env_agent_specs,
-                                                                                               agent_action_type)
+            self.grey_scale = use_grey_scale
+            self.observation_space = self.__get_observation_space(env_agent_specs)
+            self.action_space, self.action_shape, self.env_action_type = self.__get_action_space(env_agent_specs,
+                                                                                                 agent_action_type)
 
-        def get_observation_space(self, env_agent_specs):
+        def __get_observation_space(self, env_agent_specs):
             """
             Extract the information about the observation space from ml-agents group_spec.
 
@@ -183,6 +185,10 @@ class UnityInterface(gym.Env):
 
                 # select the single sensors observation shape
                 observation_shape = observation_shapes[0]
+
+                if len(observation_shape) == 3:
+                    if self.grey_scale:
+                        observation_shape = observation_shape[:2]
 
             observation_space = gym.spaces.Box(low=0, high=1, shape=observation_shape)
 
@@ -244,7 +250,7 @@ class UnityInterface(gym.Env):
             # Returns
                 Observation obtained by the environment processed
             """
-            observation = self.format_observations(observation)
+            observation = self.__format_observations(observation)
 
             # WORKAROUND for extra observations:
             #
@@ -294,6 +300,11 @@ class UnityInterface(gym.Env):
             else:
                 # use the single observation
                 formatted_observations = observations[0]
+
+                if len(formatted_observations.shape) == 3:
+                    if self.grey_scale:
+                        img = Image.fromarray(formatted_observations, mode='RGBA').convert(mode='L')
+                        formatted_observations = np.array(img)
 
             return formatted_observations
 
