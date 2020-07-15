@@ -492,7 +492,7 @@ class UnityInterface(gym.Env):
 
     def __init__(self, env_path, scene_name=None,
                  time_scale=2.0, nb_max_episode_steps=0, decision_interval=5,
-                 agent_action_type='discrete', use_grey_scale_images=False,
+                 agent_action_type='discrete', use_gray_scale_images=False,
                  modules=None,
                  seed=42, timeout_wait=60, side_channels=None,
                  performance_monitor=None, with_gui=True):
@@ -512,7 +512,7 @@ class UnityInterface(gym.Env):
         :param nb_max_episode_steps:    the number of maximum steps per episode.
         :param decision_interval:       the number of simulation steps before entering the next rl cycle.
         :param agent_action_type:       the native action type of the agent.
-        :param use_grey_scale_images:   make the processor convert images to greyscale domain,
+        :param use_gray_scale_images:   make the processor convert images to greyscale domain,
                                         this is required when working with convolutional models.
         :param performance_monitor:     the monitor used for visualizing the learning process.
         :param with_gui:                whether or not show the performance monitor and the environment gui.
@@ -589,7 +589,7 @@ class UnityInterface(gym.Env):
             # setup processor
             self.processor = self.UnityProcessor(env_agent_specs=group_spec,
                                                  agent_action_type=agent_action_type,
-                                                 use_gray_scale=use_grey_scale_images,
+                                                 use_gray_scale=use_gray_scale_images,
                                                  performance_monitor=performance_monitor)
 
             # get the spaces from processor
