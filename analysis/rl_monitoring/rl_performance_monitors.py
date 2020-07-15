@@ -126,6 +126,7 @@ class UnityPerformanceMonitor:
 
         # save start time for sps calculation
         self.start_time = time.perf_counter()
+        self.sps = 0
 
     def update(self, nb_step=None):
         """
@@ -151,7 +152,16 @@ class UnityPerformanceMonitor:
         :param nb_step: number of the current learning step
         :return:
         """
-        self.__set_sps(int(nb_step / (time.perf_counter() - self.start_time)))
+        # calculate sps every step
+        self.sps = int(1.0 / (time.perf_counter() - self.start_time))
+
+        # reset start time
+        self.start_time = time.perf_counter()
+
+        # set the sps label every 10th step for readability
+        if nb_step % 10 == 0:
+            self.__set_sps(self.sps)
+
         self.__set_nb_steps(nb_step)
 
     def set_episode_data(self, nb_episode, nb_episode_steps, cumulative_reward):
