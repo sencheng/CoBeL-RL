@@ -128,8 +128,9 @@ if __name__ == "__main__":
 
     env_names = ['3DBall', '3DBallHard', 'Basic', 'Bouncer', 'CrawlerDynamicTarget', 'CrawlerStaticTarget',
                  'FoodCollector', 'GridWorld', 'Hallway', 'MorrisWaterMaze', 'PushBlock', 'Pyramids', 'RandomRobotMaze',
-                 'Reacher', 'VisualFoodCollector', 'VisualHallway', 'VisualPushBlock', 'VisualPyramids', 'Walker']
+                 'Reacher', 'VisualFoodCollector', 'VisualHallway', 'VisualPushBlock', 'VisualPyramids', 'Walker',
+                 'VisualRandomRobotMaze']
 
     single_run(env_exec_path=env_path,
-               scene_name='3DBall',
+               scene_name='VisualRandomRobotMaze',
                n_train=1000)
