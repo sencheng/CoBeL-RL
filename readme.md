@@ -111,6 +111,8 @@ You got two options to run a demo.
     
     * and the unitypackage for the environments: **https://ruhr-uni-bochum.sciebo.de/s/gdphysRY1P7pAyT**
     
+    * the unitypackage is also available in the git folder: **environments/environments_unity/source/unity_environments.unitypackage**
+    
     Then you set up a new project with unity. See: **https://docs.unity3d.com/560/Documentation/Manual/GettingStarted.html**
     
     To import the 'mlagents' framework into your project you select the 'Window/PackageManager' menu item in the editor, 
