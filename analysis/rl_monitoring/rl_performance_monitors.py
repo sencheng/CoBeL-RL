@@ -252,20 +252,20 @@ class UnityPerformanceMonitor:
             if len(shape) == 1:
 
                 # plot as vector
-                vector_plot = self.layout.addPlot(title="vector observation " + str(i), colspan=2, row=i).plot()
+                vector_plot = self.layout.addPlot(title="vector observation " + str(i),
+                                                  colspan=2, col=0, row=i+2).plot()
                 self.observation_plots.append(vector_plot)
 
             elif len(shape) == 3 or len(shape) == 2:
 
                 # plot as image
                 self.observation_plots.append(pg.ImageItem(np.zeros(shape=shape)))
-                self.layout.addItem(self.observation_plot_viewbox, colspan=2, rowspan=2, row=i)
+                self.layout.addItem(self.observation_plot_viewbox,
+                                    colspan=2, rowspan=1, row=i+2, col=0)
                 self.observation_plot_viewbox.setAspectLocked(lock=True)
                 self.observation_plot_viewbox.addItem(self.observation_plots[i])
 
             print(f"observation plot {i} instantiated with shape {shape}")
-
-            self.layout.nextRow()
 
     def display_actions(self, action):
         """
@@ -303,7 +303,7 @@ class UnityPerformanceMonitor:
         # initialize plot
         if self.processed_observation_plot is None:
             if len(observation.shape) == 1:
-                self.processed_observation_plot = self.layout.addPlot(colspan=2, rowspan=2, col=0,
+                self.processed_observation_plot = self.layout.addPlot(colspan=2, rowspan=2, col=0, row=0,
                                                                       title='processed observation').plot()
 
             elif len(observation.shape) == 2 or len(observation.shape) == 3:
@@ -312,7 +312,7 @@ class UnityPerformanceMonitor:
                 # add to viewbox
                 self.processed_observation_plot_viewbox.addItem(self.processed_observation_plot)
                 # add viewbox to layout
-                self.layout.addItem(self.processed_observation_plot_viewbox, colspan=2, rowspan=2, col=0)
+                self.layout.addItem(self.processed_observation_plot_viewbox, colspan=2, rowspan=2, col=0, row=0)
 
         # plot processed observation
         if len(observation.shape) == 1:
