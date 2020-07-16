@@ -1,16 +1,13 @@
 import os
-import keras
 from keras import backend
 from agents.dqn_agents import DQNAgentBaseline
-from agents.modular_agents import ModularDDPGAgent as MDDPGAgent, ModularDQNAgent as MDQNAgent
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 from interfaces.oai_gym_interface import UnityInterface
 from interfaces.oai_gym_interface import get_cobel_path, get_env_path
 
-
+# set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
 backend.set_image_data_format(data_format='channels_last')
-backend.set_image_dim_ordering('th')
 visualOutput = True
 
 
@@ -71,7 +68,8 @@ def single_run(env_exec_path, scene_name=None, n_train=1):
     # it increases the performance and is helpful when training envs where the consequence of an action can only
     # be observed after some time.
     unity_env = UnityInterface(env_path=env_exec_path, scene_name=scene_name,
-                               nb_max_episode_steps=100, decision_interval=10, agent_action_type="discrete",
+                               nb_max_episode_steps=100, decision_interval=5,
+                               agent_action_type="discrete", use_gray_scale_images=False,
                                performance_monitor=UnityPerformanceMonitor(update_period=1,
                                                                            reward_plot_viewbox=(-10, 10, 50),
                                                                            steps_plot_viewbox=(0, 100, 50)),
@@ -85,15 +83,15 @@ def single_run(env_exec_path, scene_name=None, n_train=1):
     """
     robot_maze parameters
     
-    unity_env.env_configuration_channel.set_property("has_walls", 1)                # enable walls
-    unity_env.env_configuration_channel.set_property("maze_algorithm", 0)           # just exterior walls
-    unity_env.env_configuration_channel.set_property("size_x", 2)                   # set cell grid width
-    unity_env.env_configuration_channel.set_property("size_y", 2)                   # set cell grid height
-    unity_env.env_configuration_channel.set_property("random_target_pos", 0)        # disable target repositioning
-    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)     # enable random robot spawn rotation
-    unity_env.env_configuration_channel.set_property("max_velocity", 0)             # disable max agent velocity
-    unity_env.env_configuration_channel.set_property("target_reached_radius", 20)   #
-    unity_env.env_configuration_channel.set_property("target_visible", 1)           #
+    unity_env.env_configuration_channel.set_property("has_walls", 1)  # enable walls
+    unity_env.env_configuration_channel.set_property("maze_algorithm", 0)  # just exterior walls
+    unity_env.env_configuration_channel.set_property("size_x", 2)  # set cell grid width
+    unity_env.env_configuration_channel.set_property("size_y", 2)  # set cell grid height
+    unity_env.env_configuration_channel.set_property("random_target_pos", 0)  # disable target repositioning
+    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)  # enable random robot spawn rotation
+    unity_env.env_configuration_channel.set_property("max_velocity", 0)  # disable max agent velocity
+    unity_env.env_configuration_channel.set_property("target_reached_radius", 20)  #
+    unity_env.env_configuration_channel.set_property("target_visible", 1)  #
     """
 
     """
