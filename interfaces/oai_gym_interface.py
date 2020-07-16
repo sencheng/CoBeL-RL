@@ -10,7 +10,7 @@ from mlagents_envs.side_channel.engine_configuration_channel import EngineConfig
 from mlagents_envs.environment import UnityEnvironment
 from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesChannel
 from rl.core import Processor
-from PIL import Image
+
 
 
 ### This is the Open AI gym interface class. The interface wraps the control path and ensures communication
@@ -37,8 +37,7 @@ class OAIGymInterface(gym.Env):
 
         # second: action space
         self.action_space = modules['spatial_representation'].get_action_space()
-        
-        
+
         # third: observation space
         self.observation_space = modules['observation'].getObservationSpace()
 
@@ -57,16 +56,9 @@ class OAIGymInterface(gym.Env):
     # This function (slot) updates the observation provided by the environment
     #
     # observation:  the observation used to perform the update
-    def updateObservation(self,observation):
-        self.observation=observation
-    
-    
-    
-    
-    
-    
-        
-    
+    def updateObservation(self, observation):
+        self.observation = observation
+
     # The step function that propels the simulation.
     # This function is called by the .fit function of the RL agent whenever a novel action has been computed.
     # The action is used to decide on the next topology node to run to, and step then triggers the control path (including 'Blender')
@@ -75,20 +67,17 @@ class OAIGymInterface(gym.Env):
     # action:   the action to be executed
 
     def _step(self, action):
-        
-        
-        callbackValue=self.modules['spatial_representation'].generate_behavior_from_action(action)
-        callbackValue['rlAgent']=self.rlAgent
-        callbackValue['modules']=self.modules
-        
-        reward,stopEpisode=self.rewardCallback(callbackValue)
-        
+        callbackValue = self.modules['spatial_representation'].generate_behavior_from_action(action)
+        callbackValue['rlAgent'] = self.rlAgent
+        callbackValue['modules'] = self.modules
+
+        reward, stopEpisode = self.rewardCallback(callbackValue)
+
         return self.modules['observation'].observation, reward, stopEpisode, {}
 
     # This function restarts the RL agent's learning cycle by initiating a new episode.
     #
     def _reset(self):
-
         self.modules['spatial_representation'].generate_behavior_from_action('reset')
 
         # return the observation
