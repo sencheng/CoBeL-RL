@@ -1,10 +1,16 @@
+
+
+
+
+import numpy     as np
+
 from keras import callbacks
-from keras.layers import Dense, Flatten
-from keras.models import Sequential
+from keras.models import Sequential, Model
+from keras.layers import Dense, Activation, Flatten, Input
 from keras.optimizers import Adam
 from rl.agents import DQNAgent
-from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
+from rl.memory import SequentialMemory
 
 
 ### The reinforcement learing class. It wraps all functionality required to set up a RL agent.
@@ -14,7 +20,7 @@ class DQNAgentBaseline():
     class callbacks(callbacks.Callback):
 
         # The constructor.
-        # 
+        #
         # rlParent:     the ACT_ReinforcementLearningModule that hosts this class
         # trialBeginFcn:the callback function called in the beginning of each trial, defined for more flexibility in scenario control
         # trialEndFcn:  the callback function called at the end of each trial, defined for more flexibility in scenario control
@@ -49,7 +55,7 @@ class DQNAgentBaseline():
                 self.trialEndFcn(epoch, self.rlParent, logs)
 
     # The constructor.
-    # 
+    #
     # guiParent:        the widget that shows necessary visualization
     # interfaceOAI:     the interface to the Open AI Gym environment
     # agentParams:      the parameters of the agent to be used, provided as a dictionary
@@ -102,4 +108,7 @@ class DQNAgentBaseline():
         self.maxSteps = steps
         self.agent.fit(self.interfaceOAI, nb_steps=steps, verbose=0, callbacks=[self.engagedCallbacks],
                        nb_max_episode_steps=100, visualize=False)
+
+
+
 
