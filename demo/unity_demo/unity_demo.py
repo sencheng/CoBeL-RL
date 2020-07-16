@@ -125,6 +125,11 @@ if __name__ == "__main__":
     # TODO Make a loop and try out different hyperparameters.
     project = get_cobel_path()
     env_path = get_env_path()
+
+    env_names = ['3DBall', '3DBallHard', 'Basic', 'Bouncer', 'CrawlerDynamicTarget', 'CrawlerStaticTarget',
+                 'FoodCollector', 'GridWorld', 'Hallway', 'MorrisWaterMaze', 'PushBlock', 'Pyramids', 'RandomRobotMaze',
+                 'Reacher', 'VisualFoodCollector', 'VisualHallway', 'VisualPushBlock', 'VisualPyramids', 'Walker']
+
     single_run(env_exec_path=env_path,
-               scene_name="VisualRandomRobotMaze",
+               scene_name='3DBall',
                n_train=1000)
