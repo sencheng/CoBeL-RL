@@ -7,3 +7,9 @@
 *.pdf
 !**/worldInfo/*.npy
 !**/textures/*.png
+venv
+*.json
+CoBeL_RL.egg-info
+build
+dist
+demo/unity_demo/logsfreeze
