@@ -3,9 +3,9 @@
 
 
 import numpy     as np
-
+import json
 from keras import callbacks
-from keras.models import Sequential, Model
+from keras.models import Sequential, Model, model_from_json
 from keras.layers import Dense, Activation, Flatten, Input
 from keras.optimizers import Adam
 from rl.agents import DQNAgent
@@ -65,7 +65,8 @@ class DQNAgentBaseline():
     # epsilon:          the epsilon value for the epsilon greedy policy
     # trialBeginFcn:    the callback function called at the beginning of each trial, defined for more flexibility in scenario control
     # trialEndFcn:      the callback function called at the end of each trial, defined for more flexibility in scenario control
-    def __init__(self, interfaceOAI, memoryCapacity=10000, epsilon=0.3, processor=None, trialBeginFcn=None, trialEndFcn=None):
+    def __init__(self, interfaceOAI, memoryCapacity=10000, epsilon=0.3, processor=None, 
+                 trialBeginFcn=None, trialEndFcn=None, lr=0.001, network=None):
 
         # store the Open AI Gym interface
         self.interfaceOAI = interfaceOAI
@@ -75,14 +76,20 @@ class DQNAgentBaseline():
         # the number of discrete actions, retrieved from the Open AI Gym interface
         self.nb_actions = self.interfaceOAI.action_space.n
         # a sequential model is standardly used here, this model is subject to changes
-        self.model = Sequential()
-        self.model.add(Flatten(input_shape=(1,) + self.interfaceOAI.observation_space.shape))
-        self.model.add(Dense(units=64, activation='tanh'))
-        self.model.add(Dense(units=64, activation='tanh'))
-        self.model.add(Dense(units=64, activation='tanh'))
-        self.model.add(Dense(units=64, activation='tanh'))
-
-        self.model.add(Dense(units=self.nb_actions, activation='linear'))
+        if network is None :
+            self.model = Sequential()
+            self.model.add(Flatten(input_shape=(1,) + self.interfaceOAI.observation_space.shape))
+            self.model.add(Dense(units=64, activation='tanh'))
+            self.model.add(Dense(units=64, activation='tanh'))
+            self.model.add(Dense(units=64, activation='tanh'))
+            self.model.add(Dense(units=64, activation='tanh'))
+    
+            self.model.add(Dense(units=self.nb_actions, activation='linear'))
+            
+        else : 
+            loaded_model_json = json.dumps(network)
+            self.model = model_from_json(loaded_model_json)        
+            print(self.model.summary())
 
         # prepare the memory for the RL agent
         self.memory = SequentialMemory(limit=memoryCapacity, window_length=1)
@@ -97,7 +104,7 @@ class DQNAgentBaseline():
                               policy=policyEpsGreedy, batch_size=32, processor=processor)
 
         # compile the agent
-        self.agent.compile(Adam(lr=.001, ), metrics=['mse'])
+        self.agent.compile(Adam(lr=lr, ), metrics=['mse'])
 
         # set up the visualizer for the RL agent behavior/reward outcome
         self.engagedCallbacks = self.callbacks(self, trialBeginFcn, trialEndFcn)
