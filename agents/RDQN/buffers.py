@@ -1,13 +1,14 @@
 import numpy as np
 from collections import deque
 from typing import Deque, Dict, List, Tuple
-from segment_tree import MinSegmentTree, SumSegmentTree
+from agents.RDQN.segment_tree import MinSegmentTree, SumSegmentTree
 import random
 
 class ReplayBuffer:
-    def __init__(self, obs_dim: int, size: int, batch_size: int = 32, n_step: int = 1, gamma: float = 0.99):
-        self.obs_buf = np.zeros([size, obs_dim], dtype=np.float32)
-        self.next_obs_buf = np.zeros([size, obs_dim], dtype=np.float32)
+    def __init__(self, obs_dim, size: int, batch_size: int = 32, n_step: int = 1, gamma: float = 0.99):
+        obs_shape = np.insert(obs_dim, 0, 1024)
+        self.obs_buf = np.zeros(obs_shape, dtype=np.float32)
+        self.next_obs_buf = np.zeros(obs_shape, dtype=np.float32)
         self.acts_buf = np.zeros([size], dtype=np.float32)
         self.rews_buf = np.zeros([size], dtype=np.float32)
         self.done_buf = np.zeros(size, dtype=np.float32)

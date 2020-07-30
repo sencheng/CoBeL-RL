@@ -6,31 +6,30 @@ from collections import deque
 from typing import Deque, Dict, List, Tuple
 
 import gym
-import matplotlib.pyplot as plt
 import numpy as np
 
 import keras.layers
-from keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector
+from keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Conv2D, Flatten, MaxPooling2D
 from keras import Model
 from keras.optimizers import Adam
 from keras.models import Sequential
 from keras import backend as K
 from keras.engine.base_layer import InputSpec
 from keras import initializers
-from custom_layers import NoisyDense
+from agents.RDQN.custom_layers import NoisyDense
 
-#from IPython.display import clear_output
+from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
+from interfaces.oai_gym_interface import UnityInterface
 
-from buffers import ReplayBuffer, PrioritizedReplayBuffer
-
-class DQNAgent:
+class RDQNAgent:
     #PASS
     def __init__(
         self, 
-        env: gym.Env,
-        memory_size: int,
-        batch_size: int,
-        target_update: int,
+        env: UnityInterface,
+        num_frames: int = 10000,
+        memory_size: int = 2000,
+        batch_size: int = 32,
+        target_update: int = 100,
         gamma: float = 0.99,
         # PER parameters
         alpha: float = 0.4,
@@ -41,10 +40,10 @@ class DQNAgent:
         v_max: float = 200.0,
         atom_size: int = 51
     ):
-        self.obs_dim = env.observation_space.shape[0]
+        self.u_env = env
+        self.obs_dim = env.observation_space.shape
         self.action_dim = env.action_space.n
         
-        self.env = env
         self.batch_size = batch_size
         self.target_update = target_update
         self.gamma = gamma
@@ -70,7 +69,6 @@ class DQNAgent:
         # transition to store in memory
         self.transition = list()
 
-    #PASS
     def aggregate_layers(self,layers):
         layerlist = []
         v = layers[0]
@@ -81,17 +79,19 @@ class DQNAgent:
             layerlist.append(v + adv[:,i] - adv_mean)
         return layerlist
 
-    #PASS
     def build_model(self):
-        input_layer = Input(shape=(self.obs_dim,))
-        feature_layer = Dense(128, activation='relu',kernel_initializer='he_uniform')(input_layer)
+        input_layer = Input(shape=self.obs_dim)
+
+        conv1 = Conv2D(64, kernel_size=3, activation='relu')(input_layer)
+        mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
+        flatten = Flatten()(mp1)
 
         #Value Stream
-        v_layer = Dense(64,activation='relu')(feature_layer)
+        v_layer = NoisyDense(64,activation='relu')(flatten)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = Dense(64,activation='relu')(feature_layer)
+        adv_layer = NoisyDense(64,activation='relu')(flatten)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
@@ -106,7 +106,6 @@ class DQNAgent:
         #model.summary()
         return model
 
-    #PASS
     def select_action(self, state):
         state = np.array(state)
         state = np.expand_dims(state,0)
@@ -118,16 +117,14 @@ class DQNAgent:
         self.transition = [state, q_opt]
         return q_opt
 
-    #PASS
     def step(self, action):
-        next_state, reward, done, _ = self.env.step(action)
-        self.transition += [reward, next_state, done]
+        next_state, reward, done, _ = self.u_env._step(np.array([[action]]))
+        self.transition += [reward, next_state[0], done]
         one_step_transition = self.transition
         self.memory.store(*one_step_transition)
             
-        return next_state, reward, done
+        return next_state[0], reward, done
 
-    #PASS
     def get_optimal_actions(self,next_state : np.array):
         dqn_next_action = self.dqn.predict(next_state)
         optimal_action_idxs = []
@@ -184,10 +181,11 @@ class DQNAgent:
         log_x = np.log(x + 0.01)
         elementwise_loss = -(y * log_x).sum(1)
 
-        self.dqn.fit(state,m_prob, batch_size=self.batch_size,epochs=1, verbose=0, sample_weight=[weights,weights])
+        self.dqn.fit(state,m_prob, batch_size=self.batch_size,epochs=1, verbose=0, sample_weight=[weights,weights,weights,weights])
         
         # PER: importance sampling before average
         loss = np.mean(elementwise_loss * weights)
+        print(round(loss,2))
 
         # PER: update priorities
         new_priorities = elementwise_loss + self.prior_eps
@@ -195,9 +193,8 @@ class DQNAgent:
         
         return sum(elementwise_loss)
     
-    #PASS
-    def train(self, num_frames: int, plotting_interval: int = 2000):
-        state = self.env.reset()
+    def train(self, num_frames: int):
+        state = self.u_env._reset()[0]
         update_cnt = 0
         losses = []
         scores = []
@@ -205,9 +202,9 @@ class DQNAgent:
 
         for frame_idx in range(1, num_frames + 1):
             action = self.select_action(state)
+            print(action)
+            
             next_state, reward, done = self.step(action)
-            self.env.render()
-
             state = next_state
             score += reward
             
@@ -217,8 +214,7 @@ class DQNAgent:
 
             # if episode ends
             if done:
-                state = self.env.reset()
-                #print(score)
+                state = unity_env._reset()
                 scores.append(score)
                 score = 0
 
@@ -232,44 +228,8 @@ class DQNAgent:
                 if update_cnt % self.target_update == 0:
                     self._target_hard_update()
 
-            # plotting
-            if frame_idx % plotting_interval == 0:
-                self._plot(frame_idx, scores, losses)
-                
-        self.env.close()
-
-    #PASS
     def clamp(self, n, smallest, largest): 
         return max(smallest, min(n, largest))
 
-    #PASS
     def _target_hard_update(self):
         self.dqn_target.set_weights(self.dqn.get_weights())
-                
-    #PASS
-    def _plot(self,frame_idx: int,scores: List[float],losses: List[float],):
-        """Plot the training progresses."""
-        clear_output(True)
-        plt.figure(figsize=(20, 5))
-        plt.subplot(131)
-        plt.title('frame %s. score: %s' % (frame_idx, np.mean(scores[-10:])))
-        plt.plot(scores)
-        plt.subplot(132)
-        plt.title('loss')
-        plt.plot(losses)
-        plt.show()
-
-# environment
-env_id = "CartPole-v0"
-env = gym.make(env_id)
-
-# parameters
-num_frames = 20000
-memory_size = 2000
-batch_size = 32
-target_update = 100
-
-# train
-agent = DQNAgent(env, memory_size, batch_size, target_update)
-
-agent.train(num_frames)
