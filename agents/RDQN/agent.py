@@ -187,7 +187,7 @@ class RDQNAgent:
         
         # PER: importance sampling before average
         loss = np.mean(elementwise_loss * weights)
-        print(round(loss,2))
+        #print(round(loss,2))
 
         # PER: update priorities
         new_priorities = elementwise_loss + self.prior_eps
@@ -204,7 +204,7 @@ class RDQNAgent:
 
         for frame_idx in range(1, num_frames + 1):
             action = self.select_action(state)
-            print(action)
+            #print(action)
             
             next_state, reward, done = self.step(action)
             state = next_state
@@ -226,9 +226,13 @@ class RDQNAgent:
                 losses.append(loss)
                 update_cnt += 1
                 
-                # if hard update is needed
-                if update_cnt % self.target_update == 0:
-                    self._target_hard_update()
+            # if hard update is needed
+            if update_cnt % self.target_update == 0:
+                self._target_hard_update()
+            
+            if frame_idx % 50 == 0:
+                print("Save Model")
+                self.dqn.save("/home/wkst/Desktop/rdqn_model")
 
     def clamp(self, n, smallest, largest): 
         return max(smallest, min(n, largest))

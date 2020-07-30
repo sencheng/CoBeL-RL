@@ -1,3 +1,5 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import gym
 import logging
 import argparse
@@ -16,7 +18,7 @@ class Model(tf.keras.Model):
   def __init__(self, num_actions):
     super().__init__('mlp_policy')
 
-    self.conv1 = kl.Conv2D(128, kernel_size=3, activation='relu')
+    self.conv1 = kl.Conv2D(256, kernel_size=3, activation='relu')
     self.mp1 = kl.MaxPooling2D(pool_size=(2,2))
     self.conv2 = kl.Conv2D(128, kernel_size=3, activation='relu')
     self.mp2 = kl.MaxPooling2D(pool_size=(2,2))
@@ -36,6 +38,7 @@ class Model(tf.keras.Model):
     x = self.conv2(x)
     x = self.mp2(x)
     x = self.flatten(x)
+
     hidden_logs = self.hidden1(x)
     hidden_vals = self.hidden2(x)
     return self.logits(hidden_logs), self.value(hidden_vals)
@@ -71,13 +74,14 @@ class A2CAgent:
         observations[step] = next_obs[0].copy()
         actions[step], values[step] = self.model.action_value(next_obs[0][None, :])
         next_obs, rewards[step], dones[step], _ = self.u_env._step(np.array([[actions[step]]]))
-
         ep_rewards[-1] += rewards[step]
         if dones[step]:
           ep_rewards.append(0.0)
           next_obs = self.u_env.reset()
           print("Episode: %03d, Reward: %03d" % (len(ep_rewards) - 1, ep_rewards[-2]))
-
+      if update % 50 == 0:
+        print("Save Model")
+        self.model.save("/home/wkst/Desktop/a2c_model")
       _, next_value = self.model.action_value(next_obs[0][None, :])
       returns, advs = self._returns_advantages(rewards, dones, values, next_value)
       acts_and_advs = np.concatenate([actions[:, None], advs[:, None]], axis=-1)
