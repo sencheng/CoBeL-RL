@@ -16,12 +16,14 @@ class Model(tf.keras.Model):
   def __init__(self, num_actions):
     super().__init__('mlp_policy')
 
-    self.conv1 = kl.Conv2D(64, kernel_size=3, activation='relu')
+    self.conv1 = kl.Conv2D(128, kernel_size=3, activation='relu')
     self.mp1 = kl.MaxPooling2D(pool_size=(2,2))
+    self.conv2 = kl.Conv2D(128, kernel_size=3, activation='relu')
+    self.mp2 = kl.MaxPooling2D(pool_size=(2,2))
     self.flatten = kl.Flatten()
 
-    self.hidden1 = kl.Dense(128, activation='relu')
-    self.hidden2 = kl.Dense(128, activation='relu')
+    self.hidden1 = kl.Dense(512, activation='relu')
+    self.hidden2 = kl.Dense(512, activation='relu')
     self.value = kl.Dense(1, name='value')
     
     self.logits = kl.Dense(num_actions, name='policy_logits')
@@ -31,6 +33,8 @@ class Model(tf.keras.Model):
     x = tf.convert_to_tensor(inputs)
     x = self.conv1(x)
     x = self.mp1(x)
+    x = self.conv2(x)
+    x = self.mp2(x)
     x = self.flatten(x)
     hidden_logs = self.hidden1(x)
     hidden_vals = self.hidden2(x)

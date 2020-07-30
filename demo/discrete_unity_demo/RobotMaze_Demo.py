@@ -8,7 +8,7 @@ import numpy as np
 from PIL import Image
 
 from agents.RDQN.agent import RDQNAgent
-from agents.A2C_TF2.a2c_disc import A2CAgent
+#from agents.A2C_TF2.a2c_disc import A2CAgent
 
 # set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -29,13 +29,13 @@ if __name__ == "__main__":
     SCENE_NAME = "DiscreteRobotMaze"
 
     unity_env = UnityInterface(env_path=environment_path, scene_name=SCENE_NAME,
-                               nb_max_episode_steps=1000, decision_interval=1,
+                               nb_max_episode_steps=1000000, decision_interval=1,
                                agent_action_type="discrete", use_gray_scale_images=False)
 
     
-    #agent = RDQNAgent(unity_env,1000)
-    agent = A2CAgent(unity_env)
-    agent.train(1000)
+    agent = RDQNAgent(unity_env,1000000)
+    #agent = A2CAgent(unity_env)
+    agent.train(1000000)
 
     # clear session
     backend.clear_session()

@@ -82,16 +82,18 @@ class RDQNAgent:
     def build_model(self):
         input_layer = Input(shape=self.obs_dim)
 
-        conv1 = Conv2D(64, kernel_size=3, activation='relu')(input_layer)
+        conv1 = Conv2D(256, kernel_size=3, activation='relu')(input_layer)
         mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
-        flatten = Flatten()(mp1)
+        conv2 = Conv2D(128, kernel_size=3, activation='relu')(mp1)
+        mp2 = MaxPooling2D(pool_size=(2,2))(conv2)
+        flatten = Flatten()(mp2)
 
         #Value Stream
-        v_layer = NoisyDense(64,activation='relu')(flatten)
+        v_layer = NoisyDense(512,activation='relu')(flatten)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = NoisyDense(64,activation='relu')(flatten)
+        adv_layer = NoisyDense(512,activation='relu')(flatten)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
