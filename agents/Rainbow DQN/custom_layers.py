@@ -1,10 +1,6 @@
-from keras.layers import Dense, Input
-from keras import Model, activations, constraints,regularizers,initializers
-from keras import initializers
-from keras.engine.base_layer import InputSpec
-from keras.optimizers import Adam
-from keras.models import Sequential
-from keras import backend as K
+from tensorflow.keras.layers import Dense, InputSpec
+from tensorflow.keras import initializers
+from tensorflow.keras import backend as K
 
 class NoisyDense(Dense):
     def __init__(self, units, **kwargs):
