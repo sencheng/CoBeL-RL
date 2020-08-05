@@ -1,3 +1,5 @@
+import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import gym
 import logging
 import argparse
@@ -16,14 +18,15 @@ class Model(tf.keras.Model):
   def __init__(self, num_actions):
     super().__init__('mlp_policy')
 
-    self.conv1 = kl.Conv2D(128, kernel_size=3, activation='relu')
-    self.mp1 = kl.MaxPooling2D(pool_size=(2,2))
-    self.conv2 = kl.Conv2D(128, kernel_size=3, activation='relu')
-    self.mp2 = kl.MaxPooling2D(pool_size=(2,2))
-    self.flatten = kl.Flatten()
+    self.c1 = kl.Conv2D(32, (3, 3), activation='relu')
+    self.mp1 = kl.MaxPooling2D((2, 2))
+    self.c2 = kl.Conv2D(64, (3, 3), activation='relu')
+    self.mp2 = kl.MaxPooling2D((2, 2))
+    self.c3 = kl.Conv2D(128, (3, 3), activation='relu')
+    self.fl = kl.Flatten()
 
-    self.hidden1 = kl.Dense(512, activation='relu')
-    self.hidden2 = kl.Dense(512, activation='relu')
+    self.hidden1 = kl.Dense(256, activation='relu')
+    self.hidden2 = kl.Dense(256, activation='relu')
     self.value = kl.Dense(1, name='value')
     
     self.logits = kl.Dense(num_actions, name='policy_logits')
@@ -31,11 +34,13 @@ class Model(tf.keras.Model):
 
   def call(self, inputs, **kwargs):
     x = tf.convert_to_tensor(inputs)
-    x = self.conv1(x)
+    x = self.c1(x)
     x = self.mp1(x)
-    x = self.conv2(x)
+    x = self.c2(x)
     x = self.mp2(x)
-    x = self.flatten(x)
+    x = self.c3(x)
+    x = self.fl(x)
+
     hidden_logs = self.hidden1(x)
     hidden_vals = self.hidden2(x)
     return self.logits(hidden_logs), self.value(hidden_vals)
@@ -46,7 +51,7 @@ class Model(tf.keras.Model):
     return np.squeeze(action, axis=-1), np.squeeze(value, axis=-1)
 
 class A2CAgent:
-  def __init__(self, env: UnityInterface, lr=7e-3, gamma=0.99, value_c=0.5, entropy_c=1e-4):
+  def __init__(self, env: UnityInterface, lr=7e-3, gamma=0.99, value_c=0.5, entropy_c=1e-3):
     self.u_env = env
     self.obs_dim = env.observation_space.shape
     self.action_dim = env.action_space.n
@@ -66,23 +71,22 @@ class A2CAgent:
     observations = np.empty(obs_shape,dtype=np.float32)
     ep_rewards = [0.0]
     next_obs = self.u_env._reset()
-    for update in range(num_frames):
+    for update in range(int(num_frames / self.batchsize)):
       for step in range(self.batchsize):
         observations[step] = next_obs[0].copy()
         actions[step], values[step] = self.model.action_value(next_obs[0][None, :])
         next_obs, rewards[step], dones[step], _ = self.u_env._step(np.array([[actions[step]]]))
-
         ep_rewards[-1] += rewards[step]
         if dones[step]:
           ep_rewards.append(0.0)
           next_obs = self.u_env.reset()
           print("Episode: %03d, Reward: %03d" % (len(ep_rewards) - 1, ep_rewards[-2]))
-
       _, next_value = self.model.action_value(next_obs[0][None, :])
       returns, advs = self._returns_advantages(rewards, dones, values, next_value)
       acts_and_advs = np.concatenate([actions[:, None], advs[:, None]], axis=-1)
       losses = self.model.train_on_batch(observations, [acts_and_advs, returns])
-
+    print("Save Model")
+    self.model.save("/home/wkst/Desktop/a2c_model")
     return ep_rewards
 
   def _returns_advantages(self, rewards, dones, values, next_value):

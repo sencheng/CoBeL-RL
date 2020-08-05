@@ -16,6 +16,13 @@ from keras.models import Sequential
 from keras import backend as K
 from keras.engine.base_layer import InputSpec
 from keras import initializers
+
+from keras.backend.tensorflow_backend import set_session
+import tensorflow as tf
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
+config.log_device_placement = True  # to log device placement (on which device the operation ran)sess = tf.Session(config=config)set_session(sess)  # set this TensorFlow session as the default session for Keras
+
 from agents.RDQN.custom_layers import NoisyDense
 
 from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
@@ -27,8 +34,8 @@ class RDQNAgent:
         self, 
         env: UnityInterface,
         num_frames: int = 10000,
-        memory_size: int = 2000,
-        batch_size: int = 32,
+        memory_size: int = 1024,
+        batch_size: int = 64,
         target_update: int = 100,
         gamma: float = 0.99,
         # PER parameters
@@ -82,18 +89,19 @@ class RDQNAgent:
     def build_model(self):
         input_layer = Input(shape=self.obs_dim)
 
-        conv1 = Conv2D(256, kernel_size=3, activation='relu')(input_layer)
-        mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
-        conv2 = Conv2D(128, kernel_size=3, activation='relu')(mp1)
-        mp2 = MaxPooling2D(pool_size=(2,2))(conv2)
-        flatten = Flatten()(mp2)
+        c1 = Conv2D(32, (3, 3), activation='relu')(input_layer)
+        mp1 = MaxPooling2D((2, 2))(c1)
+        c2 = Conv2D(64, (3, 3), activation='relu')(mp1)
+        mp2 = MaxPooling2D((2, 2))(c2)
+        c3 = Conv2D(128, (3, 3), activation='relu')(mp2)
+        fl = Flatten()(c3)
 
         #Value Stream
-        v_layer = NoisyDense(512,activation='relu')(flatten)
+        v_layer = NoisyDense(256,activation='relu')(fl)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = NoisyDense(512,activation='relu')(flatten)
+        adv_layer = NoisyDense(256,activation='relu')(fl)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
@@ -105,7 +113,7 @@ class RDQNAgent:
 
         model = Model(input_layer, distribution_list)
         model.compile(optimizer=Adam(lr=0.0025), loss='categorical_crossentropy')
-        #model.summary()
+        model.summary()
         return model
 
     def select_action(self, state):
@@ -187,7 +195,7 @@ class RDQNAgent:
         
         # PER: importance sampling before average
         loss = np.mean(elementwise_loss * weights)
-        print(round(loss,2))
+        #print(round(loss,2))
 
         # PER: update priorities
         new_priorities = elementwise_loss + self.prior_eps
@@ -204,7 +212,7 @@ class RDQNAgent:
 
         for frame_idx in range(1, num_frames + 1):
             action = self.select_action(state)
-            print(action)
+            #print(action)
             
             next_state, reward, done = self.step(action)
             state = next_state
@@ -226,9 +234,13 @@ class RDQNAgent:
                 losses.append(loss)
                 update_cnt += 1
                 
-                # if hard update is needed
-                if update_cnt % self.target_update == 0:
-                    self._target_hard_update()
+            # if hard update is needed
+            if update_cnt % self.target_update == 0:
+                self._target_hard_update()
+            
+            if frame_idx % 500 == 0:
+                print("Save Model")
+                self.dqn.save("/home/wkst/Desktop/rdqn_model")
 
     def clamp(self, n, smallest, largest): 
         return max(smallest, min(n, largest))
