@@ -7,8 +7,8 @@ from keras import backend
 import numpy as np
 from PIL import Image
 
-from agents.RDQN.agent import RDQNAgent
-#from agents.A2C_TF2.a2c_disc import A2CAgent
+#from agents.RDQN.agent import RDQNAgent as RDQN
+from agents.A2C_TF2.a2c_disc import A2CAgent as A2C
 
 # set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -33,8 +33,8 @@ if __name__ == "__main__":
                                agent_action_type="discrete", use_gray_scale_images=False)
 
     
-    agent = RDQNAgent(unity_env,1000000)
-    #agent = A2CAgent(unity_env)
+    agent = RDQN(unity_env,1000000)
+    #agent = A2C(unity_env)
     agent.train(1000000)
 
     # clear session

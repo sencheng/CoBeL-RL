@@ -20,7 +20,7 @@ BATCH_SIZE = 256
 GAMMA = 0.99
 TAU = float(1e-2)
 
-class Agent():
+class SACAgent():
     def __init__(self, state_size, action_size, hidden_size):
         self.state_size = state_size
         self.action_size = action_size
