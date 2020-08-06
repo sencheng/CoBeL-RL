@@ -28,23 +28,35 @@ from agents.RDQN.custom_layers import NoisyDense
 from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from interfaces.oai_gym_interface import UnityInterface
 
+
+#Working Base Params
+#MemSize : 3000
+#BatchSize : 64
+#Target Update : 100
+#Gamma : 0.9
+#alpha, beta : 0.4
+#vmin, vmax : 0;50
+#C51
+#NoisyDense : 512
+#Training Time : ~300 Steps until solving
+
 class RDQNAgent:
     #PASS
     def __init__(
         self, 
         env: UnityInterface,
         num_frames: int = 10000,
-        memory_size: int = 1024,
+        memory_size: int = 3000,
         batch_size: int = 64,
         target_update: int = 100,
-        gamma: float = 0.99,
+        gamma: float = 0.9,
         # PER parameters
         alpha: float = 0.4,
         beta: float = 0.4,
         prior_eps: float = 1e-6,
         # Categorical DQN parameters
         v_min: float = 0.0,
-        v_max: float = 200.0,
+        v_max: float = 50.0,
         atom_size: int = 51
     ):
         self.u_env = env
@@ -97,11 +109,11 @@ class RDQNAgent:
         fl = Flatten()(c3)
 
         #Value Stream
-        v_layer = NoisyDense(256,activation='relu')(fl)
+        v_layer = NoisyDense(512,activation='relu')(fl)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = NoisyDense(256,activation='relu')(fl)
+        adv_layer = NoisyDense(512,activation='relu')(fl)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
@@ -240,7 +252,7 @@ class RDQNAgent:
             
             if frame_idx % 500 == 0:
                 print("Save Model")
-                self.dqn.save("/home/wkst/Desktop/rdqn_model")
+                self.dqn.save_weights("/home/wkst/Desktop/rdqn_model.h5")
 
     def clamp(self, n, smallest, largest): 
         return max(smallest, min(n, largest))

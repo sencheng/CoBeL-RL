@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras import layers
-from keras.initializers import RandomUniform
+from tensorflow.keras.initializers import RandomUniform
 import numpy as np
 import scipy.stats
 
@@ -20,17 +20,27 @@ class Actor_Net(tf.keras.Model):
         hid_init = RandomUniform(minval=-lim, maxval=lim, seed=None)
         out_init = RandomUniform(minval=-3e-3, maxval=3e-3, seed=None)
 
-        self.fc1 = layers.Dense(hidden_size,activation = 'relu',kernel_initializer=hid_init, input_dim=state_size,dtype='float32')
-        self.fc2 = layers.Dense(hidden_size,activation='relu',kernel_initializer=hid_init)
+        #Conv Head
+        self.conv1 = layers.Conv2D(128, kernel_size=3, activation='relu',input_shape=state_size)
+        self.mp1 = layers.MaxPooling2D(pool_size=(2,2))
+        self.conv2 = layers.Conv2D(128, kernel_size=3, activation='relu')
+        self.mp2 = layers.MaxPooling2D(pool_size=(2,2))
+        self.flatten = layers.Flatten()
+
+        self.dense = layers.Dense(hidden_size,activation='relu',kernel_initializer=hid_init)
 
         self.mu = layers.Dense(action_size,kernel_initializer=out_init)
         self.log_std = layers.Dense(action_size,kernel_initializer=out_init)
         
     def call(self, X):
-        x = self.fc1(X)
-        x = self.fc2(x)
+        x = self.conv1(X)
+        x = self.mp1(X)
+        x = self.conv2(X)
+        x = self.mp2(X)
+        x = self.flatten(x)
+        x = self.dense(x)
+        
         mu = self.mu(x)
-
         log = self.log_std(x)
         log_dev = tf.clip_by_value(log,self.log_std_min,self.log_std_max)
         return mu, log_dev

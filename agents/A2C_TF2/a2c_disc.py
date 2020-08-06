@@ -50,8 +50,14 @@ class Model(tf.keras.Model):
     action = self.dist.predict_on_batch(logits)
     return np.squeeze(action, axis=-1), np.squeeze(value, axis=-1)
 
+
+#Working Configuration
+#lr : 7e-4
+#entropy_c : 1e-4
+#Solved after ~1000 steps
+
 class A2CAgent:
-  def __init__(self, env: UnityInterface, lr=7e-3, gamma=0.99, value_c=0.5, entropy_c=1e-3):
+  def __init__(self, env: UnityInterface, lr=7e-4, gamma=0.99, value_c=0.5, entropy_c=1e-4):
     self.u_env = env
     self.obs_dim = env.observation_space.shape
     self.action_dim = env.action_space.n

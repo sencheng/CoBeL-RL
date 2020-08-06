@@ -6,12 +6,12 @@ import time
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 from random import randrange
-from keras import backend
+from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
-from agents.A2C_TF2.a2c_cont import A2CAgent
-#from agents.SAC.agent import SACAgent
+#from agents.A2C_TF2.a2c_cont import A2CAgent
+from agents.SAC.agent import SACAgent
 
 # set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -30,13 +30,14 @@ if __name__ == "__main__":
 
     
     #agent = A2CAgent(unity_env)
-    #agent.train(1000000)
+    agent = SACAgent(unity_env)
+    agent.train(1000000)
 
-    while (True):
-        in_1 = input("Input Forward(1)/Backward(-1)")
-        in_2 = input("Input Right(1)/Left(-1)")
-        observation, reward, done, info = unity_env._step(np.array([[float(in_1),float(in_2)]]))
-        print(reward)
+    # while (True):
+    #     in_1 = input("Input Forward(1)/Backward(-1)")
+    #     in_2 = input("Input Right(1)/Left(-1)")
+    #     observation, reward, done, info = unity_env._step(np.array([[float(in_1),float(in_2)]]))
+    #     print(reward)
 
     # clear session
     backend.clear_session()

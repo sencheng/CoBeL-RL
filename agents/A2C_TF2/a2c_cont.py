@@ -11,7 +11,6 @@ from tensorflow.keras import backend as K
 from interfaces.oai_gym_interface import UnityInterface
 EPISODES = 3000
 
-# A2C(Advantage Actor-Critic) agent for the Cartpole
 class A2CAgent:
     def __init__(self, env: UnityInterface, FrameSkip = 4):
         self.u_env = env
