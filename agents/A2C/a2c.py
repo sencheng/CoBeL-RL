@@ -83,11 +83,11 @@ class A2C:
 
             # Train using discounted rewards ie. compute updates
             self.train_models(states, actions, rewards, done)
-            print(cumul_reward)
+            print(i , " | " , cumul_reward)
 
         return results
 
-env = gym.make('CartPole-v0')
+env = gym.make('CartPole-v1')
 net = A2C(env, gamma = 0.99, lr = 0.001)
 net.train()
 

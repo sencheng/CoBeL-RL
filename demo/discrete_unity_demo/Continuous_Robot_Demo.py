@@ -10,8 +10,8 @@ from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
-#from agents.A2C_TF2.a2c_cont import A2CAgent
-from agents.SAC.agent import SACAgent
+from agents.A2C_TF2.a2c_cont import A2CAgent
+#from agents.SAC.agent import SACAgent
 
 # set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -25,13 +25,13 @@ if __name__ == "__main__":
     SCENE_NAME = "ContinuousRobotMaze"
 
     unity_env = UnityInterface(env_path=environment_path, scene_name=SCENE_NAME,
-                               nb_max_episode_steps=1000000, decision_interval=4,
+                               nb_max_episode_steps=10000000, decision_interval=4,
                                agent_action_type="continuous", use_gray_scale_images=True)
 
     
-    #agent = A2CAgent(unity_env)
-    agent = SACAgent(unity_env)
-    agent.train(1000000)
+    agent = A2CAgent(unity_env)
+    #agent = SACAgent(unity_env)
+    agent.train(10000000)
 
     # while (True):
     #     in_1 = input("Input Forward(1)/Backward(-1)")

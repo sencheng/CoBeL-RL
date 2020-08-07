@@ -9,6 +9,7 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.keras import backend as K
 
 from interfaces.oai_gym_interface import UnityInterface
+from agents.A2C_TF2.mish import Mish
 EPISODES = 3000
 
 class A2CAgent:
@@ -20,12 +21,17 @@ class A2CAgent:
         self.value_size = 1
 
         #Hyperparameters
-        self.actor_lr = 0.0001
-        self.critic_lr = 0.001
-        self.discount_factor = .9
+        self.actor_lr = 0.00001
+        self.critic_lr = 0.0001
+        self.discount_factor = .99
 
         #Models
         self.actor, self.critic = self.build_model()
+
+        #Load weights
+        self.actor.load_weights("/home/wkst/Desktop/a2c_model_actor.h5")
+        self.critic.load_weights("/home/wkst/Desktop/a2c_model_critic.h5")
+
 
         # method for training actor and critic network
         self.optimizer = [self.actor_optimizer(), self.critic_optimizer()]
@@ -35,19 +41,20 @@ class A2CAgent:
         state = kl.Input(batch_shape=(None, self.state_size[0],self.state_size[1],self.state_size[2]))
 
         #Conv Head
-        conv1 = kl.Conv2D(128, kernel_size=3, activation='relu')(state)
-        mp1 = kl.MaxPooling2D(pool_size=(2,2))(conv1)
-        conv2 = kl.Conv2D(128, kernel_size=3, activation='relu')(mp1)
-        mp2 = kl.MaxPooling2D(pool_size=(2,2))(conv2)
-        flatten = kl.Flatten()(mp2)
+        c1 = kl.Conv2D(32, (3, 3), activation='Mish')(state)
+        mp1 = kl.MaxPooling2D((2, 2))(c1)
+        c2 = kl.Conv2D(64, (3, 3), activation='Mish')(mp1)
+        mp2 = kl.MaxPooling2D((2, 2))(c2)
+        c3 = kl.Conv2D(128, (3, 3), activation='Mish')(mp2)
+        fl = kl.Flatten()(c3)
 
         #Actor Tail
-        actor_hid = kl.Dense(256, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform')(flatten)
+        actor_hid = kl.Dense(512, input_dim=self.state_size, activation='Mish', kernel_initializer='he_uniform')(fl)
         mu = kl.Dense(self.action_size, activation='tanh', kernel_initializer='he_uniform')(actor_hid)
         sigma = kl.Dense(self.action_size, activation='softplus', kernel_initializer='he_uniform')(actor_hid)
 
         #Critic Tail
-        critic_hid = kl.Dense(256, input_dim=self.state_size, activation='relu', kernel_initializer='he_uniform')(flatten)
+        critic_hid = kl.Dense(512, input_dim=self.state_size, activation='Mish', kernel_initializer='he_uniform')(fl)
         state_value = kl.Dense(self.value_size, activation='linear', kernel_initializer='he_uniform')(critic_hid)
 
         actor = Model(inputs=state, outputs=(mu, sigma))
@@ -126,6 +133,10 @@ class A2CAgent:
             next_state = np.expand_dims(next_state[0],axis=0)
             self.train_model(state, action, reward, next_state, done)
             state = next_state
+            if frame_idx % 500 == 0:
+                print("Save Model")
+                self.actor.save_weights("/home/wkst/Desktop/a2c_model_actor.h5")
+                self.critic.save_weights("/home/wkst/Desktop/a2c_model_critic.h5")
 
     
 
