@@ -4,7 +4,6 @@ from tflearn.initializations import uniform
 
 
 class CriticNetwork(object):
-
     def __init__(self, sess, state_dim, action_dim, learning_rate, tau, gamma, num_actor_vars):
         self.sess = sess
         self.s_dim = state_dim
@@ -43,20 +42,19 @@ class CriticNetwork(object):
 
     def create_critic_network(self):
 
-        inputs = tflearn.input_data(shape=[None, self.s_dim])
+        inputs = tflearn.input_data(shape=[None, self.s_dim[0],self.s_dim[1],self.s_dim[2]])
         action = tflearn.input_data(shape=[None, self.a_dim])
 
-        net = tflearn.fully_connected(inputs, 400)
-        net = tflearn.layers.normalization.batch_normalization(net)
-        net = tflearn.activations.relu(net)
+        conv1 = tflearn.conv_2d(inputs,64,(3,3),activation="relu")
+        maxpool1 = tflearn.max_pool_2d(conv1,(2,2))
+        flat1 = tflearn.flatten(maxpool1)
 
         # Add the action tensor in the 2nd hidden layer
         # Use two temp layers to get the corresponding weights and biases
-        t1 = tflearn.fully_connected(net, 200, weights_init=uniform(minval=-0.002, maxval=0.002))
-        t2 = tflearn.fully_connected(action, 200)
+        t1 = tflearn.fully_connected(flat1, 256, weights_init=uniform(minval=-0.002, maxval=0.002))
+        t2 = tflearn.fully_connected(action, 256)
 
-        net = tflearn.activation(
-            tf.matmul(net, t1.W) + tf.matmul(action, t2.W) + t2.b, activation='relu')
+        net = tflearn.activation(tf.matmul(flat1, t1.W) + tf.matmul(action, t2.W) + t2.b, activation='relu')
 
         # linear layer connected to 1 output representing Q(s,a)
         out = tflearn.fully_connected(net, 1, weights_init=uniform(minval=-0.004, maxval=0.004))

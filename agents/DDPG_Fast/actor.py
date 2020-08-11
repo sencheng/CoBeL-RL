@@ -4,7 +4,6 @@ from tflearn.initializations import uniform
 
 
 class ActorNetwork(object):
-
     def __init__(self, sess, state_dim, action_dim, action_bound, learning_rate, tau, batch_size):
         self.sess = sess
         self.s_dim = state_dim
@@ -49,18 +48,17 @@ class ActorNetwork(object):
 
     def create_actor_network(self):
 
-        inputs = tflearn.input_data(shape=[None, self.s_dim])
+        inputs = tflearn.input_data(shape=[None, self.s_dim[0],self.s_dim[1],self.s_dim[2]])
 
-        net = tflearn.fully_connected(inputs, 400)
+        net = tflearn.conv_2d(inputs,64,(3,3),activation="relu")
+        net = tflearn.max_pool_2d(net,(2,2))
+        net = tflearn.flatten(net)
+
+        net = tflearn.fully_connected(net, 256)
         net = tflearn.layers.normalization.batch_normalization(net)
         net = tflearn.activations.relu(net)
 
-        net = tflearn.fully_connected(net, 200, weights_init=uniform(minval=-0.002, maxval=0.002))
-        net = tflearn.layers.normalization.batch_normalization(net)
-        net = tflearn.activations.relu(net)
-
-        out = tflearn.fully_connected(net, self.a_dim, activation='tanh', weights_init=uniform(minval=-0.004, maxval=0.004))
-        # Scale output to -action_bound to action_bound
+        out = tflearn.fully_connected(net, self.a_dim, activation='tanh', weights_init=uniform(minval=-0.003, maxval=0.003))
 
         scaled_out = tf.multiply(out, self.action_bound)
         return inputs, out, scaled_out
