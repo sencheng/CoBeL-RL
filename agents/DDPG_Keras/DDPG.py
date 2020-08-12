@@ -1,4 +1,5 @@
 import os
+#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import time
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
 from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
@@ -16,6 +17,7 @@ import gym
 import tensorflow as tf
 from tensorflow.keras import layers
 import numpy as np
+import collections
 import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
@@ -52,10 +54,11 @@ class Buffer:
 
         # Instead of list of tuples as the exp.replay concept go
         # We use different np.arrays for each tuple element
-        self.state_buffer = np.zeros((self.buffer_capacity, num_states))
+        BUFSIZE_STATE = (self.buffer_capacity,) + num_states
+        self.state_buffer = np.zeros(BUFSIZE_STATE)
         self.action_buffer = np.zeros((self.buffer_capacity, num_actions))
         self.reward_buffer = np.zeros((self.buffer_capacity, 1))
-        self.next_state_buffer = np.zeros((self.buffer_capacity, num_states))
+        self.next_state_buffer = np.zeros(BUFSIZE_STATE)
 
     # Takes (s,a,r,s') obervation tuple as input
     def record(self, obs_tuple):
@@ -125,47 +128,55 @@ def update_target(tau):
     target_actor.set_weights(new_weights)
 
 def get_actor():
-    last_init = tf.random_uniform_initializer(minval=-0.003, maxval=0.003)
+    state_input = layers.Input(shape=num_states)
+    out = layers.Conv2D(16,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
 
-    inputs = layers.Input(shape=num_states)
+    out = layers.Conv2D(32,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(8,(3,3))(inputs)
-    out = layers.MaxPool2D(pool_size=2)(out)
-    out = Flatten()(out)
-    out = layers.Dense(512, activation="relu")(out)
-    out = layers.BatchNormalization()(out)
+    out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
 
-    outputs = layers.Dense(1, activation="tanh", kernel_initializer=last_init)(out)
+    out = layers.Flatten()(out)
+
+    out = layers.Dense(64, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+
+    outputs = layers.Dense(num_actions, activation="tanh", kernel_initializer=tf.keras.initializers.GlorotNormal)(out)
 
     outputs = outputs * upper_bound
-    model = tf.keras.Model(inputs, outputs)
+    model = tf.keras.Model(state_input, outputs)
     return model
 
 def get_critic():
+
     # State as input
+    #First Conv + MaxPool2D
     state_input = layers.Input(shape=num_states)
-    state_out = layers.Dense(16, activation="relu")(state_input)
-    state_out = layers.BatchNormalization()(state_out)
-    state_out = layers.Dense(32, activation="relu")(state_out)
-    state_out = layers.BatchNormalization()(state_out)
+    out = layers.Conv2D(16,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
+
+    out = layers.Conv2D(32,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
+
+    out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.MaxPool2D(2)(out)
+
+    out = layers.Flatten()(out)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(32, activation="relu")(action_input)
-    action_out = layers.BatchNormalization()(action_out)
+    action_out = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
 
-    # Both are passed through seperate layer before concatenating
-    concat = layers.Concatenate()([state_out, action_out])
+    #Concatenate Both Layers
+    concat = layers.Concatenate()([out, action_out])
+    concat_out = layers.Dense(64, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(concat)
 
-    out = layers.Dense(512, activation="relu")(concat)
-    out = layers.BatchNormalization()(out)
-    out = layers.Dense(512, activation="relu")(out)
-    out = layers.BatchNormalization()(out)
-    outputs = layers.Dense(1)(out)
+    outputs = layers.Dense(1)(concat_out)
 
     # Outputs single value for give state-action
     model = tf.keras.Model([state_input, action_input], outputs)
-
+    print(model.summary())
     return model
 
 def policy(state, noise_object):
@@ -177,6 +188,32 @@ def policy(state, noise_object):
     # We make sure action is within bounds
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
     return [np.squeeze(legal_action)]
+
+class RingBuffer:
+    def __init__(self, buffer_len):
+        self.queue = collections.deque([],maxlen=buffer_len)
+    def insert_obs(self,obs):
+        self.queue.append(obs)
+    def generate_arr(self):
+        arr = np.array(list(self.queue))
+        arr = np.transpose(arr,axes=(1,2,0))
+        return arr
+    def print_arr(self):
+        arr = self.generate_arr()
+        arr = arr * 255
+        p1 = np.array(arr[:,:,0], dtype=np.uint8)
+        p2 = np.array(arr[:,:,1], dtype=np.uint8)
+        p3 = np.array(arr[:,:,2], dtype=np.uint8)
+        p4 = np.array(arr[:,:,3], dtype=np.uint8)
+        img1 = Image.fromarray(p1)
+        img2 = Image.fromarray(p2)
+        img3 = Image.fromarray(p3)
+        img4 = Image.fromarray(p4)
+        img1.save("1.png")
+        img2.save("2.png")
+        img3.save("3.png")
+        img4.save("4.png")
+    
 
 std_dev = 0.2
 ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
@@ -198,62 +235,62 @@ actor_lr = 0.001
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
 
-total_episodes = 100
+total_episodes = 10000
 # Discount factor for future rewards
 gamma = 0.99
 # Used to update target networks
 tau = 0.005
 
-buffer = Buffer(num_states,num_actions, 50000, 256)
+buffer = Buffer(num_states,num_actions, 25000, 64)
+ringbuffer = RingBuffer(4)
 
-# To store reward history of each episode
-ep_reward_list = []
-# To store average reward history of last few episodes
-avg_reward_list = []
 
-# Takes about 20 min to train
+def ProcessImage(observation, name="Test"):
+    observation = observation * 255
+    observation = np.array(observation, dtype=np.uint8)
+    img = Image.fromarray(observation)
+    img.save(name + ".png")
+
+def ConvertDequeToState(buffer):
+    arr = np.array(list(buffer))
+    return arr
+
 for ep in range(total_episodes):
-    prev_state = env.reset()
-    episodic_reward = 0
+    prev_state = env._reset()
+
+    ringbuffer.insert_obs(prev_state[0][:,:,0])
+    ringbuffer.insert_obs(prev_state[0][:,:,1])
+    ringbuffer.insert_obs(prev_state[0][:,:,2])
+    ringbuffer.insert_obs(prev_state[0][:,:,3])
+
+    prev_state = ringbuffer.generate_arr()
 
     while True:
+        ringbuffer.print_arr()
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
-        action = policy(tf_prev_state, ou_noise)
-        state, reward, done, info = env.step(action)
+        action = np.array(policy(tf_prev_state, ou_noise))
+        state, reward, done, info = env._step(action)
 
-        buffer.record((prev_state, action, reward, state))
-        episodic_reward += reward
+        #ringbuffer.insert_obs(state[0][:,:,3])
+        ringbuffer.insert_obs(state[0][:,:,0])
+        ringbuffer.insert_obs(state[0][:,:,1])
+        ringbuffer.insert_obs(state[0][:,:,2])
+        ringbuffer.insert_obs(state[0][:,:,3])
+        state = ringbuffer.generate_arr()
+
+        buffer.record((prev_state, action[0], reward, state))
 
         buffer.learn()
         update_target(tau)
 
         if done:
             break
-
         prev_state = state
-
-    ep_reward_list.append(episodic_reward)
-
-    # Mean of last 40 episodes
-    avg_reward = np.mean(ep_reward_list[-40:])
-    print("Episode * {} * Avg Reward is ==> {}".format(ep, avg_reward))
-    avg_reward_list.append(avg_reward)
-
-# Plotting graph
-# Episodes versus Avg. Rewards
-plt.plot(avg_reward_list)
-plt.xlabel("Episode")
-plt.ylabel("Avg. Epsiodic Reward")
-plt.show()
-
-# Save the weights
-actor_model.save_weights("pendulum_actor.h5")
-critic_model.save_weights("pendulum_critic.h5")
-
-target_actor.save_weights("pendulum_target_actor.h5")
-target_critic.save_weights("pendulum_target_critic.h5")
-
+    actor_model.save_weights("actor.h5")
+    critic_model.save_weights("critic.h5")
+    target_actor.save_weights("target_actor.h5")
+    target_critic.save_weights("target_critic.h5")
 
 backend.clear_session()
 unity_env.close()
