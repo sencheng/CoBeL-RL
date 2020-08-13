@@ -2,11 +2,9 @@ import os
 #os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import time
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
-from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 from random import randrange
 from tensorflow.keras import backend
 import numpy as np
-from PIL import Image
 
 # set some python environment properties
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -23,6 +21,8 @@ matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from agents.DDPG_Keras.noise import OUActionNoise
+from agents.DDPG_Keras.mish import Mish
+from agents.DDPG_Keras.rbuffer import RingBuffer
 
 project = get_cobel_path()
 environment_path = get_env_path()
@@ -129,18 +129,18 @@ def update_target(tau):
 
 def get_actor():
     state_input = layers.Input(shape=num_states)
-    out = layers.Conv2D(16,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.Conv2D(16,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(32,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.Conv2D(32,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
-    out = layers.MaxPool2D(2)(out)
+    #out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    #out = layers.MaxPool2D(2)(out)
 
     out = layers.Flatten()(out)
 
-    out = layers.Dense(64, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    out = layers.Dense(128, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
 
     outputs = layers.Dense(num_actions, activation="tanh", kernel_initializer=tf.keras.initializers.GlorotNormal)(out)
 
@@ -153,30 +153,32 @@ def get_critic():
     # State as input
     #First Conv + MaxPool2D
     state_input = layers.Input(shape=num_states)
-    out = layers.Conv2D(16,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+
+    out = layers.Conv2D(16,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(32,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.Conv2D(32,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
-    out = layers.MaxPool2D(2)(out)
+    #out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    #out = layers.MaxPool2D(2)(out)
 
     out = layers.Flatten()(out)
+    out = layers.Dense(128, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(32, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
+    action_out = layers.Dense(32, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
 
     #Concatenate Both Layers
     concat = layers.Concatenate()([out, action_out])
-    concat_out = layers.Dense(64, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(concat)
+    concat_out = layers.Dense(64, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(concat)
 
     outputs = layers.Dense(1)(concat_out)
 
     # Outputs single value for give state-action
     model = tf.keras.Model([state_input, action_input], outputs)
-    print(model.summary())
+    #print(model.summary())
     return model
 
 def policy(state, noise_object):
@@ -189,32 +191,6 @@ def policy(state, noise_object):
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
     return [np.squeeze(legal_action)]
 
-class RingBuffer:
-    def __init__(self, buffer_len):
-        self.queue = collections.deque([],maxlen=buffer_len)
-    def insert_obs(self,obs):
-        self.queue.append(obs)
-    def generate_arr(self):
-        arr = np.array(list(self.queue))
-        arr = np.transpose(arr,axes=(1,2,0))
-        return arr
-    def print_arr(self):
-        arr = self.generate_arr()
-        arr = arr * 255
-        p1 = np.array(arr[:,:,0], dtype=np.uint8)
-        p2 = np.array(arr[:,:,1], dtype=np.uint8)
-        p3 = np.array(arr[:,:,2], dtype=np.uint8)
-        p4 = np.array(arr[:,:,3], dtype=np.uint8)
-        img1 = Image.fromarray(p1)
-        img2 = Image.fromarray(p2)
-        img3 = Image.fromarray(p3)
-        img4 = Image.fromarray(p4)
-        img1.save("1.png")
-        img2.save("2.png")
-        img3.save("3.png")
-        img4.save("4.png")
-    
-
 std_dev = 0.2
 ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
 
@@ -224,13 +200,19 @@ critic_model = get_critic()
 target_actor = get_actor()
 target_critic = get_critic()
 
+#Load All Weights
+# actor_model.load_weights('/home/wkst/CoBeL-RL/actor.h5')
+# critic_model.load_weights('/home/wkst/CoBeL-RL/critic.h5')
+# target_actor.load_weights('/home/wkst/CoBeL-RL/target_actor.h5')
+# target_critic.load_weights('/home/wkst/CoBeL-RL/target_critic.h5')
+
 # Making the weights equal initially
 target_actor.set_weights(actor_model.get_weights())
 target_critic.set_weights(critic_model.get_weights())
 
 # Learning rate for actor-critic models
-critic_lr = 0.002
-actor_lr = 0.001
+actor_lr  = 0.00001
+critic_lr = 0.0001
 
 critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
 actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
@@ -241,19 +223,8 @@ gamma = 0.99
 # Used to update target networks
 tau = 0.005
 
-buffer = Buffer(num_states,num_actions, 25000, 64)
+buffer = Buffer(num_states,num_actions, 25000, 128)
 ringbuffer = RingBuffer(4)
-
-
-def ProcessImage(observation, name="Test"):
-    observation = observation * 255
-    observation = np.array(observation, dtype=np.uint8)
-    img = Image.fromarray(observation)
-    img.save(name + ".png")
-
-def ConvertDequeToState(buffer):
-    arr = np.array(list(buffer))
-    return arr
 
 for ep in range(total_episodes):
     prev_state = env._reset()
@@ -271,8 +242,14 @@ for ep in range(total_episodes):
 
         action = np.array(policy(tf_prev_state, ou_noise))
         state, reward, done, info = env._step(action)
+        #Get Each third Frame as workaround
 
-        #ringbuffer.insert_obs(state[0][:,:,3])
+        if state[0].shape == num_states:
+            ringbuffer.insert_obs(state[0][:,:,2])
+        else:
+            ringbuffer.insert_obs(state[0][0][:,:,2])
+        
+        #Fill Whole 4 Frames in Ringbuffer
         ringbuffer.insert_obs(state[0][:,:,0])
         ringbuffer.insert_obs(state[0][:,:,1])
         ringbuffer.insert_obs(state[0][:,:,2])
