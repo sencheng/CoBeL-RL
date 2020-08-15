@@ -1,13 +1,10 @@
 import os
-#os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 import time
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
 from random import randrange
 from tensorflow.keras import backend
 import numpy as np
 
-# set some python environment properties
-# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
 visualOutput = True
 backend.set_image_data_format(data_format='channels_last')
 
@@ -127,22 +124,27 @@ def update_target(tau):
 
     target_actor.set_weights(new_weights)
 
+hidden_act = "Mish"
+
 def get_actor():
+    last_init = tf.random_uniform_initializer(-0.003,0.003)
     state_input = layers.Input(shape=num_states)
-    out = layers.Conv2D(16,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.Conv2D(16,3, activation=hidden_act,padding="same", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    #out = layers.BatchNormalization()(out)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(32,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    out = layers.Conv2D(32,3, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    #out = layers.BatchNormalization()(out)
     out = layers.MaxPool2D(2)(out)
 
-    #out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
-    #out = layers.MaxPool2D(2)(out)
+    # out = layers.Conv2D(32,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    # out = layers.MaxPool2D(2)(out)
 
     out = layers.Flatten()(out)
 
-    out = layers.Dense(128, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    out = layers.Dense(128, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
 
-    outputs = layers.Dense(num_actions, activation="tanh", kernel_initializer=tf.keras.initializers.GlorotNormal)(out)
+    outputs = layers.Dense(num_actions, activation="tanh", kernel_initializer=last_init)(out)
 
     outputs = outputs * upper_bound
     model = tf.keras.Model(state_input, outputs)
@@ -154,25 +156,24 @@ def get_critic():
     #First Conv + MaxPool2D
     state_input = layers.Input(shape=num_states)
 
-    out = layers.Conv2D(16,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    out = layers.Conv2D(16,3, activation=hidden_act,padding="same", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
+    #out = layers.BatchNormalization()(out)
     out = layers.MaxPool2D(2)(out)
 
-    out = layers.Conv2D(32,3, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    out = layers.Conv2D(32,3, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    #out = layers.BatchNormalization()(out)
     out = layers.MaxPool2D(2)(out)
-
-    #out = layers.Conv2D(64,3, activation="relu", kernel_initializer=tf.keras.initializers.HeNormal)(out)
-    #out = layers.MaxPool2D(2)(out)
 
     out = layers.Flatten()(out)
-    out = layers.Dense(128, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(out)
+    out = layers.Dense(128, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
 
     # Action as input
     action_input = layers.Input(shape=(num_actions))
-    action_out = layers.Dense(32, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
+    action_out = layers.Dense(128, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
 
     #Concatenate Both Layers
     concat = layers.Concatenate()([out, action_out])
-    concat_out = layers.Dense(64, activation="Mish", kernel_initializer=tf.keras.initializers.HeNormal)(concat)
+    concat_out = layers.Dense(64, activation=hidden_act, kernel_initializer=tf.keras.initializers.HeNormal)(concat)
 
     outputs = layers.Dense(1)(concat_out)
 
@@ -191,7 +192,7 @@ def policy(state, noise_object):
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
     return [np.squeeze(legal_action)]
 
-std_dev = 0.2
+std_dev = 0.3
 ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(std_dev) * np.ones(1))
 
 actor_model = get_actor()
@@ -201,21 +202,21 @@ target_actor = get_actor()
 target_critic = get_critic()
 
 #Load All Weights
-# actor_model.load_weights('/home/wkst/CoBeL-RL/actor.h5')
-# critic_model.load_weights('/home/wkst/CoBeL-RL/critic.h5')
-# target_actor.load_weights('/home/wkst/CoBeL-RL/target_actor.h5')
-# target_critic.load_weights('/home/wkst/CoBeL-RL/target_critic.h5')
+#actor_model.load_weights('/home/wkst/Desktop/CoBeL-RL/actor.h5')
+#critic_model.load_weights('/home/wkst/Desktop/CoBeL-RL/critic.h5')
+#target_actor.load_weights('/home/wkst/Desktop/CoBeL-RL/target_actor.h5')
+#target_critic.load_weights('/home/wkst/Desktop/CoBeL-RL/target_critic.h5')
 
-# Making the weights equal initially
+#Making the weights equal initially
 target_actor.set_weights(actor_model.get_weights())
 target_critic.set_weights(critic_model.get_weights())
 
 # Learning rate for actor-critic models
-actor_lr  = 0.00001
+actor_lr  = 0.0001
 critic_lr = 0.0001
 
-critic_optimizer = tf.keras.optimizers.Adam(critic_lr)
-actor_optimizer = tf.keras.optimizers.Adam(actor_lr)
+critic_optimizer = tf.keras.optimizers.Adam(critic_lr,clipnorm=1.,clipvalue=0.5)
+actor_optimizer = tf.keras.optimizers.Adam(actor_lr,clipnorm=1.,clipvalue=0.5)
 
 total_episodes = 10000
 # Discount factor for future rewards
@@ -227,6 +228,7 @@ buffer = Buffer(num_states,num_actions, 25000, 128)
 ringbuffer = RingBuffer(4)
 
 for ep in range(total_episodes):
+    score = 0.0
     prev_state = env._reset()
 
     ringbuffer.insert_obs(prev_state[0][:,:,0])
@@ -237,23 +239,23 @@ for ep in range(total_episodes):
     prev_state = ringbuffer.generate_arr()
 
     while True:
-        ringbuffer.print_arr()
+        #ringbuffer.print_arr()
         tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
 
         action = np.array(policy(tf_prev_state, ou_noise))
         state, reward, done, info = env._step(action)
         #Get Each third Frame as workaround
-
+        score += reward
         if state[0].shape == num_states:
             ringbuffer.insert_obs(state[0][:,:,2])
         else:
             ringbuffer.insert_obs(state[0][0][:,:,2])
         
         #Fill Whole 4 Frames in Ringbuffer
-        ringbuffer.insert_obs(state[0][:,:,0])
-        ringbuffer.insert_obs(state[0][:,:,1])
-        ringbuffer.insert_obs(state[0][:,:,2])
-        ringbuffer.insert_obs(state[0][:,:,3])
+        #ringbuffer.insert_obs(state[0][:,:,0])
+        #ringbuffer.insert_obs(state[0][:,:,1])
+        #ringbuffer.insert_obs(state[0][:,:,2])
+        #ringbuffer.insert_obs(state[0][:,:,3])
         state = ringbuffer.generate_arr()
 
         buffer.record((prev_state, action[0], reward, state))
@@ -264,10 +266,14 @@ for ep in range(total_episodes):
         if done:
             break
         prev_state = state
-    actor_model.save_weights("actor.h5")
-    critic_model.save_weights("critic.h5")
-    target_actor.save_weights("target_actor.h5")
-    target_critic.save_weights("target_critic.h5")
+    print("ep" , ep, ": ", score)
+    if score >= 4:
+        print("solved!")
+        actor_model.save_weights("actor.h5")
+        critic_model.save_weights("critic.h5")
+        target_actor.save_weights("target_actor.h5")
+        target_critic.save_weights("target_critic.h5")
+            
 
 backend.clear_session()
 unity_env.close()
