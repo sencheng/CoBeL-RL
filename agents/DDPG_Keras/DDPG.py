@@ -185,9 +185,13 @@ def get_critic():
 def policy(state, noise_object):
     sampled_actions = tf.squeeze(actor_model(state))
     noise = noise_object()
+    
     # Adding noise to action
-    sampled_actions = sampled_actions.numpy() + noise
+    #sampled_actions = sampled_actions.numpy() + noise
 
+    #Without noise
+    sampled_actions = sampled_actions.numpy()
+    
     # We make sure action is within bounds
     legal_action = np.clip(sampled_actions, lower_bound, upper_bound)
     return [np.squeeze(legal_action)]
@@ -202,10 +206,8 @@ target_actor = get_actor()
 target_critic = get_critic()
 
 #Load All Weights
-#actor_model.load_weights('/home/wkst/Desktop/CoBeL-RL/actor.h5')
-#critic_model.load_weights('/home/wkst/Desktop/CoBeL-RL/critic.h5')
-#target_actor.load_weights('/home/wkst/Desktop/CoBeL-RL/target_actor.h5')
-#target_critic.load_weights('/home/wkst/Desktop/CoBeL-RL/target_critic.h5')
+actor_model.load_weights('/home/wkst/Desktop/Repositories/CoBeL-RL/actor.h5')
+critic_model.load_weights('/home/wkst/Desktop/Repositories/CoBeL-RL/critic.h5')
 
 #Making the weights equal initially
 target_actor.set_weights(actor_model.get_weights())
@@ -258,10 +260,10 @@ for ep in range(total_episodes):
         #ringbuffer.insert_obs(state[0][:,:,3])
         state = ringbuffer.generate_arr()
 
-        buffer.record((prev_state, action[0], reward, state))
+        #buffer.record((prev_state, action[0], reward, state))
 
-        buffer.learn()
-        update_target(tau)
+        #buffer.learn()
+        #update_target(tau)
 
         if done:
             break
@@ -271,8 +273,6 @@ for ep in range(total_episodes):
         print("solved!")
         actor_model.save_weights("actor.h5")
         critic_model.save_weights("critic.h5")
-        target_actor.save_weights("target_actor.h5")
-        target_critic.save_weights("target_critic.h5")
             
 
 backend.clear_session()
