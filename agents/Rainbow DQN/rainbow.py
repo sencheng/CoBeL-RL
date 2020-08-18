@@ -9,17 +9,20 @@ import gym
 import matplotlib.pyplot as plt
 import numpy as np
 
-import keras.layers
-from keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector
-from keras import Model
-from keras.optimizers import Adam
-from keras.models import Sequential
-from keras import backend as K
-from keras.engine.base_layer import InputSpec
-from keras import initializers
+import tensorflow as tf
+from tensorflow.keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Softmax
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import backend as K
+from tensorflow.keras import initializers
+
+#tf.compat.v1.disable_v2_behavior()
+tf.compat.v1.disable_eager_execution()
+
 from custom_layers import NoisyDense
 
-#from IPython.display import clear_output
+from IPython.display import clear_output
 
 from buffers import ReplayBuffer, PrioritizedReplayBuffer
 
@@ -99,11 +102,10 @@ class DQNAgent:
         distribution_list = []
 
         for i in range(self.action_dim):
-            distribution_list.append(keras.layers.Softmax(axis=1)(agg[i]))
+            distribution_list.append(Softmax(axis=1)(agg[i]))
 
         model = Model(input_layer, distribution_list)
         model.compile(optimizer=Adam(lr=0.0025), loss='categorical_crossentropy')
-        #model.summary()
         return model
 
     #PASS
@@ -206,7 +208,7 @@ class DQNAgent:
         for frame_idx in range(1, num_frames + 1):
             action = self.select_action(state)
             next_state, reward, done = self.step(action)
-            self.env.render()
+            #self.env.render()
 
             state = next_state
             score += reward
