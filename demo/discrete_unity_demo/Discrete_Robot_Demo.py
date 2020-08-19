@@ -3,12 +3,15 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
+from numpy.random import seed
+seed(42)
+tf.random.set_seed(42)
 tf.get_logger().setLevel('INFO')
 
 import time
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
 from random import randrange
-from keras import backend
+from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
@@ -40,7 +43,13 @@ if __name__ == "__main__":
     #agent = RDQN(unity_env,1000000)
     agent = A2C(unity_env)
     agent.train(1000000)
+    
+    # while (True):
+    #     in_1 = input("Move")
+    #     observation, reward, done, info = unity_env._step(np.array([[float(in_1)]]))
+    #     ProcessImage(np.array(observation))
 
+    
     # clear session
     backend.clear_session()
     unity_env.close()
