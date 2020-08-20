@@ -21,9 +21,9 @@ class Actor_Net(tf.keras.Model):
         out_init = RandomUniform(minval=-3e-3, maxval=3e-3, seed=None)
 
         #Conv Head
-        self.conv1 = layers.Conv2D(128, kernel_size=3, activation='relu',input_shape=state_size)
+        self.conv1 = layers.Conv2D(8, kernel_size=3, activation='relu',input_shape=state_size)
         self.mp1 = layers.MaxPooling2D(pool_size=(2,2))
-        self.conv2 = layers.Conv2D(128, kernel_size=3, activation='relu')
+        self.conv2 = layers.Conv2D(16, kernel_size=3, activation='relu')
         self.mp2 = layers.MaxPooling2D(pool_size=(2,2))
         self.flatten = layers.Flatten()
 
@@ -34,9 +34,9 @@ class Actor_Net(tf.keras.Model):
         
     def call(self, X):
         x = self.conv1(X)
-        x = self.mp1(X)
-        x = self.conv2(X)
-        x = self.mp2(X)
+        x = self.mp1(x)
+        x = self.conv2(x)
+        x = self.mp2(x)
         x = self.flatten(x)
         x = self.dense(x)
         
@@ -59,4 +59,5 @@ class Actor_Net(tf.keras.Model):
         action = tanh(mu + e * std)
         dist = tfd.Normal(loc=mu, scale=std)
         log_prob = log(dist.prob(mu + e * std)) - log(1 - action**2 + epsilon)
+        log_prob = np.sum(log_prob,axis=1)
         return action, log_prob

@@ -69,19 +69,18 @@ class SACAgent():
         # ---------------------------- update critic ---------------------------- #
         next_action, log_pis_next = self.actor_local.evaluate(next_states)
 
-        a_x = tf.concat([next_states, next_action], axis=1)
-        Q_target1_next = self.critic1_target.call(a_x)
-        Q_target2_next = self.critic2_target.call(a_x)
-
-        # take the min of both critics for updating
+        #Clipped double Q Trick
+        Q_target1_next = self.critic1_target.call([next_states, next_action])
+        Q_target2_next = self.critic2_target.call([next_states, next_action])
         Q_target_next = tf.squeeze(tf.math.minimum(Q_target1_next,Q_target2_next))
-
         Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - self.alpha * tf.squeeze(log_pis_next)))
-
-        x = tf.concat([states,actions], axis=1)
-        self.critic1.fit(x,Q_targets,verbose=0)
-        self.critic2.fit(x,Q_targets, verbose=0)
-
+        #######################
+        
+        #Fit
+        self.critic1.fit([states,actions],Q_targets,verbose=0)
+        self.critic2.fit([states,actions],Q_targets, verbose=0)
+        ####
+        
         alpha = np.exp(self.log_alpha.read_value()[0])
 
         # Compute alpha loss
@@ -100,16 +99,15 @@ class SACAgent():
         with tf.GradientTape() as tape:
             actions_pred , log_pis = self.actor_local.evaluate(converted_states)
             log_pis = tf.squeeze(log_pis)
-            a_c = tf.concat([converted_states, actions_pred], axis=1)
-            c1_in = tf.squeeze(self.critic1.call(a_c))
+            c1_in = tf.squeeze(self.critic1.call([converted_states, actions_pred]))
             loss = (alpha * log_pis - c1_in)
             mean = tf.math.reduce_mean(loss, axis=0)
         grads = tape.gradient(mean,self.actor_local.trainable_variables)
         self.actor_opt.apply_gradients(zip(grads, self.actor_local.trainable_variables))
                 
         # ----------------------- update target networks ----------------------- #
-        self.soft_update(self.critic1, self.critic1_target, TAU)
-        self.soft_update(self.critic2, self.critic2_target, TAU)
+        self.soft_update(self.critic1, self.critic1_target, self.tau)
+        self.soft_update(self.critic2, self.critic2_target, self.tau)
                      
     def soft_update(self, local_model, target_model, tau):
         a = np.array(local_model.get_weights()) #local
@@ -124,6 +122,5 @@ class SACAgent():
             action_v = tf.expand_dims(tf.clip_by_value(action*1, -1, 1),axis=0)
             action_v = tf.keras.backend.eval(action_v)
             next_state, reward, done, info = self.u_env._step(action_v)
-            next_state = np.expand_dims(next_state[0],axis=0)
             self.step(state, action_v, reward, next_state, done)
             state = next_state

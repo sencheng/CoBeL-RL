@@ -6,7 +6,8 @@ from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
-from agents.DDPG.agent import DDPG_Agent
+#from agents.DDPG.agent import DDPG_Agent
+from agents.SAC.agent import SACAgent
 
 # set some python environment properties
 # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
@@ -30,6 +31,9 @@ if __name__ == "__main__":
                                nb_max_episode_steps=10000000, decision_interval=4,
                                agent_action_type="continuous", use_gray_scale_images=True)
 
+    agent = SACAgent(unity_env)
+    agent.train()
+    
     # while (True):
     #     in_1 = input("Input Forward(1)/Backward(-1)")
     #     in_2 = input("Input Right(1)/Left(-1)")
