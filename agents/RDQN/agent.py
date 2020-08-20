@@ -41,7 +41,7 @@ class RDQNAgent:
         prior_eps: float = 1e-6,
         # Categorical DQN parameters
         v_min: float = 0.0,
-        v_max: float = 50.0,
+        v_max: float = 20.0,
         atom_size: int = 51
     ):
         self.u_env = env
@@ -237,14 +237,13 @@ class RDQNAgent:
                 print("Ep:",ep," Current Average Reward: ", avg)
                 if avg >= 9:
                     print("Save Model")
-                    self.dqn.save_weights("/home/wkst/Desktop/A2C.h5")
+                    self.dqn.save_weights("/home/wkst/Desktop/RDQN.h5")
                 state = self.u_env._reset()
                 if state[0].shape == self.obs_dim:
                     state = state[0]
                 else:
                     state = state[0][0]
                 
-
             # if training is ready
             if len(self.memory) >= self.batch_size:
                 updateCount += 1

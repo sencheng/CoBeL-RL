@@ -4,7 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
 from numpy.random import seed
-# tf.compat.v1.disable_eager_execution()
+tf.compat.v1.disable_eager_execution()
 # seed(42)
 # tf.random.set_seed(42)
 tf.get_logger().setLevel('INFO')
@@ -16,8 +16,8 @@ from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
-from agents.RDQN.agent import RDQNAgent as RDQN
-#from agents.A2C_TF2.a2c_disc import A2CAgent as A2C
+#from agents.RDQN.agent import RDQNAgent as RDQN
+from agents.A2C.a2c_disc import A2CAgent as A2C
 
 # set some python environment properties
 visualOutput = True
@@ -41,8 +41,8 @@ if __name__ == "__main__":
                                agent_action_type="discrete", use_gray_scale_images=False)
 
     
-    agent = RDQN(unity_env,1000000)
-    #agent = A2C(unity_env)
+    #agent = RDQN(unity_env,1000000)
+    agent = A2C(unity_env)
     agent.train(1000000)
     
     # while (True):

@@ -9,7 +9,7 @@ import tensorflow.keras.layers as kl
 import tensorflow.keras.losses as kls
 import tensorflow.keras.optimizers as ko
 from interfaces.oai_gym_interface import UnityInterface
-from agents.A2C_TF2.mish import Mish
+from agents.A2C.mish import Mish
 import collections
 
 #Solving Benchmark
