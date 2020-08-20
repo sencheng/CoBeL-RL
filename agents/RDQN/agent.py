@@ -2,43 +2,28 @@ import sys
 import math
 import os
 import random
+import collections
 from collections import deque
 from typing import Deque, Dict, List, Tuple
 
 import gym
+import matplotlib.pyplot as plt
 import numpy as np
 
-import keras.layers
-from keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Conv2D, Flatten, MaxPooling2D
-from keras import Model
-from keras.optimizers import Adam
-from keras.models import Sequential
-from keras import backend as K
-from keras.engine.base_layer import InputSpec
-from keras import initializers
-
-from keras.backend.tensorflow_backend import set_session
 import tensorflow as tf
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True  # dynamically grow the memory used on the GPU
-config.log_device_placement = True  # to log device placement (on which device the operation ran)sess = tf.Session(config=config)set_session(sess)  # set this TensorFlow session as the default session for Keras
+tf.compat.v1.disable_eager_execution()
+
+from tensorflow.keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Softmax, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras import Model
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import Sequential
+from tensorflow.keras import backend as K
+from tensorflow.keras import initializers
 
 from agents.RDQN.custom_layers import NoisyDense
 
 from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from interfaces.oai_gym_interface import UnityInterface
-
-
-#Working Base Params
-#MemSize : 3000
-#BatchSize : 64
-#Target Update : 100
-#Gamma : 0.9
-#alpha, beta : 0.4
-#vmin, vmax : 0;50
-#C51
-#NoisyDense : 512
-#Training Time : ~300 Steps until solving
 
 class RDQNAgent:
     #PASS
@@ -101,19 +86,20 @@ class RDQNAgent:
     def build_model(self):
         input_layer = Input(shape=self.obs_dim)
 
-        c1 = Conv2D(32, (3, 3), activation='relu')(input_layer)
+        c1 = Conv2D(8, (3, 3), activation='relu')(input_layer)
         mp1 = MaxPooling2D((2, 2))(c1)
-        c2 = Conv2D(64, (3, 3), activation='relu')(mp1)
+        
+        c2 = Conv2D(16, (3, 3), activation='relu')(mp1)
         mp2 = MaxPooling2D((2, 2))(c2)
-        c3 = Conv2D(128, (3, 3), activation='relu')(mp2)
-        fl = Flatten()(c3)
+        
+        fl = Flatten()(mp2)
 
         #Value Stream
-        v_layer = NoisyDense(512,activation='relu')(fl)
+        v_layer = NoisyDense(128,activation='relu')(fl)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = NoisyDense(512,activation='relu')(fl)
+        adv_layer = NoisyDense(128,activation='relu')(fl)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
@@ -121,11 +107,11 @@ class RDQNAgent:
         distribution_list = []
 
         for i in range(self.action_dim):
-            distribution_list.append(keras.layers.Softmax(axis=1)(agg[i]))
+            distribution_list.append(Softmax(axis=1)(agg[i]))
 
         model = Model(input_layer, distribution_list)
         model.compile(optimizer=Adam(lr=0.0025), loss='categorical_crossentropy')
-        model.summary()
+        
         return model
 
     def select_action(self, state):
@@ -141,11 +127,15 @@ class RDQNAgent:
 
     def step(self, action):
         next_state, reward, done, _ = self.u_env._step(np.array([[action]]))
-        self.transition += [reward, next_state[0], done]
+        if next_state[0].shape == self.obs_dim:
+          next_state = next_state[0]
+        else:
+          next_state = next_state[0][0]
+        self.transition += [reward, next_state, done]
         one_step_transition = self.transition
         self.memory.store(*one_step_transition)
             
-        return next_state[0], reward, done
+        return next_state, reward, done
 
     def get_optimal_actions(self,next_state : np.array):
         dqn_next_action = self.dqn.predict(next_state)
@@ -158,7 +148,6 @@ class RDQNAgent:
         return next_action
 
     def update_model(self):
-        #obs,next_obs,acts,rews,done,weights,indices
         samples = self.memory.sample_batch(self.beta)
         weights = np.array(samples["weights"])
         indices = np.array(samples["indices"])
@@ -168,8 +157,6 @@ class RDQNAgent:
         action = np.array(samples["acts"],dtype=np.int32)
         reward = np.array(samples["rews"])
         done = np.array(samples["done"])
-
-        #print("Weights Mean -> ",  "%.3f" % np.mean(weights))
 
         m_prob = [np.zeros((samples["obs"].shape[0], self.atom_size)) for i in range(self.action_dim)]
         
@@ -207,7 +194,6 @@ class RDQNAgent:
         
         # PER: importance sampling before average
         loss = np.mean(elementwise_loss * weights)
-        #print(round(loss,2))
 
         # PER: update priorities
         new_priorities = elementwise_loss + self.prior_eps
@@ -215,20 +201,28 @@ class RDQNAgent:
         
         return sum(elementwise_loss)
     
+    def Average(self,lst): 
+        return sum(lst) / len(lst) 
+
     def train(self, num_frames: int):
-        state = self.u_env._reset()[0]
-        update_cnt = 0
-        losses = []
-        scores = []
-        score = 0
+        state = self.u_env._reset()
+        if state[0].shape == self.obs_dim:
+          state = state[0]
+        else:
+          state = state[0][0]
+        
+        score = collections.deque([0,0,0,0,0],maxlen=5)
+        currentRew = 0
+        ep = 0
+        updateCount = 0
 
         for frame_idx in range(1, num_frames + 1):
             action = self.select_action(state)
-            #print(action)
             
             next_state, reward, done = self.step(action)
+                
             state = next_state
-            score += reward
+            currentRew += reward
             
             # PER: increase beta
             fraction = min(frame_idx / num_frames, 1.0)
@@ -236,23 +230,29 @@ class RDQNAgent:
 
             # if episode ends
             if done:
-                state = unity_env._reset()
-                scores.append(score)
-                score = 0
+                score.append(currentRew)
+                currentRew = 0
+                ep += 1
+                avg = self.Average(list(score))
+                print("Ep:",ep," Current Average Reward: ", avg)
+                if avg >= 9:
+                    print("Save Model")
+                    self.dqn.save_weights("/home/wkst/Desktop/A2C.h5")
+                state = self.u_env._reset()
+                if state[0].shape == self.obs_dim:
+                    state = state[0]
+                else:
+                    state = state[0][0]
+                
 
             # if training is ready
             if len(self.memory) >= self.batch_size:
-                loss = self.update_model()
-                losses.append(loss)
-                update_cnt += 1
+                updateCount += 1
+                self.update_model()
                 
             # if hard update is needed
-            if update_cnt % self.target_update == 0:
+            if updateCount % self.target_update == 0:
                 self._target_hard_update()
-            
-            if frame_idx % 500 == 0:
-                print("Save Model")
-                self.dqn.save_weights("/home/wkst/Desktop/rdqn_model.h5")
 
     def clamp(self, n, smallest, largest): 
         return max(smallest, min(n, largest))

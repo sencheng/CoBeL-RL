@@ -33,7 +33,6 @@ class Model(tf.keras.Model):
     self.c2 = kl.Conv2D(16, (3, 3), activation=hidden_act,kernel_initializer=tf.keras.initializers.HeNormal)
     self.mp2 = kl.MaxPooling2D((2, 2))
     
-    #self.c3 = kl.Conv2D(64, (3, 3), activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)
     self.fl = kl.Flatten()
     
     self.d1 = kl.Dense(128,activation=hidden_act,kernel_initializer=tf.keras.initializers.HeNormal)
