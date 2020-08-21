@@ -39,7 +39,7 @@ if __name__ == "__main__":
     #     in_2 = input("Input Right(1)/Left(-1)")
     #     observation, reward, done, info = unity_env._step(np.array([[float(in_1),float(in_2)]]))
     #     print(reward)
-        #ProcessImage(np.array(observation))
+    #     ProcessImage(np.array(observation))
 
     # clear session
     backend.clear_session()

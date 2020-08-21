@@ -13,14 +13,17 @@ class Critic_Net(tf.keras.Model):
         out_init = RandomUniform(minval=-init_w, maxval=init_w, seed=None)
 
         #Conv Head
-        self.conv1 = layers.Conv2D(8, kernel_size=3, activation='relu',input_shape=state_size)
+        self.conv1 = layers.Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=tf.initializers.HeNormal,input_shape=state_size)
         self.mp1 = layers.MaxPooling2D(pool_size=(2,2))
-        self.conv2 = layers.Conv2D(16, kernel_size=3, activation='relu')
+        self.conv2 = layers.Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=tf.initializers.HeNormal)
         self.mp2 = layers.MaxPooling2D(pool_size=(2,2))
         self.flatten = layers.Flatten()
 
-        self.cnn_dense = layers.Dense(128,activation='relu',kernel_initializer=hid_init)
-        self.act_dense = layers.Dense(128,activation='relu',kernel_initializer=hid_init)
+        self.cnn_dense = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
+        self.act_dense = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
+
+        self.concat = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
+        
         self.v = layers.Dense(units=1,kernel_initializer=out_init)
     def call(self,X):
         x = self.conv1(X[0])
@@ -28,10 +31,12 @@ class Critic_Net(tf.keras.Model):
         x = self.conv2(x)
         x = self.mp2(x)
         x = self.flatten(x)
-        
         x = self.cnn_dense(x)
+
         y = self.act_dense(X[1])
+        
         z = layers.concatenate([x,y])
+        z = self.concat(z)
         return self.v(z)
 
 

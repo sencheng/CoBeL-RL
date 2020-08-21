@@ -14,11 +14,13 @@ import logging, os
 logging.disable(logging.WARNING)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
 
+from agents.utils.ringbuffer import RingBuffer
+
 class SACAgent():
-    def __init__(self, env : UnityInterface, FrameSkip = 4, hid_size = 256, buffer_size = int(1e6), batch_size = 64):
+    def __init__(self, env : UnityInterface, FrameSkip = 4, hid_size = 128, buffer_size = int(1e6), batch_size = 64):
         self.u_env = env
 
-        self.state_size = np.array(env.observation_space.shape + (FrameSkip,))
+        self.state_size = env.observation_space.shape + (4,)
         self.action_size = env.action_space.n
 
         self.gamma = 0.99
@@ -34,14 +36,14 @@ class SACAgent():
         
         # Actor Network 
         self.actor_local = Actor_Net(self.state_size,self.hidden_size,self.action_size)
-        self.actor_opt = Adam(lr=float(5e-4))
+        self.actor_opt = Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5)
 
         # Critic Network (w/ Target Network)
         self.critic1 = Critic_Net("critic1",self.state_size,self.hidden_size,self.action_size)
-        self.critic1.compile(optimizer=Adam(lr=float(5e-4)),loss=tf.keras.losses.MSE,metrics=['accuracy'])
+        self.critic1.compile(optimizer=Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic2 = Critic_Net("critic2",self.state_size,self.hidden_size,self.action_size)
-        self.critic2.compile(optimizer=Adam(lr=float(5e-4)),loss=tf.keras.losses.MSE,metrics=['accuracy'])
+        self.critic2.compile(optimizer=Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic1_target = Critic_Net("critic1_target",self.state_size,self.hidden_size,self.action_size)
         self.critic2_target = Critic_Net("critic2_target",self.state_size,self.hidden_size,self.action_size)
@@ -51,6 +53,7 @@ class SACAgent():
 
         # Replay memory
         self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size)
+        self.buffer = RingBuffer(4)
         
     def step(self, state, action, reward, next_state, done):
         self.memory.add(state, action, reward, next_state, done)
@@ -114,13 +117,43 @@ class SACAgent():
         b = np.array(target_model.get_weights()) #target
         target_model.set_weights(tau*a + (1.0-tau)*b)
     
-    def train(self, numFrames=100000):
-        state = self.u_env._reset()
-        for frame_idx in range(numFrames):
-            state = np.expand_dims(state[0],axis=0)
-            action = self.act(state)
-            action_v = tf.expand_dims(tf.clip_by_value(action*1, -1, 1),axis=0)
-            action_v = tf.keras.backend.eval(action_v)
-            next_state, reward, done, info = self.u_env._step(action_v)
-            self.step(state, action_v, reward, next_state, done)
-            state = next_state
+    def train(self, numEpisodes = 10000):
+        for ep in range(numEpisodes):
+            score = 0
+            state = self.u_env._reset()
+
+            self.buffer.insert_obs(state[0][:,:,0])
+            self.buffer.insert_obs(state[0][:,:,1])
+            self.buffer.insert_obs(state[0][:,:,2])
+            self.buffer.insert_obs(state[0][:,:,3])
+            state = self.buffer.generate_arr()
+            state = np.expand_dims(state,axis=0)
+
+            while True:
+                action = self.act(state)
+                action_v = tf.expand_dims(tf.clip_by_value(action*1, -1, 1),axis=0)
+                action_v = tf.keras.backend.eval(action_v)
+
+                next_state, reward, done, info = self.u_env._step(action_v)
+                score += reward
+                if next_state[0].shape == self.state_size:
+                    self.buffer.insert_obs(next_state[0][:,:,2])
+                else:
+                    self.buffer.insert_obs(next_state[0][0][:,:,2])
+            
+                next_state = self.buffer.generate_arr()
+                next_state = np.expand_dims(next_state,axis=0)
+
+                self.buffer.print_arr()
+
+                self.step(state, action_v, reward, next_state, done)
+                state = next_state
+                if done:
+                    break
+            print("ep" , ep, ": ", score)
+            if score >= 4:
+                print("solved!")
+                self.actor_local.save_weights("actor_sac.h5")
+                self.critic1.save_weights("critic1_sac.h5")
+                self.critic2.save_weights("critic1_sac.h5")
+
