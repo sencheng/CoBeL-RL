@@ -1,21 +1,9 @@
-import os
-import time
-from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
-from random import randrange
-from tensorflow.keras import backend
-import numpy as np
-
-visualOutput = True
-backend.set_image_data_format(data_format='channels_last')
-
-import gym
 import tensorflow as tf
-from tensorflow.keras import layers
 import numpy as np
-import collections
-import matplotlib
-matplotlib.use("TkAgg")
-import matplotlib.pyplot as plt
+
+from tensorflow.keras import layers
+from tensorflow.keras.optimizers import Adam
+from interfaces.oai_gym_interface import UnityInterface
 
 from agents.DDPG.noise import OUActionNoise
 from agents.DDPG.buffer import Buffer
@@ -42,8 +30,8 @@ class DDPG_Agent:
         self.std_dev = 0.3
         self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(self.std_dev) * np.ones(1))
         
-        self.critic_optimizer = tf.keras.optimizers.Adam(self.critic_lr,clipnorm=1.,clipvalue=0.5)
-        self.actor_optimizer = tf.keras.optimizers.Adam(self.actor_lr,clipnorm=1.,clipvalue=0.5)
+        self.critic_optimizer = Adam(self.critic_lr,clipnorm=1.,clipvalue=0.5)
+        self.actor_optimizer = Adam(self.actor_lr,clipnorm=1.,clipvalue=0.5)
     
         self.actor_model = self.get_actor()
         self.critic_model = self.get_critic()

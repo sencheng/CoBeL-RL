@@ -1,26 +1,17 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
 import tensorflow as tf
-from numpy.random import seed
+import time
+import numpy as np
+
 tf.compat.v1.disable_eager_execution()
-# seed(42)
-# tf.random.set_seed(42)
 tf.get_logger().setLevel('INFO')
 
-import time
+from numpy.random import seed
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
-from random import randrange
 from tensorflow.keras import backend
-import numpy as np
-from PIL import Image
 
 from agents.RDQN.agent import RDQNAgent as RDQN
 #from agents.A2C.Discrete.a2c_disc import A2CAgent as A2C
 
-# set some python environment properties
-visualOutput = True
 backend.set_image_data_format(data_format='channels_last')
 
 if __name__ == "__main__":
