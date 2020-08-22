@@ -17,33 +17,36 @@ os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 from agents.utils.ringbuffer import RingBuffer
 
 class SACAgent():
-    def __init__(self, env : UnityInterface, FrameSkip = 4, hid_size = 128, buffer_size = int(1e6), batch_size = 64):
+    def __init__(self, env : UnityInterface, FrameSkip = 4, hid_size = 128, buffer_size = int(1e6), batch_size = 128):
         self.u_env = env
 
         self.state_size = env.observation_space.shape + (4,)
         self.action_size = env.action_space.n
 
         self.gamma = 0.99
-        self.tau = float(1e-2)
+        self.tau = 0.01
         self.hidden_size = hid_size
         self.buffer_size = buffer_size
         self.batch_size = batch_size
         
+        self.actor_lr  = 0.005
+        self.critic_lr = 0.005
+
         self.target_entropy = -self.action_size
         self.alpha = 1
         self.log_alpha = tf.Variable([0.0])
-        self.alpha_opt = Adam(lr=float(5e-4))
+        self.alpha_opt = Adam(lr=self.actor_lr)
         
         # Actor Network 
         self.actor_local = Actor_Net(self.state_size,self.hidden_size,self.action_size)
-        self.actor_opt = Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5)
+        self.actor_opt = Adam(lr=self.actor_lr)
 
         # Critic Network (w/ Target Network)
         self.critic1 = Critic_Net("critic1",self.state_size,self.hidden_size,self.action_size)
-        self.critic1.compile(optimizer=Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5),loss=tf.keras.losses.MSE,metrics=['accuracy'])
+        self.critic1.compile(optimizer=Adam(lr=self.critic_lr),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic2 = Critic_Net("critic2",self.state_size,self.hidden_size,self.action_size)
-        self.critic2.compile(optimizer=Adam(lr=float(5e-4),clipnorm=1.,clipvalue=0.5),loss=tf.keras.losses.MSE,metrics=['accuracy'])
+        self.critic2.compile(optimizer=Adam(lr=self.critic_lr),loss=tf.keras.losses.MSE,metrics=['accuracy'])
 
         self.critic1_target = Critic_Net("critic1_target",self.state_size,self.hidden_size,self.action_size)
         self.critic2_target = Critic_Net("critic2_target",self.state_size,self.hidden_size,self.action_size)
@@ -70,13 +73,15 @@ class SACAgent():
         states, actions, rewards, next_states, dones = experiences
         
         # ---------------------------- update critic ---------------------------- #
-        next_action, log_pis_next = self.actor_local.evaluate(next_states)
+        next_action, next_log_pis = self.actor_local.evaluate(next_states)
 
         #Clipped double Q Trick
-        Q_target1_next = self.critic1_target.call([next_states, next_action])
-        Q_target2_next = self.critic2_target.call([next_states, next_action])
-        Q_target_next = tf.squeeze(tf.math.minimum(Q_target1_next,Q_target2_next))
-        Q_targets = rewards + (gamma * (1 - dones) * (Q_target_next - self.alpha * tf.squeeze(log_pis_next)))
+        next_q1 = self.critic1_target.call([next_states, next_action])
+        next_q2 = self.critic2_target.call([next_states, next_action])
+        
+        next_q_target = tf.squeeze(tf.math.minimum(next_q1,next_q2))
+        next_q_target = next_q_target - self.alpha * tf.squeeze(next_log_pis)
+        Q_targets = rewards + (1 - dones) * self.gamma * next_q_target
         #######################
         
         #Fit
@@ -85,7 +90,6 @@ class SACAgent():
         ####
         
         alpha = np.exp(self.log_alpha.read_value()[0])
-
         # Compute alpha loss
         converted_states = tf.convert_to_tensor(states,dtype=np.float32)
 
@@ -133,7 +137,7 @@ class SACAgent():
                 action = self.act(state)
                 action_v = tf.expand_dims(tf.clip_by_value(action*1, -1, 1),axis=0)
                 action_v = tf.keras.backend.eval(action_v)
-
+                #print(action_v)
                 next_state, reward, done, info = self.u_env._step(action_v)
                 score += reward
                 if next_state[0].shape == self.state_size:
@@ -144,8 +148,6 @@ class SACAgent():
                 next_state = self.buffer.generate_arr()
                 next_state = np.expand_dims(next_state,axis=0)
 
-                self.buffer.print_arr()
-
                 self.step(state, action_v, reward, next_state, done)
                 state = next_state
                 if done:
@@ -155,5 +157,5 @@ class SACAgent():
                 print("solved!")
                 self.actor_local.save_weights("actor_sac.h5")
                 self.critic1.save_weights("critic1_sac.h5")
-                self.critic2.save_weights("critic1_sac.h5")
+                self.critic2.save_weights("critic2_sac.h5")
 

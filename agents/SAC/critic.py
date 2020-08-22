@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras import layers
 from tensorflow.keras.initializers import RandomUniform
-
+from agents.utils.mish import Mish
 tf.keras.backend.set_floatx('float32')
 
 class Critic_Net(tf.keras.Model):
@@ -13,16 +13,16 @@ class Critic_Net(tf.keras.Model):
         out_init = RandomUniform(minval=-init_w, maxval=init_w, seed=None)
 
         #Conv Head
-        self.conv1 = layers.Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=tf.initializers.HeNormal,input_shape=state_size)
+        self.conv1 = layers.Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=hid_init,input_shape=state_size)
         self.mp1 = layers.MaxPooling2D(pool_size=(2,2))
-        self.conv2 = layers.Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=tf.initializers.HeNormal)
+        self.conv2 = layers.Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=hid_init)
         self.mp2 = layers.MaxPooling2D(pool_size=(2,2))
         self.flatten = layers.Flatten()
 
-        self.cnn_dense = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
-        self.act_dense = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
+        self.cnn_dense = layers.Dense(128,activation='relu',kernel_initializer=hid_init,input_shape=(action_size,))
+        self.act_dense = layers.Dense(64,activation='relu',kernel_initializer=hid_init)
 
-        self.concat = layers.Dense(128,activation='relu',kernel_initializer=tf.initializers.HeNormal)
+        self.concat = layers.Dense(64,activation='relu',kernel_initializer=hid_init)
         
         self.v = layers.Dense(units=1,kernel_initializer=out_init)
     def call(self,X):

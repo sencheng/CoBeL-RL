@@ -17,9 +17,9 @@ import matplotlib
 matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
-from agents.DDPG_Keras.noise import OUActionNoise
-from agents.DDPG_Keras.mish import Mish
-from agents.DDPG_Keras.rbuffer import RingBuffer
+from agents.DDPG.noise import OUActionNoise
+from agents.utils.mish import Mish
+from agents.utils.ringbuffer import RingBuffer
 
 project = get_cobel_path()
 environment_path = get_env_path()
@@ -206,8 +206,8 @@ target_actor = get_actor()
 target_critic = get_critic()
 
 #Load All Weights
-actor_model.load_weights('/home/wkst/Desktop/Repositories/CoBeL-RL/actor.h5')
-critic_model.load_weights('/home/wkst/Desktop/Repositories/CoBeL-RL/critic.h5')
+actor_model.load_weights('/home/wkst/Desktop/actor.h5')
+critic_model.load_weights('/home/wkst/Desktop/critic.h5')
 
 #Making the weights equal initially
 target_actor.set_weights(actor_model.get_weights())
