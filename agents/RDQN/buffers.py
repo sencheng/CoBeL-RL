@@ -1,8 +1,9 @@
 import numpy as np
+import random
+
 from collections import deque
 from typing import Deque, Dict, List, Tuple
 from agents.RDQN.segment_tree import MinSegmentTree, SumSegmentTree
-import random
 
 class ReplayBuffer:
     def __init__(self, obs_dim, size: int, batch_size: int = 32, n_step: int = 1, gamma: float = 0.99):

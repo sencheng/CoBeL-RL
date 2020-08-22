@@ -21,9 +21,9 @@ from tensorflow.keras import backend as K
 from tensorflow.keras import initializers
 
 from agents.RDQN.custom_layers import NoisyDense
-
 from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from interfaces.oai_gym_interface import UnityInterface
+from agents.utils.misc import Average, Get_Single_Input
 
 class RDQNAgent:
     #PASS
@@ -44,6 +44,8 @@ class RDQNAgent:
         v_max: float = 20.0,
         atom_size: int = 51
     ):
+        self.modelpath = "/home/wkst/Desktop/RDQN.h5"
+        
         self.u_env = env
         self.obs_dim = env.observation_space.shape
         self.action_dim = env.action_space.n
@@ -201,15 +203,9 @@ class RDQNAgent:
         
         return sum(elementwise_loss)
     
-    def Average(self,lst): 
-        return sum(lst) / len(lst) 
-
     def train(self, num_frames: int):
         state = self.u_env._reset()
-        if state[0].shape == self.obs_dim:
-          state = state[0]
-        else:
-          state = state[0][0]
+        state = Get_Single_Input(state,self.obs_dim)
         
         score = collections.deque([0,0,0,0,0],maxlen=5)
         currentRew = 0
@@ -233,16 +229,13 @@ class RDQNAgent:
                 score.append(currentRew)
                 currentRew = 0
                 ep += 1
-                avg = self.Average(list(score))
+                avg = Average(list(score))
                 print("Ep:",ep," Current Average Reward: ", avg)
                 if avg >= 9:
                     print("Save Model")
-                    self.dqn.save_weights("/home/wkst/Desktop/RDQN.h5")
+                    self.dqn.save_weights(self.modelpath)
                 state = self.u_env._reset()
-                if state[0].shape == self.obs_dim:
-                    state = state[0]
-                else:
-                    state = state[0][0]
+                state = Get_Single_Input(state,self.obs_dim)
                 
             # if training is ready
             if len(self.memory) >= self.batch_size:

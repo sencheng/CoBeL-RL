@@ -1,11 +1,11 @@
 import numpy as np
-import collections
+from collections import deque
 from PIL import Image
 
 
 class RingBuffer:
     def __init__(self, buffer_len):
-        self.queue = collections.deque([],maxlen=buffer_len)
+        self.queue = deque([],maxlen=buffer_len)
     def insert_obs(self,obs):
         self.queue.append(obs)
     def generate_arr(self):
@@ -23,8 +23,8 @@ class RingBuffer:
         img2 = Image.fromarray(p2)
         img3 = Image.fromarray(p3)
         img4 = Image.fromarray(p4)
-        img1.save("1.png")
-        img2.save("2.png")
-        img3.save("3.png")
-        img4.save("4.png")
+        img1.save("frame_1.png")
+        img2.save("frame_2.png")
+        img3.save("frame_3.png")
+        img4.save("frame_4.png")
  

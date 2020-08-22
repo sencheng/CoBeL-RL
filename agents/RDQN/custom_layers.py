@@ -1,7 +1,8 @@
+import numpy as np
+
 from tensorflow.keras import backend as K
 from tensorflow.keras.layers import Layer
 from tensorflow.keras import activations, initializers, regularizers, constraints
-import numpy as np
 
 
 class NoisyDense(Layer):
