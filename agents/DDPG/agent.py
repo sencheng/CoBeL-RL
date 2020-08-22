@@ -51,6 +51,7 @@ class DDPG_Agent:
         self.buffer = Buffer(self.num_states,self.num_actions, self.mem_size, self.batch_size)
         self.ringbuffer = RingBuffer(4)
         
+        
     def get_actor(self):
         last_init = tf.random_uniform_initializer(-0.003,0.003)
         state_input = layers.Input(shape=self.num_states)

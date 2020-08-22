@@ -14,6 +14,7 @@ from agents.RDQN.agent import RDQNAgent as RDQN
 
 backend.set_image_data_format(data_format='channels_last')
 
+
 if __name__ == "__main__":
     project = get_cobel_path()
     environment_path = get_env_path()

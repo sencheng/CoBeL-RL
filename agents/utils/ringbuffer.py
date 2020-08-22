@@ -2,7 +2,6 @@ import numpy as np
 from collections import deque
 from PIL import Image
 
-
 class RingBuffer:
     def __init__(self, buffer_len):
         self.queue = deque([],maxlen=buffer_len)

@@ -20,6 +20,7 @@ class ReplayBuffer:
         self.n_step_buffer = deque(maxlen=n_step)
         self.n_step = n_step
         self.gamma = gamma
+        
 
     def store(self,obs,act,rew,next_obs,done):
         transition = (obs, act, rew, next_obs, done)

@@ -2,7 +2,6 @@ import numpy as np
 from collections import namedtuple, deque
 import random
 
-#PASS
 class ReplayBuffer:
     def __init__(self, action_size, buffer_size, batch_size):
         self.action_size = action_size

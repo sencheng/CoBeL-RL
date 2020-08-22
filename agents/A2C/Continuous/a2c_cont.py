@@ -17,7 +17,6 @@ class A2CAgent:
         self.u_env = env
         self.state_size = env.observation_space.shape + (FrameSkip,)
         self.action_size = env.action_space.n
-
         self.value_size = 1
 
         #Hyperparameters

@@ -14,7 +14,6 @@ class Model(tf.keras.Model):
 
     self.c1 = kl.Conv2D(8, (3, 3), activation=hid_act,kernel_initializer=tf.keras.initializers.HeNormal)
     self.mp1 = kl.MaxPooling2D((2, 2))
-    
     self.c2 = kl.Conv2D(16, (3, 3), activation=hid_act,kernel_initializer=tf.keras.initializers.HeNormal)
     self.mp2 = kl.MaxPooling2D((2, 2))
     

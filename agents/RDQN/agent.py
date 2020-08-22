@@ -44,6 +44,7 @@ class RDQNAgent:
         v_max: float = 20.0,
         atom_size: int = 51
     ):
+        
         self.modelpath = "/home/wkst/Desktop/RDQN.h5"
         
         self.u_env = env

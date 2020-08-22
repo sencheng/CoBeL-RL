@@ -5,6 +5,7 @@ from tensorflow.keras.initializers import RandomUniform
 from agents.utils.mish import Mish
 tf.keras.backend.set_floatx('float32')
 
+
 class Critic_Net(tf.keras.Model):
     def __init__(self,model_name,state_size,hidden_size,action_size,init_w=3e-3):
         super(Critic_Net,self).__init__(name = model_name)

@@ -29,6 +29,7 @@ class Buffer:
     def sample_batch(self):
         # Get sampling range
         record_range = min(self.buffer_counter, self.buffer_capacity)
+        
         # Randomly sample indices
         batch_indices = np.random.choice(record_range, self.batch_size)
 

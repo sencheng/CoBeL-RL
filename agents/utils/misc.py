@@ -1,5 +1,3 @@
-
-
 def Get_Single_Input(in_,shape):
     if in_[0].shape == shape:
         return in_[0]

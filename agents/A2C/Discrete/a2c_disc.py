@@ -13,7 +13,6 @@ from agents.A2C.Discrete.models import Model
 
 class A2CAgent:
   def __init__(self, env: UnityInterface, lr=7e-4, gamma=0.99, value_c=0.5, entropy_c=1e-4):
-    
     self.modelpath = "/home/wkst/Desktop/A2C.h5"
     self.u_env = env
     self.obs_dim = env.observation_space.shape

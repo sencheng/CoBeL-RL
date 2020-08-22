@@ -33,6 +33,7 @@ class NoisyDense(Layer):
         self.kernel_constraint = constraints.get(kernel_constraint)
         self.bias_constraint = constraints.get(bias_constraint)
 
+
     def build(self, input_shape):
         assert len(input_shape) >= 2
         self.input_dim = input_shape[-1]
