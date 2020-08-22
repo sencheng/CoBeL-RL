@@ -6,11 +6,11 @@ from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env
 from random import randrange
 from tensorflow.keras import backend
 
-#from agents.DDPG.agent import DDPG_Agent
-from agents.SAC.agent import SACAgent
-
 visualOutput = True
 backend.set_image_data_format(data_format='channels_last')
+
+from agents.DDPG.agent import DDPG_Agent
+from agents.SAC.agent import SACAgent
 
 if __name__ == "__main__":
     project = get_cobel_path()
@@ -22,7 +22,8 @@ if __name__ == "__main__":
                                nb_max_episode_steps=10000000, decision_interval=4,
                                agent_action_type="continuous", use_gray_scale_images=True)
 
-    agent = SACAgent(unity_env)
+    agent = SACAgent(unity_env,4)
+    #agent = DDPG_Agent(unity_env,4)
     agent.train()
 
     # clear session

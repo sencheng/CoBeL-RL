@@ -2,11 +2,14 @@ import numpy as np
 import tensorflow as tf
 
 from tensorflow.keras.optimizers import Adam
+import tensorflow.keras.layers as kl
+import tensorflow.keras.losses as kls
+
 from interfaces.oai_gym_interface import UnityInterface
 
 from agents.utils.misc import Average, Get_Single_Input
 from collections import deque
-from models import Model
+from agents.A2C.Discrete.models import Model
 
 class A2CAgent:
   def __init__(self, env: UnityInterface, lr=7e-4, gamma=0.99, value_c=0.5, entropy_c=1e-4):
@@ -15,13 +18,13 @@ class A2CAgent:
     self.u_env = env
     self.obs_dim = env.observation_space.shape
     self.action_dim = env.action_space.n
-
+    self.hid_act = "relu"
     self.gamma = gamma
     self.value_c = value_c
     self.entropy_c = entropy_c
     self.batchsize = 64
 
-    self.model = Model(num_actions=self.action_dim)
+    self.model = Model(self.action_dim,self.hid_act)
     self.model.compile(optimizer=Adam(lr=lr,clipnorm=1.,clipvalue=0.5),loss=[self._logits_loss, self._value_loss])
 
   def train(self,num_frames: int):

@@ -16,19 +16,12 @@ from tensorflow.keras import backend
 import numpy as np
 from PIL import Image
 
-#from agents.RDQN.agent import RDQNAgent as RDQN
-from agents.A2C.a2c_disc import A2CAgent as A2C
+from agents.RDQN.agent import RDQNAgent as RDQN
+#from agents.A2C.Discrete.a2c_disc import A2CAgent as A2C
 
 # set some python environment properties
 visualOutput = True
 backend.set_image_data_format(data_format='channels_last')
-
-def ProcessImage(observation):
-    print(observation.shape)
-    observation = observation.squeeze() * 255
-    observation = np.array(observation, dtype=np.uint8)
-    img = Image.fromarray(observation, 'RGBA')
-    img.save("test.png")
 
 if __name__ == "__main__":
     project = get_cobel_path()
@@ -41,16 +34,10 @@ if __name__ == "__main__":
                                agent_action_type="discrete", use_gray_scale_images=False)
 
     
-    #agent = RDQN(unity_env,1000000)
-    agent = A2C(unity_env)
+    agent = RDQN(unity_env,1000000)
+    #agent = A2C(unity_env)
     agent.train(1000000)
-    
-    # while (True):
-    #     in_1 = input("Move")
-    #     observation, reward, done, info = unity_env._step(np.array([[float(in_1)]]))
-    #     ProcessImage(np.array(observation))
 
-    
     # clear session
     backend.clear_session()
     unity_env.close()
