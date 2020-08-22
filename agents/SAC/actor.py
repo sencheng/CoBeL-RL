@@ -18,6 +18,7 @@ class Actor_Net(tf.keras.Model):
         super(Actor_Net,self).__init__(name = 'actor_net')
         self.log_std_min = log_std_min
         self.log_std_max = log_std_max
+        
         lim = 1. / np.sqrt(hidden_size)
         hid_init = RandomUniform(minval=-lim, maxval=lim, seed=None)
         out_init = RandomUniform(minval=-3e-3, maxval=3e-3, seed=None)
@@ -51,17 +52,17 @@ class Actor_Net(tf.keras.Model):
     def get_action(self,X):
         mu, log_std = self.call(X)
         std = exp(log_std)
-        normal = tfd.Normal(loc=mu, scale=std)
-        z = normal.sample()
+        dist = tfd.Normal(loc=mu, scale=std)
+        z = dist.sample()
         action = tf.squeeze(tanh(z))
         return action
 
     def evaluate(self, X, epsilon=1e-6):
         mu, log_std = self.call(X)
         std = exp(log_std)
-        normal = tfd.Normal(loc=mu, scale=std)
-        z = normal.sample()
-        action = tanh(z)
-        log_prob = normal.log_prob(z) - log(1 - action**2 + epsilon)
+        dist = tfd.Normal(loc=mu, scale=std)
+        z = dist.sample()
+        action = tf.squeeze(tanh(z))
+        log_prob = dist.log_prob(z) - log(1 - action**2 + epsilon)
         log_prob = reduce_sum(log_prob,axis=1,keepdims=True)
         return action, log_prob
