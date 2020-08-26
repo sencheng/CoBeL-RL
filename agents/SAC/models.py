@@ -29,7 +29,7 @@ def create_critic(state_dim,action_dim,hidden_dim = 256):
     act_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(act_dense1)
     
     concatenated_layers = Concatenate()([cnn_dense,act_dense])
-    v = Dense(action_dim,kernel_initializer=rand_uniform_init)(concatenated_layers)
+    v = Dense(1,kernel_initializer=rand_uniform_init)(concatenated_layers)
     return Model([input_state,input_action], v)
 
 class PolicyNetwork(tf.keras.Model):

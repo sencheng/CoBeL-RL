@@ -9,7 +9,7 @@ from tensorflow.keras import backend
 backend.set_image_data_format(data_format='channels_last')
 
 #from agents.DDPG.agent import DDPG_Agent
-from agents.SAC_Fixed.agent import SACAgent
+from agents.SAC.agent import SACAgent
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ import numpy as np
 from tensorflow.keras.optimizers import Adam
 from tensorflow.math import exp
 
-from agents.SAC_Fixed.models import create_critic,PolicyNetwork
+from agents.SAC.models import create_critic,PolicyNetwork
 from agents.utils.basic_buffer import BasicBuffer
 from agents.utils.ringbuffer import RingBuffer
 
@@ -73,10 +73,9 @@ class SACAgent:
         with tf.GradientTape(watch_accessed_variables=False) as tape:
             tape.watch(self.policy_net.trainable_variables)
             policy_actions, log_pi = self.policy_net.sample(X)
-            state_action_policy = tf.concat([X, policy_actions], axis=1)
             q_min = tf.math.minimum(
-                self.target_q_net1(state_action_policy),
-                self.target_q_net2(state_action_policy))
+                self.target_q_net1([X, policy_actions]),
+                self.target_q_net2([X, policy_actions]))
             loss = tf.math.reduce_mean(self.alpha * log_pi - tf.squeeze(q_min))
         grads = tape.gradient(loss,self.policy_net.trainable_variables)
         self.policy_optimizer.apply_gradients(zip(grads, self.policy_net.trainable_variables))
@@ -101,18 +100,16 @@ class SACAgent:
         dones = np.array(dones)
         
         next_actions, next_log_pi = self.policy_net.sample(next_states)
-        nstate_naction = tf.concat([next_states, next_actions], axis=1)
         q_min = tf.math.minimum(
-            self.target_q_net1(nstate_naction),
-            self.target_q_net2(nstate_naction)
+            self.target_q_net1([next_states, next_actions]),
+            self.target_q_net2([next_states, next_actions])
         )
         q_min = tf.squeeze(q_min)
         
         next_q_target = q_min - self.alpha * next_log_pi
-        state_action = tf.concat([states, actions], axis=1)
         expected_q = rewards + (1 - dones) * self.gamma * next_q_target
         
-        self.train_q_networks(state_action,expected_q)
+        self.train_q_networks([states, actions],expected_q)
         
         if self.update_step % self.delay_step == 0:
             self.train_policy_network(states)
@@ -145,7 +142,7 @@ class SACAgent:
                     self.buffer.insert_obs(next_state[0][:,:,2])
                 else:
                     self.buffer.insert_obs(next_state[0][0][:,:,2])
-                self.replay_buffer.push(np.float32(state), np.float32(action), np.float32(reward), np.float32(next_state), done)
+                self.replay_buffer.push(np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done)
 
                 if len(self.replay_buffer) > self.batch_size:
                     self.update(self.batch_size)   
