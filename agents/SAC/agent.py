@@ -1,163 +1,155 @@
-import random
-import numpy as np
-
-from agents.SAC.actor import Actor_Net
-from agents.SAC.critic import Critic_Net
-from agents.SAC.buffers import ReplayBuffer
-
 import tensorflow as tf
-import tensorflow.keras.backend as K
+import numpy as np
 from tensorflow.keras.optimizers import Adam
-from interfaces.oai_gym_interface import UnityInterface
+from tensorflow.math import exp
 
-import logging, os
-logging.disable(logging.WARNING)
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3" 
-
+from agents.SAC_Fixed.models import create_critic,PolicyNetwork
+from agents.utils.basic_buffer import BasicBuffer
 from agents.utils.ringbuffer import RingBuffer
 
-
-
-class SACAgent():
-    def __init__(self, env : UnityInterface, FrameSkip = 4, hid_size = 128, buffer_size = int(1e6), batch_size = 128):
+class SACAgent:
+    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.2, q_lr = 3e-4, policy_lr = 3e-4, a_lr = 3e-4, buffer_maxlen = 1000000):
         self.u_env = env
-
-        self.state_size = env.observation_space.shape + (4,)
-        self.action_size = env.action_space.n
-
-        self.gamma = 0.99
-        self.tau = 0.01
-        self.hidden_size = hid_size
-        self.buffer_size = buffer_size
-        self.batch_size = batch_size
         
-        self.actor_lr  = 0.005
-        self.critic_lr = 0.005
+        self.action_range = [env.action_space.low, env.action_space.high]
+        self.obs_dim = env.observation_space.shape + (4,)
+        self.action_dim = env.action_space.n
+        self.batch_size = 256
+        
+        # hyperparameters
+        self.gamma = gamma
+        self.tau = tau
+        self.update_step = 0
+        self.delay_step = 2
+        
+        # initialize networks 
+        self.q_net1 = create_critic(self.obs_dim,self.action_dim,256)
+        self.q_net2 = create_critic(self.obs_dim,self.action_dim,256)
+        self.target_q_net1 = create_critic(self.obs_dim,self.action_dim,256)
+        self.target_q_net2 = create_critic(self.obs_dim,self.action_dim,256)
+        self.policy_net = PolicyNetwork(self.obs_dim,self.action_dim,256)
 
-        self.target_entropy = -self.action_size
-        self.alpha = 1
+        self.target_q_net1.set_weights(self.q_net1.get_weights())
+        self.target_q_net2.set_weights(self.q_net2.get_weights())
+        
+        # initialize optimizers 
+        self.q1_optimizer = Adam(learning_rate=q_lr,epsilon=1e-8)
+        self.q2_optimizer = Adam(learning_rate=q_lr,epsilon=1e-8)
+        self.policy_optimizer = Adam(learning_rate=policy_lr,epsilon=1e-8)
+        
+        # entropy temperature
+        self.alpha = alpha
+        self.target_entropy = -env.action_space.shape[0]
         self.log_alpha = tf.Variable([0.0])
-        self.alpha_opt = Adam(lr=self.actor_lr)
-        
-        # Actor Network 
-        self.actor_local = Actor_Net(self.state_size,self.hidden_size,self.action_size)
-        self.actor_opt = Adam(lr=self.actor_lr)
+        self.alpha_optim = Adam(lr=a_lr,)
 
-        # Critic Network (w/ Target Network)
-        self.critic1 = Critic_Net("critic1",self.state_size,self.hidden_size,self.action_size)
-        self.critic1.compile(optimizer=Adam(lr=self.critic_lr),loss=tf.keras.losses.MSE,metrics=['accuracy'])
-
-        self.critic2 = Critic_Net("critic2",self.state_size,self.hidden_size,self.action_size)
-        self.critic2.compile(optimizer=Adam(lr=self.critic_lr),loss=tf.keras.losses.MSE,metrics=['accuracy'])
-
-        self.critic1_target = Critic_Net("critic1_target",self.state_size,self.hidden_size,self.action_size)
-        self.critic2_target = Critic_Net("critic2_target",self.state_size,self.hidden_size,self.action_size)
-
-        self.critic1_target.set_weights(self.critic1.get_weights())
-        self.critic2_target.set_weights(self.critic2.get_weights())
-
-        # Replay memory
-        self.memory = ReplayBuffer(self.action_size, self.buffer_size, self.batch_size)
+        #Memory
+        self.replay_buffer = BasicBuffer(buffer_maxlen)
         self.buffer = RingBuffer(4)
-        
-    def step(self, state, action, reward, next_state, done):
-        self.memory.add(state, action, reward, next_state, done)
-
-        if len(self.memory) > self.batch_size:
-            experiences = self.memory.sample()
-            self.learn(experiences, self.gamma)
-            
-    def act(self, state):
-        action = self.actor_local.get_action(state)
+    
+    def get_action(self, state):
+        action, _ = self.policy_net.sample(state)
+        action = np.clip(action*self.action_range[1], self.action_range[0], self.action_range[1])
         return action
-
-    def learn(self, experiences, gamma):
-        states, actions, rewards, next_states, dones = experiences
+    
+    @tf.function
+    def train_q_networks(self,X,y_true):
+        with tf.GradientTape() as tape:
+            critic_value = self.q_net1(X)
+            critic_value = tf.squeeze(critic_value)
+            critic_loss = tf.math.reduce_mean(tf.math.square(y_true - critic_value))
+        critic_grad = tape.gradient(critic_loss, self.q_net1.trainable_variables)
+        self.q1_optimizer.apply_gradients(zip(critic_grad, self.q_net1.trainable_variables))
         
-        # ---------------------------- update critic ---------------------------- #
-        next_action, next_log_pis = self.actor_local.evaluate(next_states)
-
-        #Clipped double Q Trick
-        next_q1 = self.critic1_target.call([next_states, next_action])
-        next_q2 = self.critic2_target.call([next_states, next_action])
+        with tf.GradientTape() as tape:
+            critic_value = self.q_net2(X)
+            critic_value = tf.squeeze(critic_value)
+            critic_loss = tf.math.reduce_mean(tf.math.square(y_true - critic_value))
+        critic_grad = tape.gradient(critic_loss, self.q_net2.trainable_variables)
+        self.q2_optimizer.apply_gradients(zip(critic_grad, self.q_net2.trainable_variables))
         
-        next_q_target = tf.squeeze(tf.math.minimum(next_q1,next_q2))
-        next_q_target = next_q_target - self.alpha * tf.squeeze(next_log_pis)
-        Q_targets = rewards + (1 - dones) * self.gamma * next_q_target
-        #######################
-        
-        #Fit
-        self.critic1.fit([states,actions],Q_targets,verbose=0)
-        self.critic2.fit([states,actions],Q_targets, verbose=0)
-        ####
-        
-        alpha = np.exp(self.log_alpha.read_value()[0])
-        # Compute alpha loss
-        converted_states = tf.convert_to_tensor(states,dtype=np.float32)
-
+    @tf.function
+    def train_policy_network(self,X):
+        with tf.GradientTape(watch_accessed_variables=False) as tape:
+            tape.watch(self.policy_net.trainable_variables)
+            policy_actions, log_pi = self.policy_net.sample(X)
+            state_action_policy = tf.concat([X, policy_actions], axis=1)
+            q_min = tf.math.minimum(
+                self.target_q_net1(state_action_policy),
+                self.target_q_net2(state_action_policy))
+            loss = tf.math.reduce_mean(self.alpha * log_pi - tf.squeeze(q_min))
+        grads = tape.gradient(loss,self.policy_net.trainable_variables)
+        self.policy_optimizer.apply_gradients(zip(grads, self.policy_net.trainable_variables))
+    
+    @tf.function
+    def train_alpha(self,X):
+        _ , log_pis = self.policy_net.sample(X)
         with tf.GradientTape() as tape:
             tape.watch(self.log_alpha)
-            actions_pred, log_pis = self.actor_local.evaluate(converted_states)
-            alpha_loss = -K.mean(self.log_alpha.read_value()[0] * (log_pis + self.target_entropy))
-        grads = tape.gradient(alpha_loss,self.log_alpha)
-        grads = tf.expand_dims(grads,0)
-        self.alpha_opt.apply_gradients(zip(grads, [self.log_alpha]))
-        self.alpha = alpha
+            alpha_loss = tf.reduce_mean((self.log_alpha.read_value()[0] * (-log_pis - self.target_entropy)))
+        grads = tape.gradient(alpha_loss,[self.log_alpha])
+        self.alpha_optim.apply_gradients(zip(grads, [self.log_alpha]))
+        
+    def update(self, batch_size):
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample(batch_size)
+        
+        states = tf.convert_to_tensor(states)
+        actions = tf.convert_to_tensor(actions)
+        rewards = tf.convert_to_tensor(rewards)
+        rewards = tf.squeeze(rewards)
+        next_states = tf.convert_to_tensor(next_states)
+        dones = np.array(dones)
+        
+        next_actions, next_log_pi = self.policy_net.sample(next_states)
+        nstate_naction = tf.concat([next_states, next_actions], axis=1)
+        q_min = tf.math.minimum(
+            self.target_q_net1(nstate_naction),
+            self.target_q_net2(nstate_naction)
+        )
+        q_min = tf.squeeze(q_min)
+        
+        next_q_target = q_min - self.alpha * next_log_pi
+        state_action = tf.concat([states, actions], axis=1)
+        expected_q = rewards + (1 - dones) * self.gamma * next_q_target
+        
+        self.train_q_networks(state_action,expected_q)
+        
+        if self.update_step % self.delay_step == 0:
+            self.train_policy_network(states)
+            self.soft_update(self.q_net1, self.target_q_net1, self.tau)
+            self.soft_update(self.q_net2, self.target_q_net2, self.tau)
 
-        #Fit Actor Step
-        with tf.GradientTape() as tape:
-            actions_pred , log_pis = self.actor_local.evaluate(converted_states)
-            log_pis = tf.squeeze(log_pis)
-            c1_in = tf.squeeze(self.critic1.call([converted_states, actions_pred]))
-            loss = (alpha * log_pis - c1_in)
-            mean = tf.math.reduce_mean(loss, axis=0)
-        grads = tape.gradient(mean,self.actor_local.trainable_variables)
-        self.actor_opt.apply_gradients(zip(grads, self.actor_local.trainable_variables))
-                
-        # ----------------------- update target networks ----------------------- #
-        self.soft_update(self.critic1, self.critic1_target, self.tau)
-        self.soft_update(self.critic2, self.critic2_target, self.tau)
-                     
+        self.train_alpha(states)
+        self.alpha = tf.math.exp(self.log_alpha)
+        self.update_step += 1
+    
     def soft_update(self, local_model, target_model, tau):
         a = np.array(local_model.get_weights()) #local
         b = np.array(target_model.get_weights()) #target
         target_model.set_weights(tau*a + (1.0-tau)*b)
     
-    def train(self, numEpisodes = 10000):
-        for ep in range(numEpisodes):
-            score = 0
+    def train(self,numEpisodes = 10000):
+        for episode in range(numEpisodes):
             state = self.u_env._reset()
-
             self.buffer.insert_obs(state[0][:,:,0])
             self.buffer.insert_obs(state[0][:,:,1])
             self.buffer.insert_obs(state[0][:,:,2])
             self.buffer.insert_obs(state[0][:,:,3])
             state = self.buffer.generate_arr()
             state = np.expand_dims(state,axis=0)
-
+            
             while True:
-                action = self.act(state)
-                action_v = tf.expand_dims(tf.clip_by_value(action*1, -1, 1),axis=0)
-                action_v = tf.keras.backend.eval(action_v)
-                #print(action_v)
-                next_state, reward, done, info = self.u_env._step(action_v)
-                score += reward
-                if next_state[0].shape == self.state_size:
+                action = self.get_action(np.float32(state))
+                next_state, reward, done, _ = self.u_env._step(action)
+                if next_state[0].shape == self.obs_dim:
                     self.buffer.insert_obs(next_state[0][:,:,2])
                 else:
                     self.buffer.insert_obs(next_state[0][0][:,:,2])
-            
-                next_state = self.buffer.generate_arr()
-                next_state = np.expand_dims(next_state,axis=0)
+                self.replay_buffer.push(np.float32(state), np.float32(action), np.float32(reward), np.float32(next_state), done)
 
-                self.step(state, action_v, reward, next_state, done)
-                state = next_state
+                if len(self.replay_buffer) > self.batch_size:
+                    self.update(self.batch_size)   
+                
                 if done:
                     break
-            print("ep" , ep, ": ", score)
-            if score >= 4:
-                print("solved!")
-                self.actor_local.save_weights("actor_sac.h5")
-                self.critic1.save_weights("critic1_sac.h5")
-                self.critic2.save_weights("critic2_sac.h5")
-
+                state = next_state
