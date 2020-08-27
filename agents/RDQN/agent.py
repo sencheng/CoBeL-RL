@@ -25,6 +25,7 @@ from agents.RDQN.buffers import ReplayBuffer, PrioritizedReplayBuffer
 from interfaces.oai_gym_interface import UnityInterface
 from agents.utils.misc import Average, Get_Single_Input
 
+
 class RDQNAgent:
     #PASS
     def __init__(
