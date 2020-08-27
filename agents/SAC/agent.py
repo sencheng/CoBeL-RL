@@ -4,11 +4,11 @@ from tensorflow.keras.optimizers import Adam
 from tensorflow.math import exp
 
 from agents.SAC.models import create_critic,PolicyNetwork
-from agents.utils.basic_buffer import BasicBuffer
+from agents.SAC.buffer import Buffer
 from agents.utils.ringbuffer import RingBuffer
 
 class SACAgent:
-    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.2, q_lr = 3e-4, policy_lr = 3e-4, a_lr = 3e-4, buffer_maxlen = 1000000):
+    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.2, q_lr = 3e-4, policy_lr = 3e-4, a_lr = 3e-4, buffer_maxlen = 20000):
         self.u_env = env
         
         self.action_range = [env.action_space.low, env.action_space.high]
@@ -44,7 +44,7 @@ class SACAgent:
         self.alpha_optim = Adam(lr=a_lr,)
 
         #Memory
-        self.replay_buffer = BasicBuffer(buffer_maxlen)
+        self.replay_buffer = Buffer(self.obs_dim,self.action_dim, buffer_maxlen, self.batch_size)
         self.buffer = RingBuffer(4)
     
     def get_action(self, state):
@@ -90,14 +90,14 @@ class SACAgent:
         self.alpha_optim.apply_gradients(zip(grads, [self.log_alpha]))
         
     def update(self, batch_size):
-        states, actions, rewards, next_states, dones = self.replay_buffer.sample(batch_size)
+        states, actions, rewards, next_states, dones = self.replay_buffer.sample_batch()
         
-        states = tf.convert_to_tensor(states)
-        actions = tf.convert_to_tensor(actions)
-        rewards = tf.convert_to_tensor(rewards)
-        rewards = tf.squeeze(rewards)
-        next_states = tf.convert_to_tensor(next_states)
-        dones = np.array(dones)
+        # states = tf.convert_to_tensor(states)
+        # actions = tf.convert_to_tensor(actions)
+        # rewards = tf.convert_to_tensor(rewards)
+        # rewards = tf.squeeze(rewards)
+        # next_states = tf.convert_to_tensor(next_states)
+        # dones = np.array(dones)
         
         next_actions, next_log_pi = self.policy_net.sample(next_states)
         q_min = tf.math.minimum(
@@ -142,9 +142,8 @@ class SACAgent:
                     self.buffer.insert_obs(next_state[0][:,:,2])
                 else:
                     self.buffer.insert_obs(next_state[0][0][:,:,2])
-                self.replay_buffer.push(np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done)
-
-                if len(self.replay_buffer) > self.batch_size:
+                self.replay_buffer.record((np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done))
+                if self.replay_buffer.buffer_counter > self.batch_size:
                     self.update(self.batch_size)   
                 
                 if done:
