@@ -5,6 +5,7 @@ import operator
 from typing import Callable
 
 
+
 class SegmentTree:
     """ Create SegmentTree.
 
