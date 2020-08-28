@@ -8,6 +8,9 @@ import numpy as np
 
 tf_dists = tf_prob.distributions
 rand_uniform_init = RandomUniform(-0.003,0.003)
+
+#Distributions
+noise_dist = tf_dists.Normal(0,0.1,False,False)
 normal_dist = tf_dists.Normal(0,1,False,False)
 
 log_std_min = -20
@@ -20,29 +23,32 @@ def create_critic(state_dim,action_dim,hidden_dim = 256):
     #Feature Extraction
     conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(input_state)
     mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
+    
     conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(mp1)
     mp2 = MaxPooling2D(pool_size=(2,2))(conv2)
+
     flatten = Flatten()(mp2)
     
     cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)(flatten)
-    act_dense1 = Dense(64,activation='relu',kernel_initializer=HeNormal)(input_action)
-    act_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(act_dense1)
+    act_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(input_action)
     
     concatenated_layers = Concatenate()([cnn_dense,act_dense])
-    v = Dense(1,kernel_initializer=rand_uniform_init)(concatenated_layers)
+    pre_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(concatenated_layers)
+    
+    v = Dense(1,kernel_initializer=rand_uniform_init)(pre_dense)
     return Model([input_state,input_action], v)
 
-class PolicyNetwork(tf.keras.Model):
+class GaussianPolicy(tf.keras.Model):
     def __init__(self,state_dim,action_dim,hidden_dim = 256):
-        super(PolicyNetwork,self).__init__(name = "Policy Network")
+        super(GaussianPolicy,self).__init__(name = "Policy Network")
         
-        #Feature Extraction
-        self.conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal,input_shape=(state_dim[0],state_dim[1],state_dim[2]))
+        self.conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
         self.mp1 = MaxPooling2D(pool_size=(2,2))
+        
         self.conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
         self.mp2 = MaxPooling2D(pool_size=(2,2))
-        self.flatten = Flatten()
         
+        self.flatten = Flatten()
         self.cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)
 
         self.mu_dense = Dense(action_dim,kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
@@ -51,10 +57,13 @@ class PolicyNetwork(tf.keras.Model):
     def call(self, X):
         x = self.conv1(X)
         x = self.mp1(x)
+
         x = self.conv2(x)
         x = self.mp2(x)
+
         x = self.flatten(x)
         x = self.cnn_dense(x)
+
         mu = self.mu_dense(x)
         log = self.log_std_dense(x)
         
@@ -70,4 +79,41 @@ class PolicyNetwork(tf.keras.Model):
         action = tanh(mu + e * std)
         log_prob = dist.log_prob(mu + e * std) - log(1 - tf.math.pow(action,2) + epsilon)
         log_prob = reduce_sum(log_prob,axis=1)
-        return action, log_prob
+        return action, log_prob , 0
+
+class DeterministicPolicy(tf.keras.Model):
+    def __init__(self,state_dim,action_dim,hidden_dim = 256):
+        super(DeterministicPolicy,self).__init__(name = "Deterministic Policy Network")
+        self.actions = action_dim
+
+        self.conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.mp1 = MaxPooling2D(pool_size=(2,2))
+        
+        self.conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.mp2 = MaxPooling2D(pool_size=(2,2))
+        
+        self.flatten = Flatten()
+        self.cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)
+
+        self.mean = Dense(action_dim,activation='tanh',kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
+
+    def call(self, X):
+        x = self.conv1(X)
+        x = self.mp1(x)
+
+        x = self.conv2(x)
+        x = self.mp2(x)
+
+        x = self.flatten(x)
+        x = self.cnn_dense(x)
+
+        return self.mean(x)
+
+    def sample(self, X, epsilon=1e-6):
+        mean = self.call(X)
+        noise = noise_dist.sample((self.actions))
+        action = mean + noise
+        #action for exploration
+        #mean for deterministic evaluation
+        #Logpi = 0
+        return action, tf.constant(0.0),  mean
