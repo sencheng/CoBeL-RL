@@ -32,8 +32,8 @@ class RDQNAgent:
         self, 
         env: UnityInterface,
         num_frames: int = 10000,
-        memory_size: int = 3000,
-        batch_size: int = 64,
+        memory_size: int = 10000,
+        batch_size: int = 128,
         target_update: int = 100,
         gamma: float = 0.9,
         # PER parameters
@@ -55,6 +55,7 @@ class RDQNAgent:
         self.batch_size = batch_size
         self.target_update = target_update
         self.gamma = gamma
+        self.warm_up = 500
 
         #Multistep DQN parameters
         self.n_step = 3
@@ -73,6 +74,9 @@ class RDQNAgent:
         # networks: dqn, dqn_target
         self.dqn = self.build_model()
         self.dqn_target = self.build_model()
+        
+        self.dqn.load_weights(self.modelpath)
+        self.dqn_target.load_weights(self.modelpath)
 
         # transition to store in memory
         self.transition = list()
@@ -114,7 +118,7 @@ class RDQNAgent:
             distribution_list.append(Softmax(axis=1)(agg[i]))
 
         model = Model(input_layer, distribution_list)
-        model.compile(optimizer=Adam(lr=0.0025), loss='categorical_crossentropy')
+        model.compile(optimizer=Adam(lr=0.0025,clipnorm=1.,clipvalue=0.5), loss='categorical_crossentropy')
         
         return model
 
@@ -240,7 +244,7 @@ class RDQNAgent:
                 state = Get_Single_Input(state,self.obs_dim)
                 
             # if training is ready
-            if len(self.memory) >= self.batch_size:
+            if len(self.memory) >= max(self.warm_up,self.batch_size):
                 updateCount += 1
                 self.update_model()
                 

@@ -21,11 +21,13 @@ class A2CAgent:
     self.gamma = gamma
     self.value_c = value_c
     self.entropy_c = entropy_c
-    self.batchsize = 64
+    self.batchsize = 256
 
-    self.model = Model(self.action_dim,self.hid_act)
+    self.model = Model(self.obs_dim,self.action_dim,self.hid_act)
     self.model.compile(optimizer=Adam(lr=lr,clipnorm=1.,clipvalue=0.5),loss=[self._logits_loss, self._value_loss])
-
+    self.model.action_value(np.zeros((1,self.obs_dim[0],self.obs_dim[1],self.obs_dim[2])))
+    self.model.load_weights(self.modelpath)
+    
   def train(self,num_frames: int):
     score = deque([0,0,0,0,0],maxlen=5)
     currentRew = 0

@@ -147,7 +147,7 @@ class DDPG_Agent:
             self.ringbuffer.insert_obs(prev_state[0][:,:,0])
             self.ringbuffer.insert_obs(prev_state[0][:,:,1])
             self.ringbuffer.insert_obs(prev_state[0][:,:,2])
-            self.ringbuffer.insert_obs(prev_state[0][:,:,3])
+            self.ringbuffer.insert_obs(prev_state[0][:,:,2])
             prev_state = self.ringbuffer.generate_arr()
             
             while True:
