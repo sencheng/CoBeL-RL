@@ -9,8 +9,8 @@ from numpy.random import seed
 from interfaces.oai_gym_interface import UnityInterface, get_cobel_path, get_env_path
 from tensorflow.keras import backend
 
-#from agents.RDQN.agent import RDQNAgent as RDQN
-from agents.A2C.Discrete.a2c_disc import A2CAgent as A2C
+from agents.RDQN.agent import RDQNAgent as RDQN
+#from agents.A2C.Discrete.a2c_disc import A2CAgent as A2C
 
 backend.set_image_data_format(data_format='channels_last')
 
@@ -25,9 +25,13 @@ if __name__ == "__main__":
                                agent_action_type="discrete", use_gray_scale_images=False)
 
     
-    #agent = RDQN(unity_env,1000000)
-    agent = A2C(unity_env)
+    agent = RDQN(unity_env,1000000)
+    #agent = A2C(unity_env)
     agent.train(1000000)
+    
+    # while True:
+    #     action = float(input())
+    #     unity_env._step(np.array([[action]]))
 
     # clear session
     backend.clear_session()

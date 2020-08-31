@@ -75,8 +75,8 @@ class RDQNAgent:
         self.dqn = self.build_model()
         self.dqn_target = self.build_model()
         
-        self.dqn.load_weights(self.modelpath)
-        self.dqn_target.load_weights(self.modelpath)
+        #self.dqn.load_weights(self.modelpath)
+        #self.dqn_target.load_weights(self.modelpath)
 
         # transition to store in memory
         self.transition = list()
