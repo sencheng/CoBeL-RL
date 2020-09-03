@@ -1,15 +1,15 @@
 import tensorflow as tf
-import tensorflow_probability as tf_prob
+import tensorflow_probability as tfp
 from tensorflow.keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, Concatenate
 from tensorflow.keras.initializers import HeNormal, RandomUniform
 from tensorflow.keras import Model
 from tensorflow.math import log, exp, reduce_sum, tanh
+from agents.SAC.real_nvp import RealNVP
 import numpy as np
-
-tf_dists = tf_prob.distributions
 rand_uniform_init = RandomUniform(-0.003,0.003)
 
 #Distributions
+tf_dists = tfp.distributions
 noise_dist = tf_dists.Normal(0,0.1,False,False)
 normal_dist = tf_dists.Normal(0,1,False,False)
 
@@ -117,3 +117,49 @@ class DeterministicPolicy(tf.keras.Model):
         #mean for deterministic evaluation
         #Logpi = 0
         return action, tf.constant(0.0),  mean
+
+class NVP_Policy(tf.keras.Model):
+    def __init__(self,state_dim,action_dim,hidden_dim = 256):
+        super(NVP_Policy,self).__init__(name = "Real NVP Network")
+        
+        self.conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.mp1 = MaxPooling2D(pool_size=(2,2))
+        
+        self.conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.mp2 = MaxPooling2D(pool_size=(2,2))
+        
+        self.flatten = Flatten()
+        self.cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)
+
+        self.mu_dense = Dense(action_dim,kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
+        self.log_std_dense = Dense(action_dim,kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
+        
+        self.normal = tfp.distributions.Normal(loc=0.0,scale=1.0)
+        self.norm_flow = RealNVP(2)
+        self.norm_flow.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.0001))
+        
+    def call(self, X):
+        x = self.conv1(X)
+        x = self.mp1(x)
+
+        x = self.conv2(x)
+        x = self.mp2(x)
+
+        x = self.flatten(x)
+        x = self.cnn_dense(x)
+
+        mean = self.mu_dense(x)
+        log = self.log_std_dense(x)
+        
+        log_stdev = tf.clip_by_value(log,log_std_min,log_std_max)
+        return mean, log_stdev
+
+    def sample(self, X, epsilon=1e-6):
+        mu, log_std = self.call(X)
+        stdev = exp(log_std)
+        e = normal_dist.sample(2)
+        x = mu + e * stdev
+        flow_action, _ = self.norm_flow(x)
+        action = tanh(flow_action)
+        log_prob = self.norm_flow.distribution.log_prob(action)
+        return action, log_prob , 0

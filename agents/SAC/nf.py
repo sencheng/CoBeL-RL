@@ -45,3 +45,4 @@ model.fit(x=data,
 
 x_new2 = distribution.sample((2000))
 plt.scatter(x_new2[:,0],x_new2[:,1])
+plt.show()
