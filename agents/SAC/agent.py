@@ -8,7 +8,7 @@ from agents.SAC.buffer import Buffer
 from agents.utils.ringbuffer import RingBuffer
 
 class SACAgent:
-    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.0, buffer_maxlen = 50000, deterministic = False):
+    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.0, buffer_maxlen = 50000, deterministic = True):
         self.u_env = env
         
         self.action_range = [env.action_space.low, env.action_space.high]
@@ -39,7 +39,7 @@ class SACAgent:
         self.target_q_net2 = create_critic(self.obs_dim,self.action_dim,256)
         
         if deterministic == False:
-            self.policy_net = NVP_Policy(self.obs_dim,self.action_dim,256)
+            self.policy_net = GaussianPolicy(self.obs_dim,self.action_dim,256)
         else:
             self.policy_net = DeterministicPolicy(self.obs_dim,self.action_dim,256)
 
@@ -128,7 +128,6 @@ class SACAgent:
             self.train_alpha(states)
             self.alpha = tf.math.exp(self.log_alpha)
         
-        #self.policy_net.norm_flow.fit(normalized_data, batch_size=256, epochs=10, verbose=2, validation_split=0.2)
         self.update_step += 1
     
     def soft_update(self, local_model, target_model, tau):
