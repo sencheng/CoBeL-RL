@@ -3,12 +3,12 @@ import numpy as np
 from tensorflow.keras.optimizers import Adam
 from tensorflow.math import exp
 
-from agents.SAC.models import create_critic,GaussianPolicy, DeterministicPolicy, NVP_Policy
+from agents.SAC.models import create_critic,GaussianPolicy, DeterministicPolicy
 from agents.SAC.buffer import Buffer
 from agents.utils.ringbuffer import RingBuffer
 
 class SACAgent:
-    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.0, buffer_maxlen = 50000, deterministic = True):
+    def __init__(self, env, gamma = 0.99, tau = 0.01, alpha = 0.2, buffer_maxlen = 50000, deterministic = True):
         self.u_env = env
         
         self.action_range = [env.action_space.low, env.action_space.high]
@@ -43,6 +43,11 @@ class SACAgent:
         else:
             self.policy_net = DeterministicPolicy(self.obs_dim,self.action_dim,256)
 
+        self.policy_net(np.expand_dims(np.zeros(self.obs_dim),axis=0))
+        self.policy_net.load_weights("/home/wkst/Desktop/det_actor.h5")
+        self.q_net1.load_weights("/home/wkst/Desktop/critic1.h5")
+        self.q_net2.load_weights("/home/wkst/Desktop/critic2.h5")
+        
         self.target_q_net1.set_weights(self.q_net1.get_weights())
         self.target_q_net2.set_weights(self.q_net2.get_weights())
         
@@ -127,7 +132,6 @@ class SACAgent:
         if self.deterministic == False:
             self.train_alpha(states)
             self.alpha = tf.math.exp(self.log_alpha)
-        
         self.update_step += 1
     
     def soft_update(self, local_model, target_model, tau):

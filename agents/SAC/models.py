@@ -4,7 +4,6 @@ from tensorflow.keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, 
 from tensorflow.keras.initializers import HeNormal, RandomUniform
 from tensorflow.keras import Model
 from tensorflow.math import log, exp, reduce_sum, tanh
-from agents.SAC.real_nvp import RealNVP
 import numpy as np
 rand_uniform_init = RandomUniform(-0.003,0.003)
 
