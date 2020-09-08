@@ -130,7 +130,7 @@ class DDPG_Agent:
         noise = self.ou_noise()
         
         # Adding noise for learning
-        #sampled_actions = sampled_actions.numpy() + noise
+        # sampled_actions = sampled_actions.numpy() + noise
 
         #Without noise for deterministic agent
         sampled_actions = sampled_actions.numpy()
@@ -153,8 +153,9 @@ class DDPG_Agent:
             while True:
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
                 action = np.array(self.sample_action(tf_prev_state))
-                state, reward, done, info = self.u_env._step(action)
-                score += reward
+                state, reward, done, info = self.u_env._step(action)#
+                if reward == 1.0:
+                    score += reward
                 
                 #Get Each third Frame as workaround
                 if state[0].shape == self.num_states:
@@ -168,7 +169,7 @@ class DDPG_Agent:
                 #self.buffer.record((prev_state, action[0], reward, state))
                 #self.train_model()
                 #self.update_target()
-                ###
+                #
                 prev_state = state
                 if done:
                     break

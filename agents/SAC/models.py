@@ -111,7 +111,12 @@ class DeterministicPolicy(tf.keras.Model):
     def sample(self, X, epsilon=1e-6):
         mean = self.call(X)
         noise = noise_dist.sample((self.actions))
-        action = mean + noise
+        #With Noise
+        #action = mean + noise
+
+        #Without Noise
+        action = mean
+        
         #action for exploration
         #mean for deterministic evaluation
         #Logpi = 0

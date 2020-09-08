@@ -28,9 +28,9 @@ class SACAgent:
         # self.policy_lr = 3e-4
         # self.a_lr = 3e-4
         
-        self.q_lr       = 0.0001
-        self.policy_lr  = 0.0001
-        self.a_lr       = 0.0001
+        self.q_lr       = 0.001
+        self.policy_lr  = 0.00001
+        self.a_lr       = 0.001
         
         # initialize networks 
         self.q_net1 = create_critic(self.obs_dim,self.action_dim,256)
@@ -155,6 +155,7 @@ class SACAgent:
                 next_state, reward, done, _ = self.u_env._step(action)
                 if(reward > 0):
                     score += reward
+                #print(reward)
                 if next_state[0].shape == self.obs_dim:
                     self.buffer.insert_obs(next_state[0][:,:,2])
                 else:
@@ -163,14 +164,14 @@ class SACAgent:
                 next_state = self.buffer.generate_arr()
                 next_state = np.expand_dims(next_state,axis=0)
                 self.replay_buffer.record((np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done))
-                if self.replay_buffer.buffer_counter > self.batch_size:
-                    self.update(self.batch_size)   
+                # if self.replay_buffer.buffer_counter > self.batch_size:
+                #     self.update(self.batch_size)   
                 
                 if done:
                     break
                 state = next_state
             print("ep" , episode, ": ", score)
-            if score >= 4:
+            if score >= 5:
                 print("solved!")
                 self.policy_net.save_weights("det_actor.h5")
                 self.q_net1.save_weights("critic1.h5")
