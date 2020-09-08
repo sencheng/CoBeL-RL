@@ -23,7 +23,7 @@ class DDPG_Agent:
         self.critic_lr = 0.0001
         self.gamma = 0.99
         self.hid_act = "mish"
-        self.mem_size = 25000
+        self.mem_size = 50000
         self.batch_size = 128
         self.episodes = 10000
         
@@ -130,10 +130,10 @@ class DDPG_Agent:
         noise = self.ou_noise()
         
         # Adding noise for learning
-        sampled_actions = sampled_actions.numpy() + noise
+        #sampled_actions = sampled_actions.numpy() + noise
 
         #Without noise for deterministic agent
-        #sampled_actions = sampled_actions.numpy()
+        sampled_actions = sampled_actions.numpy()
         
         #Action Bounds
         legal_action = np.clip(sampled_actions, self.lower_bound, self.upper_bound)
@@ -165,15 +165,15 @@ class DDPG_Agent:
                 state = self.ringbuffer.generate_arr()
                 
                 #Uncomment to deactivate learning
-                self.buffer.record((prev_state, action[0], reward, state))
-                self.train_model()
-                self.update_target()
+                #self.buffer.record((prev_state, action[0], reward, state))
+                #self.train_model()
+                #self.update_target()
                 ###
                 prev_state = state
                 if done:
                     break
             print("ep" , ep, ": ", score)
-            if score >= 4:
+            if score == 5:
                 print("solved!")
                 self.actor_model.save_weights("actor.h5")
                 self.critic_model.save_weights("critic.h5")
