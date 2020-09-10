@@ -14,7 +14,6 @@ from agents.RDQN.agent import RDQNAgent as RDQN
 
 backend.set_image_data_format(data_format='channels_last')
 
-
 if __name__ == "__main__":
     project = get_cobel_path()
     environment_path = get_env_path()
@@ -29,6 +28,10 @@ if __name__ == "__main__":
     agent = RDQN(unity_env,1000000)
     #agent = A2C(unity_env)
     agent.train(1000000)
+    
+    # while True:
+    #     action = float(input())
+    #     unity_env._step(np.array([[action]]))
 
     # clear session
     backend.clear_session()

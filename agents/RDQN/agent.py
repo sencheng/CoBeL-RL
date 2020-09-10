@@ -13,9 +13,9 @@ import numpy as np
 import tensorflow as tf
 tf.compat.v1.disable_eager_execution()
 
-from tensorflow.keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Softmax, Conv2D, MaxPooling2D, Flatten
+from tensorflow.keras.layers import Dense, Input, GaussianNoise, Lambda, Reshape, RepeatVector, Softmax, Conv2D, MaxPooling2D, Flatten, AveragePooling2D
 from tensorflow.keras import Model
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers import Adam, SGD
 from tensorflow.keras.models import Sequential
 from tensorflow.keras import backend as K
 from tensorflow.keras import initializers
@@ -32,8 +32,8 @@ class RDQNAgent:
         self, 
         env: UnityInterface,
         num_frames: int = 10000,
-        memory_size: int = 3000,
-        batch_size: int = 64,
+        memory_size: int = 100000,
+        batch_size: int = 256,
         target_update: int = 100,
         gamma: float = 0.9,
         # PER parameters
@@ -41,8 +41,8 @@ class RDQNAgent:
         beta: float = 0.4,
         prior_eps: float = 1e-6,
         # Categorical DQN parameters
-        v_min: float = 0.0,
-        v_max: float = 20.0,
+        v_min: float = -5,
+        v_max: float = 20,
         atom_size: int = 51
     ):
         
@@ -74,6 +74,14 @@ class RDQNAgent:
         self.dqn = self.build_model()
         self.dqn_target = self.build_model()
 
+        # Keep Stochasticity high
+        self.epsilon = 1.0
+        self.epsilon_min = 0.25
+        self.epsilon_decay = 0.0005
+        
+        #self.dqn.load_weights(self.modelpath)
+        #self.dqn_target.load_weights(self.modelpath)
+
         # transition to store in memory
         self.transition = list()
 
@@ -87,23 +95,26 @@ class RDQNAgent:
             layerlist.append(v + adv[:,i] - adv_mean)
         return layerlist
 
-    def build_model(self):
+    def build_lenet(self):
         input_layer = Input(shape=self.obs_dim)
 
-        c1 = Conv2D(8, (3, 3), activation='relu')(input_layer)
-        mp1 = MaxPooling2D((2, 2))(c1)
+        c1 = Conv2D(6, (5, 5),strides=1, activation='tanh')(input_layer)
+        mp1 = AveragePooling2D()(c1)
         
-        c2 = Conv2D(16, (3, 3), activation='relu')(mp1)
-        mp2 = MaxPooling2D((2, 2))(c2)
+        c2 = Conv2D(16, (5, 5),strides=1, activation='tanh')(mp1)
+        mp2 = AveragePooling2D()(c2)
         
-        fl = Flatten()(mp2)
+        c3 = Conv2D(120,( 5, 5),strides=1, activation='tanh')(mp2)
+        fl = Flatten()(c3)
+
+        d1 = NoisyDense(84,activation='tanh')(fl)
 
         #Value Stream
-        v_layer = NoisyDense(128,activation='relu')(fl)
+        v_layer = NoisyDense(42,activation='tanh')(d1)
         v = NoisyDense(self.atom_size)(v_layer)
 
         #Advantage Stream
-        adv_layer = NoisyDense(128,activation='relu')(fl)
+        adv_layer = NoisyDense(42,activation='tanh')(d1)
         adv = NoisyDense(self.atom_size * self.action_dim)(adv_layer)
 
         agg = Lambda(self.aggregate_layers)([v,adv])
@@ -114,8 +125,40 @@ class RDQNAgent:
             distribution_list.append(Softmax(axis=1)(agg[i]))
 
         model = Model(input_layer, distribution_list)
-        model.compile(optimizer=Adam(lr=0.0025), loss='categorical_crossentropy')
+        model.compile(optimizer=SGD(learning_rate=0.001,clipnorm=1.,clipvalue=0.5), loss='categorical_crossentropy')
+        model.summary()
+        return model
+
+    def build_model(self):
+        input_layer = Input(shape=self.obs_dim)
+
+        c1 = Conv2D(16, (3, 3), activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)(input_layer)
+        mp1 = MaxPooling2D((2, 2))(c1)
         
+        c2 = Conv2D(32, (3, 3), activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)(mp1)
+        mp2 = MaxPooling2D((2, 2))(c2)
+        
+        fl = Flatten()(mp2)
+        d1 = NoisyDense(512,activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)(fl)
+
+        #Value Stream
+        v_layer = Dense(128,activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)(d1)
+        v = Dense(self.atom_size)(v_layer)
+
+        #Advantage Stream
+        adv_layer = Dense(128,activation='relu',kernel_initializer=tf.keras.initializers.HeNormal)(d1)
+        adv = Dense(self.atom_size * self.action_dim)(adv_layer)
+
+        agg = Lambda(self.aggregate_layers)([v,adv])
+
+        distribution_list = []
+
+        for i in range(self.action_dim):
+            distribution_list.append(Softmax(axis=1)(agg[i]))
+
+        model = Model(input_layer, distribution_list)
+        model.compile(optimizer=Adam(lr=0.001), loss='categorical_crossentropy')
+        model.summary()
         return model
 
     def select_action(self, state):
@@ -125,9 +168,17 @@ class RDQNAgent:
         z_concat = np.vstack(z)
         q = np.sum(np.multiply(z_concat, np.array(self.support)), axis=1) 
         q_opt = np.argmax(q)
-        
         self.transition = [state, q_opt]
         return q_opt
+
+    def select_random_action(self, state):
+        state = np.array(state)
+        state = np.expand_dims(state,0)
+        a_random = random.randint(0,3)
+        self.transition = [state, a_random]
+        self.epsilon *= (1-self.epsilon_decay)
+        self.epsilon = max(self.epsilon,self.epsilon_min)
+        return a_random
 
     def step(self, action):
         next_state, reward, done, _ = self.u_env._step(np.array([[action]]))
@@ -162,7 +213,7 @@ class RDQNAgent:
         reward = np.array(samples["rews"])
         done = np.array(samples["done"])
 
-        m_prob = [np.zeros((samples["obs"].shape[0], self.atom_size)) for i in range(self.action_dim)]
+        m_prob = [np.zeros((self.batch_size, self.atom_size)) for i in range(self.action_dim)]
         
         # Categorical DQN algorithm
         delta_z = float(self.v_max - self.v_min) / (self.atom_size - 1)
@@ -171,7 +222,7 @@ class RDQNAgent:
         next_dist = self.dqn_target.predict(next_state)
 
         #Iterate over whole batch
-        for i in range(samples["obs"].shape[0]):
+        for i in range(self.batch_size):
             for j in range(self.atom_size):
                 t_z = reward[i] + (1 - done[i]) * self.gamma**self.n_step * self.support[j]
                 t_z = self.clamp(t_z,self.v_min,self.v_max)
@@ -182,6 +233,7 @@ class RDQNAgent:
                     m_prob[action[i]][i][l] += next_dist[next_action[i]][i][j] * (u - b)
                     m_prob[action[i]][i][u] += next_dist[next_action[i]][i][j] * (b - l)
                 else:
+
                     m_prob[action[i]][i][l] += next_dist[next_action[i]][i][j]
 
         #KL Divergence Calc
@@ -215,10 +267,12 @@ class RDQNAgent:
         updateCount = 0
 
         for frame_idx in range(1, num_frames + 1):
-            action = self.select_action(state)
+            if np.random.random() <= self.epsilon:
+                action = self.select_random_action(state)
+            else:
+                action = self.select_action(state)
             
             next_state, reward, done = self.step(action)
-                
             state = next_state
             currentRew += reward
             
@@ -232,8 +286,8 @@ class RDQNAgent:
                 currentRew = 0
                 ep += 1
                 avg = Average(list(score))
-                print("Ep:",ep," Current Average Reward: ", avg)
-                if avg >= 9:
+                print("Ep:",ep," Avg:", avg," Current:", score[4])
+                if avg >= 6:
                     print("Save Model")
                     self.dqn.save_weights(self.modelpath)
                 state = self.u_env._reset()

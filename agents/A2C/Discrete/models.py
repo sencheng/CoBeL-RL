@@ -9,10 +9,10 @@ class ProbabilityDistribution(tf.keras.Model):
     return tf.squeeze(tf.random.categorical(logits, 1), axis=-1)
 
 class Model(tf.keras.Model):
-  def __init__(self, num_actions, hid_act):
+  def __init__(self, num_states, num_actions, hid_act):
     super().__init__('mlp_policy')
 
-    self.c1 = kl.Conv2D(8, (3, 3), activation=hid_act,kernel_initializer=tf.keras.initializers.HeNormal)
+    self.c1 = kl.Conv2D(8, (3, 3), activation=hid_act,kernel_initializer=tf.keras.initializers.HeNormal, input_shape=num_states)
     self.mp1 = kl.MaxPooling2D((2, 2))
     self.c2 = kl.Conv2D(16, (3, 3), activation=hid_act,kernel_initializer=tf.keras.initializers.HeNormal)
     self.mp2 = kl.MaxPooling2D((2, 2))
