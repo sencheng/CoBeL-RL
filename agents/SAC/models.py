@@ -4,6 +4,8 @@ from tensorflow.keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, 
 from tensorflow.keras.initializers import HeNormal, RandomUniform
 from tensorflow.keras import Model
 from tensorflow.math import log, exp, reduce_sum, tanh
+from agents.RDQN.custom_layers import NoisyDense
+
 import numpy as np
 rand_uniform_init = RandomUniform(-0.003,0.003)
 
@@ -20,21 +22,21 @@ def create_critic(state_dim,action_dim,hidden_dim = 256):
     input_action = Input(shape=(action_dim,))
     
     #Feature Extraction
-    conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(input_state)
+    conv1 = Conv2D(8, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(input_state)
     mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
     
-    conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(mp1)
+    conv2 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(mp1)
     mp2 = MaxPooling2D(pool_size=(2,2))(conv2)
 
     flatten = Flatten()(mp2)
     
-    cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)(flatten)
-    act_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(input_action)
+    cnn_dense = NoisyDense(256,activation='relu',kernel_initializer=HeNormal)(flatten)
+    act_dense = NoisyDense(64,activation='relu',kernel_initializer=HeNormal)(input_action)
     
     concatenated_layers = Concatenate()([cnn_dense,act_dense])
-    pre_dense = Dense(64,activation='relu',kernel_initializer=HeNormal)(concatenated_layers)
+    pre_dense = NoisyDense(64,activation='relu',kernel_initializer=HeNormal)(concatenated_layers)
     
-    v = Dense(1,kernel_initializer=rand_uniform_init)(pre_dense)
+    v = NoisyDense(1,kernel_initializer=rand_uniform_init)(pre_dense)
     return Model([input_state,input_action], v)
 
 class GaussianPolicy(tf.keras.Model):
@@ -85,16 +87,16 @@ class DeterministicPolicy(tf.keras.Model):
         super(DeterministicPolicy,self).__init__(name = "Deterministic Policy Network")
         self.actions = action_dim
 
-        self.conv1 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.conv1 = Conv2D(8, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
         self.mp1 = MaxPooling2D(pool_size=(2,2))
         
-        self.conv2 = Conv2D(32, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
+        self.conv2 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
         self.mp2 = MaxPooling2D(pool_size=(2,2))
         
         self.flatten = Flatten()
-        self.cnn_dense = Dense(128,activation='relu',kernel_initializer=HeNormal)
+        self.cnn_dense = NoisyDense(256,activation='relu',kernel_initializer=HeNormal)
 
-        self.mean = Dense(action_dim,activation='tanh',kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
+        self.mean = NoisyDense(action_dim,activation='tanh',kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
 
     def call(self, X):
         x = self.conv1(X)
@@ -110,7 +112,7 @@ class DeterministicPolicy(tf.keras.Model):
 
     def sample(self, X, epsilon=1e-6):
         mean = self.call(X)
-        noise = noise_dist.sample((self.actions))
+        #noise = noise_dist.sample((self.actions))
         #With Noise
         #action = mean + noise
 

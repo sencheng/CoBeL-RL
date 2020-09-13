@@ -22,16 +22,17 @@ class DDPG_Agent:
         self.actor_lr  = 0.0001
         self.critic_lr = 0.0001
         self.gamma = 0.99
-        self.hid_act = "mish"
+        self.hid_act = "tanh"
         self.mem_size = 50000
-        self.batch_size = 128
+        self.batch_size = 256
         self.episodes = 10000
+        self.eval = True
         
         self.std_dev = 0.3
         self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(self.std_dev) * np.ones(1))
         
-        self.critic_optimizer = Adam(self.critic_lr,clipnorm=1.,clipvalue=0.5)
-        self.actor_optimizer = Adam(self.actor_lr,clipnorm=1.,clipvalue=0.5)
+        self.critic_optimizer = Adam(self.critic_lr)
+        self.actor_optimizer = Adam(self.actor_lr)
     
         self.actor_model = self.get_actor()
         self.critic_model = self.get_critic()
@@ -51,40 +52,41 @@ class DDPG_Agent:
         self.buffer = Buffer(self.num_states,self.num_actions, self.mem_size, self.batch_size)
         self.ringbuffer = RingBuffer(4)
         
-        
+    
+    def create_lenet5(self,input_layer):
+        out = layers.Conv2D(12,5,1,padding="same", activation="tanh")(input_layer)
+        out = layers.BatchNormalization()(out)
+        out = layers.MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")(out)
+        out = layers.Conv2D(32,5,1,padding="valid",activation="tanh")(out)
+        out = layers.BatchNormalization()(out)
+        out = layers.MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")(out)
+        out = layers.Flatten()(out)
+        out = layers.Dense(240,activation="tanh")(out)
+        out = layers.BatchNormalization()(out)
+        out = layers.Dense(168,activation="tanh")(out)
+        out = layers.BatchNormalization()(out)
+        return out
+
     def get_actor(self):
         last_init = tf.random_uniform_initializer(-0.003,0.003)
         state_input = layers.Input(shape=self.num_states)
-    
-        out = layers.Conv2D(16,3, activation=self.hid_act,padding="same", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
-        out = layers.MaxPool2D(2)(out)
-
-        out = layers.Conv2D(32,3, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
-        out = layers.MaxPool2D(2)(out)
-        out = layers.Flatten()(out)
-
-        out = layers.Dense(128, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
+        out = self.create_lenet5(state_input)
 
         outputs = layers.Dense(self.num_actions, activation="tanh", kernel_initializer=last_init)(out)
         outputs = outputs * self.upper_bound
         model = tf.keras.Model(state_input, outputs)
+        model.summary()
         return model
 
     def get_critic(self):
         state_input = layers.Input(shape=self.num_states)
         action_input = layers.Input(shape=(self.num_actions))
-    
-        out = layers.Conv2D(16,3, activation=self.hid_act,padding="same", kernel_initializer=tf.keras.initializers.HeNormal)(state_input)
-        out = layers.MaxPool2D(2)(out)
 
-        out = layers.Conv2D(32,3, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
-        out = layers.MaxPool2D(2)(out)
-
-        out = layers.Flatten()(out)
-        out = layers.Dense(128, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(out)
+        out = self.create_lenet5(state_input)
 
         # Action as input
-        action_out = layers.Dense(128, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
+        action_out = layers.Dense(82, activation=self.hid_act, kernel_initializer=tf.keras.initializers.HeNormal)(action_input)
+        action_out = layers.BatchNormalization()(action_out)
 
         #Concatenate Both Layers
         concat = layers.Concatenate()([out, action_out])
@@ -92,6 +94,7 @@ class DDPG_Agent:
 
         outputs = layers.Dense(1)(concat_out)
         model = tf.keras.Model([state_input, action_input], outputs)
+        model.summary()
         return model
 
     def train_model(self):
@@ -129,12 +132,11 @@ class DDPG_Agent:
         sampled_actions = tf.squeeze(self.actor_model(state))
         noise = self.ou_noise()
         
-        # Adding noise for learning
-        # sampled_actions = sampled_actions.numpy() + noise
+        if self.eval == True:
+            sampled_actions = sampled_actions.numpy()
+        else:
+            sampled_actions = sampled_actions.numpy() + noise
 
-        #Without noise for deterministic agent
-        sampled_actions = sampled_actions.numpy()
-        
         #Action Bounds
         legal_action = np.clip(sampled_actions, self.lower_bound, self.upper_bound)
         return [np.squeeze(legal_action)]
@@ -154,7 +156,7 @@ class DDPG_Agent:
                 tf_prev_state = tf.expand_dims(tf.convert_to_tensor(prev_state), 0)
                 action = np.array(self.sample_action(tf_prev_state))
                 state, reward, done, info = self.u_env._step(action)#
-                if reward == 1.0:
+                if reward > 0.0:
                     score += reward
                 
                 #Get Each third Frame as workaround
@@ -165,16 +167,21 @@ class DDPG_Agent:
                 
                 state = self.ringbuffer.generate_arr()
                 
-                #Uncomment to deactivate learning
-                #self.buffer.record((prev_state, action[0], reward, state))
-                #self.train_model()
-                #self.update_target()
-                #
+                if self.eval == False:
+                    self.buffer.record((prev_state, action[0], reward, state))
+                    self.train_model()
+                    self.update_target()
+
                 prev_state = state
                 if done:
                     break
             print("ep" , ep, ": ", score)
-            if score == 5:
-                print("solved!")
-                self.actor_model.save_weights("actor.h5")
-                self.critic_model.save_weights("critic.h5")
+            if self.eval == False:
+                if score >= 3:
+                    print("solved!")
+                    self.actor_model.save_weights("actor.h5")
+                    self.critic_model.save_weights("critic.h5")
+                if score == 6:
+                    print("final solve!")
+                    self.actor_model.save_weights("actor_f.h5")
+                    self.critic_model.save_weights("critic_f.h5")
