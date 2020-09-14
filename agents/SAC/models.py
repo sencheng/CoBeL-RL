@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_probability as tfp
-from tensorflow.keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, Concatenate
+from tensorflow.keras.layers import Input,Dense, Conv2D, MaxPooling2D, Flatten, Concatenate, BatchNormalization
 from tensorflow.keras.initializers import HeNormal, RandomUniform
 from tensorflow.keras import Model
 from tensorflow.math import log, exp, reduce_sum, tanh
@@ -11,32 +11,39 @@ rand_uniform_init = RandomUniform(-0.003,0.003)
 
 #Distributions
 tf_dists = tfp.distributions
-noise_dist = tf_dists.Normal(0,0.1,False,False)
+noise_dist = tf_dists.Normal(0,0.2,False,False)
 normal_dist = tf_dists.Normal(0,1,False,False)
 
 log_std_min = -20
 log_std_max = 2
-        
+
+def create_lenet5(input_layer):
+    out = Conv2D(12,5,1,padding="same", activation="tanh")(input_layer)
+    out = BatchNormalization()(out)
+    out = MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")(out)
+    out = Conv2D(32,5,1,padding="valid",activation="tanh")(out)
+    out = BatchNormalization()(out)
+    out = MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")(out)
+    out = Flatten()(out)
+    out = Dense(240,activation="tanh")(out)
+    out = BatchNormalization()(out)
+    out = Dense(168,activation="tanh")(out)
+    out = BatchNormalization()(out)
+    return out
+
 def create_critic(state_dim,action_dim,hidden_dim = 256):
     input_state = Input(shape=(state_dim[0],state_dim[1],state_dim[2]))
     input_action = Input(shape=(action_dim,))
     
-    #Feature Extraction
-    conv1 = Conv2D(8, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(input_state)
-    mp1 = MaxPooling2D(pool_size=(2,2))(conv1)
-    
-    conv2 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)(mp1)
-    mp2 = MaxPooling2D(pool_size=(2,2))(conv2)
+    out = create_lenet5(input_state)
 
-    flatten = Flatten()(mp2)
+    act_out = Dense(82,activation='tanh')(input_action)
+    act_out = BatchNormalization()(act_out)
+
+    concatenated_layers = Concatenate()([out,act_out])
+    concat_out = Dense(64,activation='tanh')(concatenated_layers)
     
-    cnn_dense = NoisyDense(256,activation='relu',kernel_initializer=HeNormal)(flatten)
-    act_dense = NoisyDense(64,activation='relu',kernel_initializer=HeNormal)(input_action)
-    
-    concatenated_layers = Concatenate()([cnn_dense,act_dense])
-    pre_dense = NoisyDense(64,activation='relu',kernel_initializer=HeNormal)(concatenated_layers)
-    
-    v = NoisyDense(1,kernel_initializer=rand_uniform_init)(pre_dense)
+    v = Dense(1,kernel_initializer=rand_uniform_init)(concat_out)
     return Model([input_state,input_action], v)
 
 class GaussianPolicy(tf.keras.Model):
@@ -87,32 +94,46 @@ class DeterministicPolicy(tf.keras.Model):
         super(DeterministicPolicy,self).__init__(name = "Deterministic Policy Network")
         self.actions = action_dim
 
-        self.conv1 = Conv2D(8, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
-        self.mp1 = MaxPooling2D(pool_size=(2,2))
+        self.c1 = Conv2D(12,5,1,padding="same", activation="tanh")
+        self.bn1 = BatchNormalization()
+        self.mp1 = MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")
         
-        self.conv2 = Conv2D(16, kernel_size=3, activation='relu',kernel_initializer=HeNormal)
-        self.mp2 = MaxPooling2D(pool_size=(2,2))
+        self.c2 = Conv2D(32,5,1,padding="valid",activation="tanh")
+        self.bn2 = BatchNormalization()
+        self.mp2 = MaxPooling2D(pool_size=(2,2),strides=(2,2),padding="valid")
         
-        self.flatten = Flatten()
-        self.cnn_dense = NoisyDense(256,activation='relu',kernel_initializer=HeNormal)
+        self.fl = Flatten()
+        
+        self.d3 = Dense(240,activation="tanh")
+        self.bn3 = BatchNormalization()
+        
+        self.d4 = Dense(168,activation="tanh")
+        self.bn4 = BatchNormalization()
 
-        self.mean = NoisyDense(action_dim,activation='tanh',kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
+        self.mean = Dense(action_dim,activation='tanh',kernel_initializer=rand_uniform_init,bias_initializer=rand_uniform_init)
 
     def call(self, X):
-        x = self.conv1(X)
+        x = self.c1(X)
+        x = self.bn1(x)
         x = self.mp1(x)
 
-        x = self.conv2(x)
+        x = self.c2(x)
+        x = self.bn2(x)
         x = self.mp2(x)
 
-        x = self.flatten(x)
-        x = self.cnn_dense(x)
+        x = self.fl(x)
+
+        x = self.d3(x)
+        x = self.bn3(x)
+
+        x = self.d4(x)
+        x = self.bn4(x)
 
         return self.mean(x)
 
     def sample(self, X, epsilon=1e-6):
         mean = self.call(X)
-        #noise = noise_dist.sample((self.actions))
+        noise = noise_dist.sample((self.actions))
         #With Noise
         #action = mean + noise
 

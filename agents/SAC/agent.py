@@ -43,18 +43,18 @@ class SACAgent:
         else:
             self.policy_net = DeterministicPolicy(self.obs_dim,self.action_dim,256)
 
-        # self.policy_net(np.expand_dims(np.zeros(self.obs_dim),axis=0))
-        # self.policy_net.load_weights("/home/wkst/Desktop/det_actor.h5")
-        # self.q_net1.load_weights("/home/wkst/Desktop/critic1.h5")
-        # self.q_net2.load_weights("/home/wkst/Desktop/critic2.h5")
+        self.policy_net(np.expand_dims(np.zeros(self.obs_dim),axis=0))
+        self.policy_net.load_weights("/home/wkst/Desktop/det_actor.h5")
+        self.q_net1.load_weights("/home/wkst/Desktop/critic1.h5")
+        self.q_net2.load_weights("/home/wkst/Desktop/critic2.h5")
         
         self.target_q_net1.set_weights(self.q_net1.get_weights())
         self.target_q_net2.set_weights(self.q_net2.get_weights())
         
         # initialize optimizers 
-        self.q1_optimizer = Adam(learning_rate=self.q_lr,epsilon=1e-8,clipnorm=1.,clipvalue=0.5)
-        self.q2_optimizer = Adam(learning_rate=self.q_lr,epsilon=1e-8,clipnorm=1.,clipvalue=0.5)
-        self.policy_optimizer = Adam(learning_rate=self.policy_lr,epsilon=1e-8,clipnorm=1.,clipvalue=0.5)
+        self.q1_optimizer = Adam(learning_rate=self.q_lr,clipnorm=1.,clipvalue=0.5)
+        self.q2_optimizer = Adam(learning_rate=self.q_lr,clipnorm=1.,clipvalue=0.5)
+        self.policy_optimizer = Adam(learning_rate=self.policy_lr,clipnorm=1.,clipvalue=0.5)
         
         # entropy temperature
         self.alpha = alpha
@@ -153,7 +153,7 @@ class SACAgent:
             while True:
                 action = self.get_action(np.float32(state))
                 next_state, reward, done, _ = self.u_env._step(action)
-                if(reward > 0):
+                if reward > 0:
                     score += reward
                 if next_state[0].shape == self.obs_dim:
                     self.buffer.insert_obs(next_state[0][:,:,2])
@@ -163,9 +163,9 @@ class SACAgent:
                 next_state = self.buffer.generate_arr()
                 #self.buffer.print_arr()
                 next_state = np.expand_dims(next_state,axis=0)
-                self.replay_buffer.record((np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done))
-                if self.replay_buffer.buffer_counter > self.batch_size:
-                    self.update(self.batch_size)   
+                # self.replay_buffer.record((np.float32(state[0]), np.float32(action[0]), np.float32(reward), np.float32(next_state[0]), done))
+                # if self.replay_buffer.buffer_counter > self.batch_size:
+                #     self.update(self.batch_size)   
                 
                 if done:
                     break
@@ -173,11 +173,11 @@ class SACAgent:
             print("ep" , episode, ": ", score)
             if score >= 3:
                 print("solved!")
-                self.policy_net.save_weights("det_actor.h5")
-                self.q_net1.save_weights("critic1.h5")
-                self.q_net2.save_weights("critic2.h5")
-            if score >= 5:
-                print("final solve!")
                 self.policy_net.save_weights("det_actor_f.h5")
                 self.q_net1.save_weights("critic1_f.h5")
                 self.q_net2.save_weights("critic2_f.h5")
+            if score >= 5:
+                print("final solve!")
+                self.policy_net.save_weights("det_actor.h5")
+                self.q_net1.save_weights("critic1.h5")
+                self.q_net2.save_weights("critic2.h5")

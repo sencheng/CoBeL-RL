@@ -8,8 +8,8 @@ from tensorflow.keras import backend
 
 backend.set_image_data_format(data_format='channels_last')
 
-from agents.DDPG.agent import DDPG_Agent
-#from agents.SAC.agent import SACAgent
+#from agents.DDPG.agent import DDPG_Agent
+from agents.SAC.agent import SACAgent
 
 if __name__ == "__main__":
     project = get_cobel_path()
@@ -21,8 +21,8 @@ if __name__ == "__main__":
                                nb_max_episode_steps=10000000, decision_interval=4,
                                agent_action_type="continuous", use_gray_scale_images=True)
 
-    #agent = SACAgent(unity_env)
-    agent = DDPG_Agent(unity_env,4)
+    agent = SACAgent(unity_env)
+    #agent = DDPG_Agent(unity_env,4)
     agent.train()
 
     # clear session
