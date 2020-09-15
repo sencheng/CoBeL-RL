@@ -28,7 +28,7 @@ class DDPG_Agent:
         self.episodes = 10000
         self.eval = True
         
-        self.std_dev = 0.3
+        self.std_dev = 0.2
         self.ou_noise = OUActionNoise(mean=np.zeros(1), std_deviation=float(self.std_dev) * np.ones(1))
         
         self.critic_optimizer = Adam(self.critic_lr)
@@ -97,9 +97,8 @@ class DDPG_Agent:
         model.summary()
         return model
 
-    def train_model(self):
-        state_batch,action_batch,reward_batch,next_state_batch = self.buffer.sample_batch()
-        
+    @tf.function
+    def backprob_models(self,state_batch,action_batch,reward_batch,next_state_batch):
         with tf.GradientTape() as tape:
             target_actions = self.target_actor(next_state_batch)
             y = reward_batch + self.gamma * self.target_critic([next_state_batch, target_actions])
@@ -114,7 +113,11 @@ class DDPG_Agent:
             actor_loss = -tf.math.reduce_mean(critic_value)
         actor_grad = tape.gradient(actor_loss, self.actor_model.trainable_variables)
         self.actor_optimizer.apply_gradients(zip(actor_grad, self.actor_model.trainable_variables))
-    
+
+    def train_model(self):
+        state_batch,action_batch,reward_batch,next_state_batch = self.buffer.sample_batch()
+        self.backprob_models(state_batch,action_batch,reward_batch,next_state_batch)
+        
     def update_target(self):
         new_weights = []
         target_variables = self.target_critic.weights
@@ -181,7 +184,7 @@ class DDPG_Agent:
                     print("solved!")
                     self.actor_model.save_weights("actor.h5")
                     self.critic_model.save_weights("critic.h5")
-                if score == 6:
+                if score >= 5:
                     print("final solve!")
                     self.actor_model.save_weights("actor_f.h5")
                     self.critic_model.save_weights("critic_f.h5")
