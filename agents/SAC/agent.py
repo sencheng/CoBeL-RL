@@ -171,13 +171,13 @@ class SACAgent:
                     break
                 state = next_state
             print("ep" , episode, ": ", score)
-            if score >= 3:
-                print("solved!")
-                self.policy_net.save_weights("det_actor_f.h5")
-                self.q_net1.save_weights("critic1_f.h5")
-                self.q_net2.save_weights("critic2_f.h5")
-            if score >= 5:
-                print("final solve!")
-                self.policy_net.save_weights("det_actor.h5")
-                self.q_net1.save_weights("critic1.h5")
-                self.q_net2.save_weights("critic2.h5")
+            # if score >= 3:
+            #     print("solved!")
+            #     self.policy_net.save_weights("det_actor_f.h5")
+            #     self.q_net1.save_weights("critic1_f.h5")
+            #     self.q_net2.save_weights("critic2_f.h5")
+            # if score >= 5:
+            #     print("final solve!")
+            #     self.policy_net.save_weights("det_actor.h5")
+            #     self.q_net1.save_weights("critic1.h5")
+            #     self.q_net2.save_weights("critic2.h5")
