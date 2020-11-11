@@ -113,7 +113,7 @@ def singleRun():
     modules['rl_interface']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
     
-    rlAgent=DQNAgentBaseline(modules['rl_interface'],5000,0.3,trialBeginCallback,trialEndCallback)
+    rlAgent=DQNAgentBaseline(modules['rl_interface'],5000,0.3,None,trialBeginCallback,trialEndCallback)
     
     
     # set the experimental parameters
