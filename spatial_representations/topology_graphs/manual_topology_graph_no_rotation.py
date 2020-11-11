@@ -40,7 +40,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
         # the world module is required here
         world_module=modules['world']
-        
+        world_module.setTopology(self)
         # get the limits of the given environment
         self.world_limits = world_module.getLimits()
         

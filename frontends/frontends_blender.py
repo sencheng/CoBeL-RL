@@ -330,6 +330,15 @@ class FrontendBlenderInterface():
 
 
 
+
+    ### This function supplies the interface with a valid topology module
+    ### 
+    ### topologyModule: the topologyModule to be supplied
+    def setTopology(self,topologyModule):
+        self.topologyModule=topologyModule
+        
+        
+
     # This function propels the simulation. It uses teleportation to guide the agent/robot directly by means of global x,y,yaw values.
     #
     # x:       the global x position to teleport to
@@ -635,7 +644,7 @@ class ImageInterface():
         # if the actuator command has more than 2 array entries, this is a teleport command, and will cause a teleport jump of the agent/robot (no physics support)
         if actuatorCommand.shape[0]>2:
             # call the teleportation routine
-            [timeData,poseData,sensorData,imageData]=self.stepSimNoPhysics(actuatorCommand[0],actuatorCommand[1],90.0)
+            [timeData,poseData,sensorData,imageData]=self.step_simulation_without_physics(actuatorCommand[0],actuatorCommand[1],actuatorCommand[2])
             # flag if the robot reached the goal (should always be the case after a teleportation)
             if self.goalPosition is not None:
                 if np.linalg.norm(poseData[0:2]-self.goalPosition)<0.01:

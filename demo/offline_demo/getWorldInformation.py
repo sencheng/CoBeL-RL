@@ -17,44 +17,31 @@ import matplotlib.transforms as transforms
 from shapely.geometry import Polygon,Point
 
 # imports from Hippocampus system
-from modules.base.WORLD_Modules import WORLD_BlenderInterface
-from modules.base.TOP_Modules import TOP_ManualTopologyModule
-from modules.base.OBS_Modules import OBS_ImageObservationModule
+from frontends.frontends_blender import FrontendBlenderInterface
+from spatial_representations.topology_graphs.manual_topology_graph_no_rotation import ManualTopologyGraphNoRotation
+from observations.image_observations import ImageObservationBaseline
 
-from aux.fileAccess import readExperimentalDesignFile
+import pyqtgraph as qg
+
 
 
 
 if __name__ == "__main__":
     
-    # read the experimental design file
-    experimentalDesign=readExperimentalDesignFile()
+    mainWindow=None
+    # if visual output is required, activate an output window
+    mainWindow = qg.GraphicsWindow( title="workingTitle_Framework" )
     
     # extract the environment name from the experiment design
-    environmentName=experimentalDesign['environmentName']
-    topologyType=experimentalDesign['topologyType']
-    topologyCliqueSize=experimentalDesign['topologyCliqueSize']
-    topologyStartNodes=experimentalDesign['topologyStartNodes']
-    topologyGoalNodes=experimentalDesign['topologyGoalNodes']
+    environmentName='simple_grid_graph_env/simple_grid_graph_maze.blend'
     
-    # set up the world module
-    worldModule=WORLD_BlenderInterface(environmentName)
-    
-    # set up the observation module
-    observationModule=OBS_ImageObservationModule(worldModule,None,False)
-    
-    # create the modules dict required for the construction of the topology module
+    # a dictionary that contains all employed modules
     modules=dict()
-    modules['worldModule']=worldModule
-    modules['observationModule']=observationModule
-    print(experimentalDesign)
-    # set up the topology module
-    if topologyType=='ManualTopology':
-        topologyModule=TOP_ManualTopologyModule(modules,None,{'startNodes':topologyStartNodes,'goalNodes':topologyGoalNodes,'cliqueSize':topologyCliqueSize},False)
-    else:
-        print('severe error: wrong topology type chosen (must be \'ManualTopology\'), stopping...')
-        exit()
     
+    modules['world']=FrontendBlenderInterface(environmentName)
+    modules['observation']=ImageObservationBaseline(modules['world'],mainWindow,True)
+    modules['spatial_representation']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
+    modules['spatial_representation'].set_visual_debugging(True,mainWindow)
     
     
     
@@ -64,126 +51,72 @@ if __name__ == "__main__":
     os.makedirs('worldInfo')
    
    
+   
+   
+    safeZoneDimensions=np.array([modules['world'].minX,modules['world'].minY,modules['world'].minZ,modules['world'].maxX,modules['world'].maxY,modules['world'].maxZ])
+    np.save('worldInfo/safeZoneDimensions.npy',safeZoneDimensions)
+    
+    np.save('worldInfo/safeZonePolygon.npy',modules['world'].safeZonePolygon)
+    np.save('worldInfo/safeZoneVertices.npy',modules['world'].safeZoneVertices)
+    np.save('worldInfo/safeZoneSegments.npy',modules['world'].safeZoneSegments)
+   
+   
+   
+    # store environment information
+    nodes=np.array(modules['world'].getManuallyDefinedTopologyNodes())
+    nodes=nodes[nodes[:,0].argsort()]
+    edges=np.array(modules['world'].getManuallyDefinedTopologyEdges())
+    edges=edges[edges[:,0].argsort()]
+    np.save('worldInfo/topologyNodes.npy',nodes)
+    np.save('worldInfo/topologyEdges.npy',edges)
+   
+   
+   
     # store referenceImages sampled images from contexts A and B
     
     # Note: context A is conditioning and ROF (both red light), context b is extinction (white light). The light colors can be changed on demand.
 
     # prepare context A
     # switch on white light
-    worldModule.setIllumination('Spot',[1.0,0.0,0.0])
-    worldModule.stepSimNoPhysics(0.0,0.0,0.0)
-    observationModule.createReferenceImages(topologyModule)
-    imagesContextA=np.array(observationModule.referenceImages)
     
-    # clear referenceImages
-    observationModule.referenceImages=[]
-    np.save('worldInfo/imagesContextA.npy',imagesContextA)
+    imageDims=(30,1)
     
+    referenceImages=[]
     
-    
-    # prepare context B
-    # switch on white light
-    worldModule.setIllumination('Spot',[0.0,0.0,0.0])
-    worldModule.stepSimNoPhysics(0.0,0.0,0.0)
-    
-    observationModule.createReferenceImages(topologyModule)
-    imagesContextB=np.array(observationModule.referenceImages)
-    
-    # clear referenceImages
-    observationModule.referenceImages=[]
-    np.save('worldInfo/imagesContextB.npy',imagesContextB)
-    
-    # store environment information
-    nodes=np.array(worldModule.getManuallyDefinedTopologyNodes())
-    nodes=nodes[nodes[:,0].argsort()]
-    edges=np.array(worldModule.getManuallyDefinedTopologyEdges())
-    edges=edges[edges[:,0].argsort()]
-    np.save('worldInfo/topologyNodes.npy',nodes)
-    np.save('worldInfo/topologyEdges.npy',edges)
-    
-    # since this experiment has a shock zone, store the perimeters
-    worldModule.readForbiddenZones()
-    np.save('worldInfo/forbiddenZonesPolygons.npy',worldModule.forbiddenZonesPolygons)
-    
-    safeZoneDimensions=np.array([worldModule.minX,worldModule.minY,worldModule.minZ,worldModule.maxX,worldModule.maxY,worldModule.maxZ])
-    np.save('worldInfo/safeZoneDimensions.npy',safeZoneDimensions)
-    
-    np.save('worldInfo/safeZonePolygon.npy',worldModule.safeZonePolygon)
-    np.save('worldInfo/safeZoneVertices.npy',worldModule.safeZoneVertices)
-    np.save('worldInfo/safeZoneSegments.npy',worldModule.safeZoneSegments)
-    
-    # with the environment information stored, create randomly sampled images for LDA analysis
-    
-    # the image set size
-    setSize=500
-    dimX=1
-    dimY=30
-    
-    stdX=1.5
-    stdY=1.5
-    stdPhi=0.0
-    
-    
-    
-    
-    # generate random images, this is done by uniform sampling over the safe zone
-    imagesContextA=np.zeros((setSize,dimX,dimY,3),dtype=float)
-    imagesContextB=np.zeros((setSize,dimX,dimY,3),dtype=float)
-
-    # prepare context A
-    # switch on red light
-    worldModule.setIllumination('Spot',[1.0,0.0,0.0])
-    worldModule.stepSimNoPhysics(0.0,0.0,0.0)
-    minZoneX,minZoneY,maxZoneX,maxZoneY=worldModule.safeZonePolygon.bounds
-    print(minZoneX,minZoneY,maxZoneX,maxZoneY)
-    i=0
-    allowedPointsA=[]
-    while i<setSize:
-        newX=np.random.uniform(minZoneX,maxZoneX)
-        newY=np.random.uniform(minZoneY,maxZoneY)
-        newPhi=90.0+(np.random.random()*2.0-1.0)*stdPhi
+    for ni in range(len(modules['spatial_representation'].nodes)):
         
-        if Point(newX,newY).within(worldModule.safeZonePolygon):
-            allowedPointsA+=[[newX,newY]]
-            worldModule.stepSimNoPhysics(newX,newY,newPhi)
-            worldModule.stepSimNoPhysics(newX,newY,newPhi)
-            observation=worldModule.envData['imageData']
-            observation=observation.astype('float32')
-            observation=observation/255.0
-            observation=cv2.resize(observation,dsize=(dimY,dimX))
-            imagesContextA[i]=observation
-            i+=1
-    allowedPointsA=np.array(allowedPointsA)
-    plt.scatter(allowedPointsA[:,0],allowedPointsA[:,1],s=1,c='r')
-    #plt.show()
-    # prepare context B
-    # switch on white light
-    worldModule.setIllumination('Spot',[0.0,0.0,0.0])
-    #worldModule.setObjectsVisibilities(['extraMazeCueCross','extraMazeCueCircle'],[False,True])
-    #worldModule.setObjectsVisibilities(['floorZebraStripesCue','floorLinearStripesCue'],[False,True])
-    worldModule.stepSimNoPhysics(0.0,0.0,0.0)
-    i=0
-    allowedPointsB=[]
-    while i<setSize:
-        
-        newX=np.random.uniform(minZoneX,maxZoneX)
-        newY=np.random.uniform(minZoneY,maxZoneY)
-        newPhi=90.0+(np.random.random()*2.0-1.0)*stdPhi
-        
-        if Point(newX,newY).within(worldModule.safeZonePolygon):
-            allowedPointsB+=[[newX,newY]]
-            worldModule.stepSimNoPhysics(newX,newY,newPhi)
-            worldModule.stepSimNoPhysics(newX,newY,newPhi)
-            observation=worldModule.envData['imageData']
-            observation=observation.astype('float32')
-            observation=observation/255.0
-            observation=cv2.resize(observation,dsize=(dimY,dimX))
-            imagesContextB[i]=observation
-            i+=1
-    allowedPointsB=np.array(allowedPointsB)
-    plt.scatter(allowedPointsB[:,0],allowedPointsB[:,1],s=1,c='g')
-    #plt.show()
+        node=modules['spatial_representation'].nodes[ni]
+        # only for valid nodes, the 'NoneNode' is not considered here
+        if node.index!=-1:
+            # propel the simulation
             
-    # store the randomly sampled images
-    np.save('worldInfo/randomImagesContextA.npy',imagesContextA)
-    np.save('worldInfo/randomImagesContextB.npy',imagesContextB)
+            modules['spatial_representation'].nextNode=node.index # required by the WORLD_ABAFromImagesInterface
+            
+            modules['world'].step_simulation_without_physics(node.x,node.y,90.0)
+            modules['world'].step_simulation_without_physics(node.x,node.y,90.0)
+            # the observation is plainly the robot's camera image data
+            observation=modules['world'].envData['imageData']
+            
+            # for now, cut out a single line from the center of the image (w.r.t. height) and use this as an observation in order
+            # to save computational resources
+            #observation=observation[29:30,:,:]
+            
+            # scale the one-line image to further reduce computational demands
+            observation=cv2.resize(observation,dsize=(imageDims))
+            #observation=np.flip(observation,0)
+            #cv2.imshow('Test',observation)
+            #cv2.waitKey(0)
+            referenceImages+=[observation]
+    
+    
+    
+    
+    
+    
+    images=np.array(referenceImages)
+    
+    np.save('worldInfo/images.npy',images)
+    
+    modules['world'].stopBlender()
+    
+    
