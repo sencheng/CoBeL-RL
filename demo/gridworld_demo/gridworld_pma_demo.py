@@ -78,7 +78,7 @@ def singleRun():
     modules['rl_interface'].rlAgent = rlAgent
     
     # let the agent learn
-    rlAgent.train(numberOfTrials, maxSteps, replayBatchSize=10)
+    rlAgent.train(numberOfTrials, maxSteps, replayBatchSize=5)
     
     # and also stop visualization
     if visualOutput:
