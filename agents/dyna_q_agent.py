@@ -333,6 +333,9 @@ class PMAAgent(AbstractDynaQAgent):
             state = self.interfaceOAI.reset()
             # log cumulative reward
             logs = {'episode_reward': 0}
+            # perform experience replay
+            if not noReplay:
+                self.replay_traces['start'] += [self.M.replay(replayBatchSize, state)]
             for step in range(maxNumberOfSteps):
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
