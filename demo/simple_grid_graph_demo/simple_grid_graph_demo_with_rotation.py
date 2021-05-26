@@ -1,4 +1,3 @@
-
 # basic imports
 import sys
 import shutil
@@ -119,7 +118,7 @@ def singleRun():
     # set the experimental parameters
     rlAgent.trialNumber=100
     
-    perfMon=RLPerformanceMonitorBaseline(rlAgent,mainWindow,visualOutput)
+    perfMon=RLPerformanceMonitorBaseline(rlAgent,rlAgent.trialNumber,mainWindow,visualOutput)
     rlAgent.performanceMonitor=perfMon
     
     # eventually, allow the OAI class to access the robotic agent class
