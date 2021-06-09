@@ -21,6 +21,7 @@ class AbstractDynaQAgent():
         self.interfaceOAI = interfaceOAI        
         # the number of discrete actions, retrieved from the Open AI Gym interface
         self.numberOfActions = self.interfaceOAI.action_space.n
+        self.numberOfStates = self.interfaceOAI.world['states']
         # Q-learning parameters
         self.epsilon = epsilon
         self.beta = beta
@@ -75,6 +76,7 @@ class AbstractDynaQAgent():
             return actions[action]
         # select action probabilistically
         elif self.policy == 'softmax':
+            qVals -= np.amax(qVals)
             probs = np.exp(beta * qVals)/np.sum(np.exp(beta * qVals))
             action = np.random.choice(qVals.shape[0], p=probs)
             return actions[action]
@@ -317,6 +319,7 @@ class PMAAgent(AbstractDynaQAgent):
         self.replay_traces = {'start': [], 'end': []}
         # logging
         self.rewards = []
+        self.steps = []
         
     def train(self, numberOfTrials=100, maxNumberOfSteps=50, replayBatchSize=100, noReplay=False):
         '''
@@ -359,6 +362,7 @@ class PMAAgent(AbstractDynaQAgent):
                 self.M.updateSR()
                 self.replay_traces['end'] += [self.M.replay(replayBatchSize, next_state)]
             self.rewards += [logs['episode_reward']]
+            self.steps += [step]
             # callback
             self.engagedCallbacks.on_episode_end(trial, logs)
         
