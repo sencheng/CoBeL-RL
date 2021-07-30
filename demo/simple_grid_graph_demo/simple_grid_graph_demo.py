@@ -105,7 +105,7 @@ def singleRun():
     
     
     
-    modules['world']=FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
+    modules['world']=FrontendBlenderInterface('simple_grid_graph_maze.blend')
     modules['observation']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
     modules['spatial_representation']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
     modules['spatial_representation'].set_visual_debugging(visualOutput,mainWindow)
