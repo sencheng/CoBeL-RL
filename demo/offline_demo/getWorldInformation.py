@@ -1,4 +1,3 @@
-
 # basic imports
 
 import numpy as np
@@ -33,7 +32,7 @@ if __name__ == "__main__":
     mainWindow = qg.GraphicsWindow( title="workingTitle_Framework" )
     
     # extract the environment name from the experiment design
-    environmentName='simple_grid_graph_env/simple_grid_graph_maze.blend'
+    environmentName='simple_grid_graph_maze.blend'
     
     # a dictionary that contains all employed modules
     modules=dict()
