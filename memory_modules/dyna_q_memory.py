@@ -20,7 +20,7 @@ class DynaQMemory():
         self.numberOfStates = numberOfStates
         self.numberOfActions = numberOfActions
         self.rewards = np.zeros((numberOfStates, numberOfActions))
-        self.states = np.tile(np.eye(numberOfStates) * np.arange(numberOfStates), numberOfActions).astype(int)
+        self.states = np.tile(np.arange(self.numberOfStates).reshape(self.numberOfStates, 1), self.numberOfActions).astype(int)
         self.terminals = np.zeros((numberOfStates, numberOfActions)).astype(int)
         
     def store(self, experience):
