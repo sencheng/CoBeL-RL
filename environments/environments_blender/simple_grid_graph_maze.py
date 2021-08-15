@@ -1,5 +1,5 @@
 # basic imports
 import blender_frontend
 
-BF = BlenderFrontend()
+BF = blender_frontend.BlenderFrontend()
 BF.main_loop()
