@@ -19,14 +19,9 @@ from bge import texture
 class BlenderFrontend():
     '''
     Basic frontend.
-    
-    | **Args**
-    | numberOfStates:               The number of environmental states.
-    | numberOfActions:              The number of the agent's actions.
-    | learningRate:                 The learning rate with which experiences are updated.
     '''
     
-    def __init__(self, numberOfStates, numberOfActions, learningRate=0.9):
+    def __init__(self):
         # initialize variables
         # port/address for controlling the simulation
         self.CONTROL_IP_ADDRESS = '127.0.0.1'
@@ -52,13 +47,13 @@ class BlenderFrontend():
         # angulat velocity in deg/s
         self.angularVelocity = 90.0
         # do adaptation of velocities
-        linVel = self.linearVelocity # a one-to-one relationship
+        self.linVel = self.linearVelocity # a one-to-one relationship
         # the radius of the linear velocity injection points
         self.rO = 0.5
         # the radius of the virtual wheels
         self.rI = 0.05
         # compute necessary angular velocities for the robot
-        self.angVel = self.angularVelocity / 360.0 * (2.0 * np.pi * rO)
+        self.angVel = self.angularVelocity / 360.0 * (2.0 * np.pi * self.rO)
         # get main scene
         self.scene = bge.logic.getCurrentScene()
         # instantiate access to the single components of the scene
@@ -138,7 +133,7 @@ class BlenderFrontend():
         # we will control the simulation through an external clock!
         bge.logic.setUseExternalClock(True)
         # instantiate the time system
-        bge.logic.setClockTime(simulationTime)
+        bge.logic.setClockTime(self.simulationTime)
         # set time scale
         bge.logic.setTimeScale(1.0)
         # make buffer
@@ -147,47 +142,47 @@ class BlenderFrontend():
         self.imageAcquisitionEnabled = False
         # define functions accessible during the main loop
         self.functions = {}
-        self.functions[resetSimulation] = self.resetSimulation
-        self.functions[stepSimulation] = self.stepSimulation
-        self.functions[stepSimNoPhysics] = self.stepSimNoPhysics
-        self.functions[getGoalPosition] = self.getGoalPosition
-        self.functions[setVelocity] = self.setVelocity
-        self.functions[getObservation] = self.getObservation
-        self.functions[getSensorData] = self.getSensorData
-        self.functions[getSimulationTime] = self.getSimulationTime
-        self.functions[getSafeZoneDimensions] = self.getSafeZoneDimensions
-        self.functions[getSafeZoneLayout] = self.getSafeZoneLayout
-        self.functions[getForbiddenZonesLayouts] = self.getForbiddenZonesLayouts
-        self.functions[getVisibleObjects] = self.getVisibleObjects
-        self.functions[stopSimulation] = self.stopSimulation
-        self.functions[suspendDynamics] = self.suspendDynamics
-        self.functions[restoreDynamics] = self.restoreDynamics
-        self.functions[renderLine] = self.renderLine
-        self.functions[teleportObject] = self.teleportObject
-        self.functions[setXYYaw] = self.setXYYaw
-        self.functions[getManuallyDefinedTopologyNodes] = self.getManuallyDefinedTopologyNodes
-        self.functions[getManuallyDefinedTopologyEdges] = self.getManuallyDefinedTopologyEdges
-        self.functions[setIllumination] = self.setIllumination
+        self.functions['resetSimulation'] = self.resetSimulation
+        self.functions['stepSimulation'] = self.stepSimulation
+        self.functions['stepSimNoPhysics'] = self.stepSimNoPhysics
+        self.functions['getGoalPosition'] = self.getGoalPosition
+        self.functions['setVelocity'] = self.setVelocity
+        self.functions['getObservation'] = self.getObservation
+        self.functions['getSensorData'] = self.getSensorData
+        self.functions['getSimulationTime'] = self.getSimulationTime
+        self.functions['getSafeZoneDimensions'] = self.getSafeZoneDimensions
+        self.functions['getSafeZoneLayout'] = self.getSafeZoneLayout
+        self.functions['getForbiddenZonesLayouts'] = self.getForbiddenZonesLayouts
+        self.functions['getVisibleObjects'] = self.getVisibleObjects
+        self.functions['stopSimulation'] = self.stopSimulation
+        self.functions['suspendDynamics'] = self.suspendDynamics
+        self.functions['restoreDynamics'] = self.restoreDynamics
+        self.functions['renderLine'] = self.renderLine
+        self.functions['teleportObject'] = self.teleportObject
+        self.functions['setXYYaw'] = self.setXYYaw
+        self.functions['getManuallyDefinedTopologyNodes'] = self.getManuallyDefinedTopologyNodes
+        self.functions['getManuallyDefinedTopologyEdges'] = self.getManuallyDefinedTopologyEdges
+        self.functions['setIllumination'] = self.setIllumination
 
     def actuateRobot(self):
         '''
         This function actuates the robot within the scene.
         '''
         if self.sensorForward.positive:  
-            self.leftWheel.setLinearVelocity([linVel, 0.0, 0.0], True)
-            self.rightWheel.setLinearVelocity([linVel, 0.0, 0.0], True)
+            self.leftWheel.setLinearVelocity([self.linVel, 0.0, 0.0], True)
+            self.rightWheel.setLinearVelocity([self.linVel, 0.0, 0.0], True)
         
         if self.sensorBackward.positive:
-            self.leftWheel.setLinearVelocity([-linVel, 0.0, 0.0], True)
-            self.rightWheel.setLinearVelocity([-linVel, 0.0, 0.0], True)
+            self.leftWheel.setLinearVelocity([-self.linVel, 0.0, 0.0], True)
+            self.rightWheel.setLinearVelocity([-self.linVel, 0.0, 0.0], True)
                     
         if self.sensorLeft.positive:
-            self.leftWheel.setLinearVelocity([-angVel, 0.0, 0.0], True)
-            self.rightWheel.setLinearVelocity([angVel, 0.0, 0.0], True)
+            self.leftWheel.setLinearVelocity([-self.angVel, 0.0, 0.0], True)
+            self.rightWheel.setLinearVelocity([self.angVel, 0.0, 0.0], True)
                 
         if self.sensorRight.positive:
-            self.leftWheel.setLinearVelocity([angVel, 0.0, 0.0], True)
-            self.rightWheel.setLinearVelocity([-angVel, 0.0, 0.0], True)
+            self.leftWheel.setLinearVelocity([self.angVel, 0.0, 0.0], True)
+            self.rightWheel.setLinearVelocity([-self.angVel, 0.0, 0.0], True)
 
     def querySensors(self):
         '''
@@ -257,10 +252,13 @@ class BlenderFrontend():
         return (vL, vR)
     
     def main_loop(self):
+        '''
+        This is the blender frontend's main loop.
+        '''
         # start blender frontend main loop
         while not bge.logic.NextFrame():
             # retrieve the robot's heading
-            heading = [robotSupport.worldOrientation[0][0], robotSupport.worldOrientation[1][0]]
+            heading = [self.robotSupport.worldOrientation[0][0], self.robotSupport.worldOrientation[1][0]]
             # propel the robot
             self.actuateRobot()
             # do some time statistics
@@ -277,9 +275,9 @@ class BlenderFrontend():
                 # prepare command read    
                 data = ''
                 # if the network is up start listening
-                if controller['networkUp'] == True:
+                if self.controller['networkUp'] == True:
                     # retrieve data string from port
-                    data = controller['controlConnection'].recv(100).decode('utf-8').split(',')
+                    data = self.controller['controlConnection'].recv(100).decode('utf-8').split(',')
                     # execute command if it exists
                     if data[0] in self.functions:
                         if len(data) > 1:
@@ -294,9 +292,9 @@ class BlenderFrontend():
         self.simulationTime = 0.0
         self.leftWheel.setLinearVelocity([0.0, 0.0, 0.0], True)
         self.rightWheel.setLinearVelocity([0.0, 0.0, 0.0], True)
-        bge.logic.setClockTime(simulationTime)
+        bge.logic.setClockTime(self.simulationTime)
         
-    def stepSimulation(self, data)
+    def stepSimulation(self, data):
         '''
         This function updates the robot's velocity and propels the simulation by one time step.
         
@@ -320,7 +318,7 @@ class BlenderFrontend():
         headingX = self.robotSupport.worldOrientation[0][0]
         headingY = self.robotSupport.worldOrientation[1][0]
         # send control data
-        sendString = '%.5f:%.3f,%.3f,%.3f,%.3f:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (self.simulationTime, self.robotSupport.worldPosition[0], self.robotSupport.worldPosition[1], headingX, headingY, sensorArray[0], self.sensorArray[1], self.sensorArray[2], self.sensorArray[3], self.sensorArray[4], self.sensorArray[5], self.sensorArray[6], self.sensorArray[7])
+        sendString = '%.5f:%.3f,%.3f,%.3f,%.3f:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (self.simulationTime, self.robotSupport.worldPosition[0], self.robotSupport.worldPosition[1], headingX, headingY, self.sensorArray[0], self.sensorArray[1], self.sensorArray[2], self.sensorArray[3], self.sensorArray[4], self.sensorArray[5], self.sensorArray[6], self.sensorArray[7])
         self.controller['controlConnection'].send(sendString.encode('utf-8'))
         # send video data
         self.controller['videoConnection'].send(self.bufFront)
@@ -348,8 +346,8 @@ class BlenderFrontend():
         self.robotSupport.setLinearVelocity([0.0, 0.0, 0.0], False)
         self.robotSupport.setAngularVelocity([0.0, 0.0, 0.0], False)
         # tie wheels to the robot's support
-        self.leftWheel.setParent(robotSupport)
-        self.rightWheel.setParent(robotSupport)
+        self.leftWheel.setParent(self.robotSupport)
+        self.rightWheel.setParent(self.robotSupport)
         # update the robot's position
         self.robotSupport.worldPosition.x = newX
         self.robotSupport.worldPosition.y = newY
