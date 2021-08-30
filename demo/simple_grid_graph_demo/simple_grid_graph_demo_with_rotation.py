@@ -11,7 +11,12 @@ import pyqtgraph as qg
 from multiprocessing import Pool, Process
 from pathlib import Path
 from numpy import random
-from keras import backend
+from tensorflow.keras import backend
+
+try:
+    sys.path.append(os.path.abspath(__file__ + "/../../../"))
+except IndexError:
+    pass
 
 from frontends.frontends_blender import FrontendBlenderInterface
 from spatial_representations.topology_graphs.manual_topology_graph_with_rotation import ManualTopologyGraphWithRotation
