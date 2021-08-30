@@ -5,13 +5,18 @@ import os
 import multiprocessing as mp
 import numpy as np
 import time
-
 import pyqtgraph as qg
+
+try:
+        sys.path.append(os.path.abspath(__file__ + "/../../../"))
+except  IndexError:
+    pass
+
 
 from multiprocessing import Pool, Process
 from pathlib import Path
 from numpy import random
-from keras import backend
+from tensorflow.keras import backend
 
 from frontends.frontends_blender import ImageInterface
 from spatial_representations.topology_graphs.manual_topology_graph_no_rotation import ManualTopologyGraphNoRotation
