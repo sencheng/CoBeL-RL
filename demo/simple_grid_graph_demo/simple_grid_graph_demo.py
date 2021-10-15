@@ -78,6 +78,7 @@ def trialEndCallback(trial,rlAgent,logs):
 
     if visualOutput:
         # update the visual elements if required
+        #TODO : check if this is a general dependency
         rlAgent.interfaceOAI.modules['spatial_representation'].updateVisualElements()
         rlAgent.performanceMonitor.update(trial,logs)
 
@@ -109,6 +110,7 @@ def singleRun():
     modules['observation']=ImageObservationBaseline(modules['world'],mainWindow,visualOutput)
     modules['spatial_representation']=ManualTopologyGraphNoRotation(modules,{'startNodes':[0],'goalNodes':[15],'cliqueSize':4})
     modules['spatial_representation'].set_visual_debugging(visualOutput,mainWindow)
+    
     modules['rl_interface']=OAIGymInterface(modules,visualOutput,rewardCallback)
     
     

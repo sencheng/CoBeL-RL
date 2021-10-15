@@ -20,7 +20,7 @@ from spatial_representations.spatial_representation import SpatialRepresentation
 
 
 class ManualTopologyGraphNoRotation(SpatialRepresentation):
-    
+    #TODO : should not take modules as input, specific inputs
     def __init__(self, modules, graph_info):
         
         # call the base class init
@@ -39,6 +39,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         self.modules=modules
         
         # the world module is required here
+        #TODO : if world_module is not None : 
         world_module=modules['world']
         world_module.setTopology(self)
         # get the limits of the given environment
@@ -115,7 +116,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         for nodeIndex in self.graph_info['goalNodes']:
             self.nodes[nodeIndex].goalNode=True
         
-        
+        #TODO : Test : Remove from class definition if it is only being used for visualization
         self.sample_state_space()
         
 
@@ -206,11 +207,12 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
                             
             
-            
+            #TODO : make different parts of visualization optional
             # overlay the policy arrows
             
             if self.visual_output:
                 # for all nodes in the topology graph
+                #TODO : sample state space here
                 for node in self.nodes:
                     
                     
@@ -253,7 +255,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
 
 
     def sample_state_space(self):
-        
+        # TODO : test what this does
         # the world module is required here
         world_module=self.modules['world']
         
@@ -296,6 +298,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
             previousNode=self.modules['spatial_representation'].currentNode
             # with action given, the next node can be computed
+            # TODO :remove dependence on same module
             self.modules['spatial_representation'].nextNode=self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].neighbors[action].index
             # array to store the next node's coordinates
                 
@@ -312,6 +315,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             
             
             # here, next node is already set and the current node is set to this next node.
+            # TODO : make callbacks not mandatory
             callback_value['currentNode']=self.nodes[self.nextNode]
             
             
