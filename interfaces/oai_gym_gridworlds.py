@@ -212,5 +212,10 @@ class OAIGymInterface(gym.Env):
             for p, prediction in enumerate(predictions):
                 self.arrows[p].setData(self.world['coordinates'][p][0] + 0.5, self.world['coordinates'][p][1] + 0.5, angleTable[np.argmax(prediction)])
             
-            #if qt.QtGui.QApplication.instance() is not None:
-            qt.QtGui.QApplication.instance().processEvents()
+		if hasattr(qt.QtGui, 'QApplication'):
+		    if qt.QtGui.QApplication.instance() is not None:
+		        qt.QtGui.QApplication.instance().processEvents()
+		else:
+		    if qt.QtWidgets.QApplication.instance() is not None:
+		        qt.QtWidgets.QApplication.instance().processEvents()
+

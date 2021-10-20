@@ -29,8 +29,14 @@ def trialEndCallback(trial, rlAgent, logs):
     if visualOutput:
         # update the visual elements if required
         rlAgent.performanceMonitor.update(trial, logs)
-        if qt.QtGui.QApplication.instance() is not None:
-            qt.QtGui.QApplication.instance().processEvents()
+
+        if hasattr(qt.QtGui, 'QApplication'):
+            if qt.QtGui.QApplication.instance() is not None:
+                qt.QtGui.QApplication.instance().processEvents()
+        else:
+            if qt.QtWidgets.QApplication.instance() is not None:
+                qt.QtWidgets.QApplication.instance().processEvents()
+
 
 def singleRun():
     '''
@@ -84,3 +90,4 @@ def singleRun():
 
 if __name__ == "__main__":
     singleRun()
+

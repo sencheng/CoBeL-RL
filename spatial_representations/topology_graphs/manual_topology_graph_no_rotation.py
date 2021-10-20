@@ -338,10 +338,14 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
         self.modules['observation'].update()
         self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],0.0,1.0])
-        
+
         # if possible try to update the visual debugging display
-        if qt.QtGui.QApplication.instance() is not None:
-            qt.QtGui.QApplication.instance().processEvents()
+        if hasattr(qt.QtGui, 'QApplication'):
+            if qt.QtGui.QApplication.instance() is not None:
+                qt.QtGui.QApplication.instance().processEvents()
+        else:
+            if qt.QtWidgets.QApplication.instance() is not None:
+                qt.QtWidgets.QApplication.instance().processEvents()
         
         return callback_value
 
@@ -350,3 +354,4 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
     def get_action_space(self):
         # for this spatial representation type, the clique size of the topology graph defines the action space
         return gym.spaces.Discrete(self.cliqueSize)
+
