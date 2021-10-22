@@ -1,4 +1,4 @@
-opencv-python>=4.2.0.32
+opencv-python-headless>=4.2.0.32
 keras>=2.4.3
 keras-rl
 gym>=0.9.2
