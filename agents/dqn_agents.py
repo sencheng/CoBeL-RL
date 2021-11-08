@@ -1,13 +1,12 @@
 
 
 
-
 import numpy     as np
 import json
-from keras import callbacks
-from keras.models import Sequential, Model, model_from_json
-from keras.layers import Dense, Activation, Flatten, Input
-from keras.optimizers import Adam
+from tensorflow.keras import callbacks
+from tensorflow.keras.models import Sequential, Model, model_from_json
+from tensorflow.keras.layers import Dense, Activation, Flatten, Input
+from tensorflow.keras.optimizers import Adam
 from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy
 from rl.memory import SequentialMemory
