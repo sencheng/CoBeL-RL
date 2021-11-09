@@ -11,7 +11,17 @@ import pyqtgraph as qg
 from multiprocessing import Pool, Process
 from pathlib import Path
 from numpy import random
-from keras import backend
+from tensorflow.python.keras import backend
+
+########  Adding Parent directory path to system, so that  Module files can be accessed ######## 
+
+try:
+    sys.path.append(os.path.abspath(__file__ + "/../../../"))
+except IndexError:
+    pass
+
+########
+
 
 from frontends.frontends_blender import FrontendBlenderInterface
 from spatial_representations.topology_graphs.manual_topology_graph_no_rotation import ManualTopologyGraphNoRotation
@@ -93,6 +103,7 @@ def trialEndCallback(trial, rlAgent, logs):
     """
     if visualOutput:
         # update the visual elements if required
+        #TODO : check if this is a general dependency
         rlAgent.interfaceOAI.modules['spatial_representation'].updateVisualElements()
         rlAgent.performanceMonitor.update(trial, logs)
 
