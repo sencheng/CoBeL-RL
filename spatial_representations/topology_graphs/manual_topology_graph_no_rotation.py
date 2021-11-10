@@ -278,16 +278,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
 
 
 
-
-    
-        
-
-
-
-
     def generate_behavior_from_action(self,action):
-        
-        
         
         nextNodePos=np.array([0.0,0.0])
         callback_value=dict()
@@ -296,21 +287,23 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         if action!='reset':
         
         
-            previousNode=self.modules['spatial_representation'].currentNode
+            previousNode=self.currentNode
             # with action given, the next node can be computed
             # TODO :remove dependence on same module
-            self.modules['spatial_representation'].nextNode=self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].neighbors[action].index
+            self.nextNode=self.nodes[self.currentNode].neighbors[action].index
             # array to store the next node's coordinates
                 
-            if self.modules['spatial_representation'].nextNode!=-1:
+            if self.nextNode!=-1:
                 # compute the next node's coordinates
-                nextNodePos=np.array([self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode].x,self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].nextNode].y])
+                nextNodePos=np.array([self.nodes[self.nextNode].x,
+                                      self.nodes[self.nextNode].y])
             else:
                 # if the next node corresponds to an invalid node, the agent stays in place
-                self.modules['spatial_representation'].nextNode=self.modules['spatial_representation'].currentNode
+                self.nextNode=self.currentNode
                 # prevent the agent from starting any motion pattern
                 self.modules['world'].goalReached=True
-                nextNodePos=np.array([self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].x,self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].currentNode].y])
+                nextNodePos=np.array([self.nodes[self.currentNode].x,
+                                      self.nodes[self.currentNode].y])
             
             
             
@@ -324,13 +317,13 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
             nextNode=-1
             while True:
-                nrNodes=len(self.modules['spatial_representation'].nodes)
+                nrNodes=len(self.nodes)
                 nextNode=np.random.random_integers(0,nrNodes-1)
-                if self.modules['spatial_representation'].nodes[nextNode].startNode:
+                if self.nodes[nextNode].startNode:
                     break
             
-            nextNodePos=np.array([self.modules['spatial_representation'].nodes[nextNode].x,self.modules['spatial_representation'].nodes[nextNode].y])
-            self.modules['spatial_representation'].nextNode=nextNode
+            nextNodePos=np.array([self.nodes[nextNode].x,self.nodes[nextNode].y])
+            self.nextNode=nextNode
             
         # actually move the robot to the node
         self.modules['world'].actuateRobot(np.array([nextNodePos[0],nextNodePos[1],90.0])) 
@@ -338,10 +331,10 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         
         
         # make the current node the one the agent travelled to
-        self.modules['spatial_representation'].currentNode=self.modules['spatial_representation'].nextNode
+        self.currentNode=self.nextNode
         
         self.modules['observation'].update()
-        self.modules['spatial_representation'].updateRobotPose([nextNodePos[0],nextNodePos[1],0.0,1.0])
+        self.updateRobotPose([nextNodePos[0],nextNodePos[1],0.0,1.0])
 
         # if possible try to update the visual debugging display
         if hasattr(qt.QtGui, 'QApplication'):
