@@ -26,7 +26,7 @@ class FrontendBlenderInterface():
 
         self.BLENDER_EXECUTABLE=path+'blender'
 
-        paths=os.environ['PYTHONPATH'].split(';')
+        paths=os.environ['PYTHONPATH'].split(os.pathsep)
         path=None
         for p in paths:
             if 'CoBeL-RL' in p:

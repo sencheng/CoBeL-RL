@@ -82,6 +82,10 @@ class OAIGymInterface(gym.Env):
 
         # return the observation
         return self.modules['observation'].observation
+    
+    #aliasing for compatibility with multiple gym versions
+    step  = _step
+    reset = _reset
 
 
 def unity_decorater(func):
