@@ -251,6 +251,16 @@ class BlenderFrontend():
                 
         return (vL, vR)
     
+    def refresh_canvases(self):
+        '''
+        This function refreshes the canvases (i.e. the current camera input).
+        '''
+        # refresh canvases
+        self.canvasFront['canvasTextureFront'].source.refresh(self.bufFront, 'BGRA')
+        self.canvasLeft['canvasTextureLeft'].source.refresh(self.bufLeft, 'BGRA')
+        self.canvasRight['canvasTextureRight'].source.refresh(self.bufRight, 'BGRA')
+        self.canvasBack['canvasTextureBack'].source.refresh(self.bufBack, 'BGRA')
+    
     def main_loop(self):
         '''
         This is the blender frontend's main loop.
@@ -266,10 +276,7 @@ class BlenderFrontend():
             clockTime = bge.logic.getClockTime()
             frameTime = bge.logic.getFrameTime()
             # refresh canvases
-            self.canvasFront['canvasTextureFront'].source.refresh(self.bufFront, 'BGRA')
-            self.canvasLeft['canvasTextureLeft'].source.refresh(self.bufLeft, 'BGRA')
-            self.canvasRight['canvasTextureRight'].source.refresh(self.bufRight, 'BGRA')
-            self.canvasBack['canvasTextureBack'].source.refresh(self.bufBack, 'BGRA')
+            self.refresh_canvases()
             
             if self.NETWORK_REQUIRED:
                 # prepare command read    
@@ -317,6 +324,8 @@ class BlenderFrontend():
         # retrieve headings
         headingX = self.robotSupport.worldOrientation[0][0]
         headingY = self.robotSupport.worldOrientation[1][0]
+        # refresh canvases
+        self.refresh_canvases()
         # send control data
         sendString = '%.5f:%.3f,%.3f,%.3f,%.3f:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (self.simulationTime, self.robotSupport.worldPosition[0], self.robotSupport.worldPosition[1], headingX, headingY, self.sensorArray[0], self.sensorArray[1], self.sensorArray[2], self.sensorArray[3], self.sensorArray[4], self.sensorArray[5], self.sensorArray[6], self.sensorArray[7])
         self.controller['controlConnection'].send(sendString.encode('utf-8'))
@@ -362,6 +371,8 @@ class BlenderFrontend():
         # retrieve headings
         headingX = self.robotSupport.worldOrientation[0][0]
         headingY = self.robotSupport.worldOrientation[1][0]
+        # refresh canvases
+        self.refresh_canvases()
         # send control data
         sendString = '%.5f:%.3f,%.3f,%.3f,%.3f:%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f' % (self.simulationTime, self.robotSupport.worldPosition[0], self.robotSupport.worldPosition[1], headingX, headingY, self.sensorArray[0], self.sensorArray[1], self.sensorArray[2], self.sensorArray[3], self.sensorArray[4], self.sensorArray[5], self.sensorArray[6], self.sensorArray[7])
         self.controller['controlConnection'].send(sendString.encode('utf-8'))
