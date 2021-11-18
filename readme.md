@@ -20,7 +20,7 @@ Installation
 Run Demo:
 </summary>
 
-*  Clone the project _(Installs to your home folder -->`~/CoBel-RL`)_
+*  Clone the project
 >   `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`
 
 * Activate virtual environment
