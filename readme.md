@@ -1,49 +1,57 @@
 ![Screenshot](benchmark.png)
 
 --------------------------
->This is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" **(CoBeL-RL)**.
+## **CoBeL-RL** is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" .
 
 **Getting started**:
-<details><Install>Click to expand</summary>
 
-- Blender 2.79b
-`https://download.blender.org/release/Blender2.79/`
-- Set up virtual environment and install requirements.txt
-
-If you want to quickly try the simulator:
+<details>
+<summary>
+Installation
+</summary>
+    
+* Blender 2.79b
+     `https://download.blender.org/release/Blender2.79/`
+* Set up virtual environment and install requirements.txt
 </details>
-<details><Run Demo>Click to expand</summary>
-* Clone the project _(Installs to your home folder -->`~/CoBel-RL`)_
-`git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`
+
+<details>
+<summary>
+Run Demo:
+</summary>
+
+*  Clone the project _(Installs to your home folder -->`~/CoBel-RL`)_
+>   `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`
+
 * Activate virtual environment
 * Go to demo folder
-`cd ~/CoBeL-RL/demo/simpleGridGraphDemo/`
+>   `cd ~/CoBeL-RL/demo/simpleGridGraphDemo/`
 *  Start the demo project:
-`python3 simpleGridGraphDemo.py`
+>   `python3 simpleGridGraphDemo.py`
 
 </details>
-</details>
 
-<details><Setup the environment variables>Click to expand</summary>
-> Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g:
-`export BLENDER_EXECUTABLE_PATH='/etc/opt/blender-2.79b-linux-glibc219-x86_64/'`
-> Make sure that your 'PYTHONPATH' environment variable includes the project's root directory. 
+
+<details>
+<summary>
+Setup the environment variables
+</summary>
+
+*  Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g:
+>   `export BLENDER_EXECUTABLE_PATH='/etc/opt/blender-2.79b-linux-glibc219-x86_64/'`
+* Make sure that your 'PYTHONPATH' environment variable includes the project's root directory. 
   
     - With the virtual environment activated, navigate to your project folder
-        `cd ~/CoBeL-RL`
+       > `cd ~/CoBeL-RL`
     
     - Add the project's directory to the PYTHONPATH enviroment variable
-        `export PYTHONPATH="$PWD"`
-
-
-
-
+       > `export PYTHONPATH="$PWD"`
 
 </details>
 
 
->     To make it **permanent** you have to edit the ~/.bash_profile file and add both variables  there
- >    (The $PWD command only gives the current directory, here you would have set it to ~/CoBeL-RL yourself)
+>    To make it **permanent** you have to edit the ~/.bash_profile file and add both variables  there
+>    (The $PWD command only gives the current directory, here you would have set it to ~/CoBeL-RL yourself)
 
 
 
