@@ -7,7 +7,7 @@
 
 <details>
 <summary>
-**Installation:**
+Installation:
 </summary>
     
 * Blender 2.79b
@@ -17,7 +17,7 @@
 
 <details>
 <summary>
-**Run Demo:**
+Run Demo:
 </summary>
 
 *  Clone the project
@@ -34,7 +34,7 @@
 
 <details>
 <summary>
-**Setup the environment variables:**
+Setup the environment variables:
 </summary>
 
 *  Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g:
