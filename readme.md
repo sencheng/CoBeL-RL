@@ -3,7 +3,7 @@
 --------------------------
 ## **CoBeL-RL** is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" .
 
-**Getting started**:
+** Getting started: **
 
 <details>
 <summary>
@@ -17,7 +17,7 @@
 
 <details>
 <summary>
-**Run Demo:**
+** Run Demo: **
 </summary>
 
 *  Clone the project
@@ -34,7 +34,7 @@
 
 <details>
 <summary>
-**Setup the environment variables:**
+** Setup the environment variables: **
 </summary>
 
 *  Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g:
