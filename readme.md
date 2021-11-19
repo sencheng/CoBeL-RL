@@ -1,4 +1,3 @@
-
 ## **CoBeL-RL** ##
 #### Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks ####
 
@@ -27,6 +26,8 @@ Note : Only v2.79b is supported. Newer versions of Blender might not work with t
 <summary>
 Run Demo
 </summary>
+
+
 *  First, clone the project  
 
 `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
