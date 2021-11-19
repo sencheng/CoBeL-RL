@@ -1,67 +1,58 @@
-![Screenshot](benchmark.png)
 
---------------------------
-## **CoBeL-RL** is the "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks" .
+## **CoBeL-RL** ##
+#### Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks ####
 
-**Getting started:**
+---------------------------
+**Getting started:**  
 
-<details>
-<summary>
-Installation:
-</summary>
+To quickly get started and test the system, you can run one of the demos. 
+
+----------------------------
+
+**Install requirements**
+
     
-* Blender 2.79b
-     `https://download.blender.org/release/Blender2.79/`
-* Set up virtual environment and install requirements.txt
-</details>
+* Many simulations depend on Blender2.79b. If you wish to use the Unity editor, skip this step. Download and install Blender2.79b at:  
 
-<details>
+     `https://download.blender.org/release/Blender2.79/`  
+
+Note : Only v2.79b is supported. Newer versions of Blender might not work with the system.  
+* Install required python packages  
+
+`pip install -r requirements.txt`
+
+------------------------------
+
+<details></summary>
 <summary>
-Run Demo:
+Run Demo
 </summary>
+*  First, clone the project  
 
-*  Clone the project
->   `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`
+`git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
 
-* Activate virtual environment
+* Setup environment variables. You will need to set up a variable for the Blender path, and for the project directory.  
+
+`export BLENDER_EXECUTABLE_PATH="/path/to/blender2.79b/"`  
+
+`export PYTHONPATH="/path/to/CoBeL-RL/"`  
+
+If you plan to use the framework more than once, it is useful to set these variables permanently. On Linux distributions, you can do this by editing the .bashrc file. 
+
 * Go to demo folder
->   `cd ~/CoBeL-RL/demo/simpleGridGraphDemo/`
-*  Start the demo project:
->   `python3 simpleGridGraphDemo.py`
+`cd ~/CoBeL-RL/demo/simpleGridGraphDemo/`
 
+*  Start the demo simulation:
+`python simpleGridGraphDemo.py`
 </details>
 
+------------------------------
 
 <details>
-<summary>
-Setup the environment variables:
-</summary>
-
-*  Set a 'BLENDER_EXECUTABLE_PATH' environment variable that points to the path containing the 'Blender' executable, e.g:
->   `export BLENDER_EXECUTABLE_PATH='/etc/opt/blender-2.79b-linux-glibc219-x86_64/'`
-* Make sure that your 'PYTHONPATH' environment variable includes the project's root directory. 
-  
-    - With the virtual environment activated, navigate to your project folder
-       > `cd ~/CoBeL-RL`
-    
-    - Add the project's directory to the PYTHONPATH enviroment variable
-       > `export PYTHONPATH="$PWD"`
-
-</details>
-
-
->    To make it **permanent** you have to edit the ~/.bash_profile file and add both variables  there
->    (The $PWD command only gives the current directory, here you would have set it to ~/CoBeL-RL yourself)
-
-
-
-__Preliminary information, needs further checking: It seems there are some issues with 'tensorflow', version 1.5.0 and the employed 'python' version. If you experience such compatibility problems and have a 'python' version >=3.7, it might help to downgrade 'python' to a version >=2.7 and <=3.6. However, this is just a preliminary hint, the issue will have to be further explored.__
-
-
-
 ________________________________________________________________________________________________
-
-**Unity Interface**
+<summary>
+Unity interface (Skip if you plan to work with Blender)
+</summary>
 
 If you want to try the unity interface demo, you need to perform the the steps described above first.
 
@@ -109,4 +100,4 @@ You got two options to run a demo.
     **Note: the demo tries to do option 1) automatically when 'UNITY_ENVIRONMENT_EXECUTABLE' variable is set.**
     
      
-     
+ </details>    
