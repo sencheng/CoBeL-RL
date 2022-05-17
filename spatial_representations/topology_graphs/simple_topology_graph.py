@@ -43,7 +43,7 @@ class AbstractTopologyGraph(SpatialRepresentation) :
         pass
     
     
-class SimpleTopologyGraph(AbstractTopologyGraph) : 
+class GridGraph(AbstractTopologyGraph) : 
     '''
     Square/Rectangular grid
     '''
