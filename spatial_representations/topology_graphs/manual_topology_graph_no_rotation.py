@@ -305,10 +305,9 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
                 nextNodePos=np.array([self.nodes[self.currentNode].x,
                                       self.nodes[self.currentNode].y])
             
-            
-            
+                        
             # here, next node is already set and the current node is set to this next node.
-            # TODO : make callbacks not mandatory
+
             callback_value['currentNode']=self.nodes[self.nextNode]
             
             
