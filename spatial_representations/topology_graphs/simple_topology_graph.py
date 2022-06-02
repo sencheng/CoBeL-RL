@@ -651,7 +651,7 @@ class HexagonalGraph(GridGraph) :
 
         """
         
-        mesh = Delaunay(grid_points,qhull_options='Qt Qbb Qc')        
+        mesh = Delaunay(grid_points, qhull_options='Qt Qbb Qc')        
         ne = mesh.simplices.shape[0]
         edges = np.array([mesh.simplices[:,0], mesh.simplices[:,1], 
                             mesh.simplices[:,1], mesh.simplices[:,2],
