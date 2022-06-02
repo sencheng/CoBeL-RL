@@ -10,6 +10,8 @@ import pyqtgraph.functions
 import gym
 import random
 
+from scipy.spatial import Delaunay
+
 class AbstractTopologyGraph(SpatialRepresentation) : 
     
     def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4, 
@@ -207,6 +209,7 @@ class GridGraph(AbstractTopologyGraph) :
                 callback_value['currentNode'] = self.nodes[self.next_node]
                 
             else : 
+
                 self.next_node = np.random.choice(self.start_nodes)
                 next_node_pos = np.array([self.nodes[self.next_node].x, 
                                           self.nodes[self.next_node].y])
@@ -542,8 +545,6 @@ class GridGraph(AbstractTopologyGraph) :
         state of the agent i.e. list of images from each node
         '''
         # TODO : test what this does
-        # the world module is required here
-        #returns [timeData,poseData,sensorData,imageData]
 
         if self.world_module is not None and self.observation_module is not None : 
             self.state_space = []
@@ -561,6 +562,126 @@ class GridGraph(AbstractTopologyGraph) :
             return
         
         
+        
+class HexagonalGraph(GridGraph) : 
+
+
+    @staticmethod    
+    def calculate_angle(node_info, neighbor_info) : 
+        ref = np.array([node_info.x,node_info.y-1])
+        node = np.array([node_info.x,node_info.y])
+        neighbor = np.array([neighbor_info.x,neighbor_info.y])
+        ref_vector = ref - node
+        vector = neighbor - node
+    
+        cos_ang = np.dot(ref_vector, vector) / (np.linalg.norm(ref_vector) * np.linalg.norm(vector))
+        det = ref_vector[0] * vector[1] - ref_vector[1] * vector[0]
+        angle = np.arccos(cos_ang)
+        if det>0 :
+            return 360 - np.degrees(angle)
+        else : 
+            return np.degrees(angle)
+        
+    def sort_graph(self, node_info) :
+        none_node = TopologyNode(-1,0.0,0.0)
+        n_sorted_index = np.full(6,none_node)
+        
+        for n in node_info.neighbors : 
+            a = self.calculate_angle(node_info,n)
+            if 0 <= a < 89 :
+                n_sorted_index[0] = n
+            if 89 < a < 149 :
+                n_sorted_index[1] = n
+            if 149 < a < 209 :
+                n_sorted_index[2] = n
+            if 209 < a < 269 :
+                n_sorted_index[3] = n
+            if 269 < a < 329 :
+                n_sorted_index[4] = n
+            if 329 < a < 360 :
+                n_sorted_index[5] = n
+                
+        node_info.neighbors = n_sorted_index
+        
+    @staticmethod
+    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits) :
+        
+        nodes_x = np.linspace(x_limits[0], x_limits[1], n_nodes_x)
+        nodes_y = np.linspace(y_limits[0], y_limits[1], n_nodes_y)
+        
+        period = nodes_x[1] - nodes_x[0]
+        grid_points = np.array([[x, y] for y in nodes_y for x in nodes_x])
+        shift_indices =  []
+        
+        for y in nodes_y[1::2] :
+            shift_indices.append(np.where(grid_points[:,1]==y)[0])
+
+        s = np.ravel(shift_indices)
+            
+        for idx in s:
+            grid_points[idx][0] += period/2 
+
+        del_indices = np.where(grid_points[:,0] > x_limits[1])[0]
+        grid_points = np.delete(grid_points,del_indices,0)
+        
+        return grid_points
+    
+    
+    def build_graph(self, grid_points) : 
+        """
+        
+        Parameters
+        ----------
+        grid_points : LIST 
+            list of x,y coordinates of nodes in the grid
+            
+            Builds the actual nodes (type : topologynode object) and edges and 
+            fills in the neighborhood corresponding to the following scheme : 
+                0 - RIGHT
+                1 - TOP
+                2 - LEFT
+                3 - BOTTOM
+        Returns
+        -------
+        None.
+
+        """
+        
+        mesh = Delaunay(grid_points,qhull_options='Qt Qbb Qc')        
+        ne = mesh.simplices.shape[0]
+        edges = np.array([mesh.simplices[:,0], mesh.simplices[:,1], 
+                            mesh.simplices[:,1], mesh.simplices[:,2],
+                            mesh.simplices[:,2], mesh.simplices[:,0]]).T.reshape(3*ne,2)
+        edges = np.sort(edges)
+        
+        edges = np.unique(edges,axis=0)
+
+        # transfer the node points into the self.nodes list
+        indexCounter=0
+        for p in mesh.points:
+            # create the corresponding node, where i is the running index of the mesh_points/corresponding nodes
+            node=TopologyNode(indexCounter,p[0],p[1])
+            self.nodes=self.nodes+[node]
+            indexCounter+=1
+        
+        
+        # fill in the self.edges list from the edges information
+        for e in edges:
+            self.edges=self.edges+[[int(e[0]),int(e[1])]]
+                
+        # construct the neighborhoods of each node in the graph
+        for edge in self.edges:
+            # first edge node
+            a=self.nodes[int(edge[0])]
+            # second edge node
+            b=self.nodes[int(edge[1])]
+            # add node a to the neighborhood of node b, and vice versa
+            a.neighbors=a.neighbors+[b]
+            b.neighbors=b.neighbors+[a]
+    
+        for node in self.nodes:
+            self.sort_graph(node)
+    
         
         
         

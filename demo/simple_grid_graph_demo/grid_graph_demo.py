@@ -142,7 +142,7 @@ def singleRun():
     # spatial obs: pass world instance
     modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[15],
            visual_output=True,world_module=modules['world'],use_world_limits=True,
-           observation_module=modules['observation'],rotation=True)
+           observation_module=modules['observation'],rotation=False)
     modules['spatial_representation'].set_visual_debugging(mainWindow)
     modules['rl_interface'] = OAIGymInterface(modules, visualOutput, rewardCallback)
 
