@@ -131,7 +131,7 @@ def singleRun():
     mainWindow = None
     # if visual output is required, activate an output window
     if visualOutput:
-        mainWindow = qg.GraphicsWindow(title="workingTitle_Framework")
+        mainWindow = qg.GraphicsWindow(title="CoBeL-RL")
 
     # a dictionary that contains all employed modules
     modules = dict()
@@ -140,7 +140,7 @@ def singleRun():
     # Observation module: bring the observations of the environment
     modules['observation'] = ImageObservationBaseline(modules['world'], mainWindow, visualOutput)
     # spatial obs: pass world instance
-    modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[15],
+    modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[5],
            visual_output=True,world_module=modules['world'],use_world_limits=True,
            observation_module=modules['observation'],rotation=False)
     modules['spatial_representation'].set_visual_debugging(mainWindow)
@@ -149,7 +149,7 @@ def singleRun():
     rlAgent = DQNAgentBaseline(modules['rl_interface'], 5000, 0.3, None, trialBeginCallback, trialEndCallback)
 
     # set the experimental parameters
-    rlAgent.trialNumber = 100
+    rlAgent.trialNumber = 1000
 
     perfMon = RLPerformanceMonitorBaseline(rlAgent, rlAgent.trialNumber, mainWindow, visualOutput)
     rlAgent.performanceMonitor = perfMon

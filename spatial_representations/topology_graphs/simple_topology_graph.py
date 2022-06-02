@@ -8,6 +8,11 @@ import pyqtgraph as qg
 import pyqtgraph.functions
 
 import gym
+import random
+
+from scipy.spatial import Delaunay
+import math 
+import time
 
 class AbstractTopologyGraph(SpatialRepresentation) : 
     
@@ -180,9 +185,9 @@ class GridGraph(AbstractTopologyGraph) :
     
     
     def generate_behavior_from_action(self, action) :
+        
         next_node_pos  = np.array([0.0,0.0])
-        #TODO : is there a more intuitive way to accomplish all of this 
-        #instead of using callback_value?
+        
         callback_value = dict()
         
         if not self.rotation :
@@ -206,14 +211,13 @@ class GridGraph(AbstractTopologyGraph) :
                 callback_value['currentNode'] = self.nodes[self.next_node]
                 
             else : 
+
                 self.next_node = np.random.choice(self.start_nodes)
                 next_node_pos = np.array([self.nodes[self.next_node].x, 
                                           self.nodes[self.next_node].y])
                 
             if self.world_module is not None : 
-                #TODO : implement fix for calling twice
-                #TODO : maybe change "actuate robot" to a more general name
-                #that can be implemented by different world modules
+
                 self.world_module.actuateRobot(np.array([next_node_pos[0],
                                                          next_node_pos[1],
                                                          90.0]))
@@ -240,7 +244,7 @@ class GridGraph(AbstractTopologyGraph) :
         
         else : #ROTATION IS ENABLED
             
-            if action!='reset':                   
+            if action!='reset':    
                 if self.world_module is not None : 
                     heading = np.array([self.world_module.envData['poseData'][2],
                                       self.world_module.envData['poseData'][3]])
@@ -271,88 +275,142 @@ class GridGraph(AbstractTopologyGraph) :
                         angle = angle/np.pi*180.0
                         
                         
-                        if angle<-1e-5:
+                        if angle<-5:
                             right_edges+=[[n.index,vec_edge,angle]]
                             left_edges+=[[n.index,vec_edge,(360.0+angle)]]
                     
-                        if angle>1e-5:
+                        if angle>5:
                             left_edges+=[[n.index,vec_edge,angle]]
                             right_edges+=[[n.index,vec_edge,-(360.0-angle)]]
                         
-                        if angle<1e-5 and angle>-1e-5:
+                        if angle<5 and angle>-5:
                             forward_edge=[n.index,vec_edge,angle]
                             
 
                 left_edges=sorted(left_edges,key=lambda element: element[2],reverse=False)
                 right_edges=sorted(right_edges,key=lambda element: element[2],reverse=True)
+
                 
                 # store the current node as previous node
                 previous_node=self.current_node
-            
-            
+                        
             # with action given, the next node can be computed
-            if action==0:
-                
-                # this is a forward movement
-                angle=180.0/np.pi*np.arctan2(heading[1],heading[0])
-                    
-                if len(forward_edge)!=0:
-                    # there is a forward edge that the agent can use
-                    self.next_node=forward_edge[0]
-                    
-                    nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                    
-            
-                else:
-                    # no forward edge found, the agent has to wait for a rotation action
+                if action==0:
+                    # this is a forward movement
+                    angle=180.0/np.pi*np.arctan2(heading[1],heading[0])
+                        
+                    if len(forward_edge)!=0:
+                        # there is a forward edge that the agent can use
+                        self.next_node=forward_edge[0]
+                        
+                        nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+                                       
+                    else:
+                        # no forward edge found, the agent has to wait for a rotation action
+                        self.next_node=self.current_node
+                        nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+                        
+                    self.update_position_marker([nextNodePos[0],nextNodePos[1],heading[0],heading[1]])
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                                
+                if action==1:
+                    # this is a left turn movement
                     self.next_node=self.current_node
                     nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                    
-                self.update_position_marker([nextNodePos[0],nextNodePos[1],heading[0],heading[1]])
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                        
+                    angle=180.0/np.pi*np.arctan2(left_edges[0][1][1],left_edges[0][1][0])
+                    self.update_position_marker([nextNodePos[0],nextNodePos[1],left_edges[0][1][0],left_edges[0][1][1]])
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
                 
-                
-            if action==1:
-                # this is a left turn movement
-                self.next_node=self.current_node
-                nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                    
-                angle=180.0/np.pi*np.arctan2(left_edges[0][1][1],left_edges[0][1][0])
-                self.update_position_marker([nextNodePos[0],nextNodePos[1],left_edges[0][1][0],left_edges[0][1][1]])
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
-                
-            if action==2:
-                # this is a right turn movement
-                self.next_node=self.current_node
-                nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                angle=180.0/np.pi*np.arctan2(right_edges[0][1][1],right_edges[0][1][0])
-                self.update_position_marker([nextNodePos[0],nextNodePos[1],right_edges[0][1][0],right_edges[0][1][1]])
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                if action==2:
+                    # this is a right turn movement
+                    self.next_node=self.current_node
+                    nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+                    angle=180.0/np.pi*np.arctan2(right_edges[0][1][1],right_edges[0][1][0])
+                    self.update_position_marker([nextNodePos[0],nextNodePos[1],right_edges[0][1][0],right_edges[0][1][1]])
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
             
-            if self.observation_module is not None : 
-                self.observation_module.update()
+                if self.observation_module is not None : 
+                    self.observation_module.update()
             
             # make the current node the one the agent travelled to
-            self.current_node=self.next_node
-        
+                self.current_node=self.next_node
+                            
+                # here, next node is already set and the current node is set to this next node.
+                callback_value['currentNode']=self.nodes[self.next_node]
+                
+            else : 
+                            # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
             
-            # here, next node is already set and the current node is set to this next node.
-            callback_value['currentNode']=self.nodes[self.next_node]
-            pass
+                nodes=self.nodes
+                nodes_selection=[n for n in nodes if n.startNode==True]
+                
+                # store the current node as previous node
+                previousNode=self.current_node
+                
+                self.next_node=random.choice(nodes_selection)
+                
+                nextNodePos=np.array([self.next_node.x,self.next_node.y])
+                
+                # from all heading directions available at the chosen node, select one randomly
+                
+                self.current_node=self.next_node.index
+                neighbors=self.next_node.neighbors
+                
+                # list for available neighbor directions
+                directions=[]
+                
+                for n in neighbors:
+                    if n.index!=-1:
+                        # only parse valid neighbors
+                        next_node_position=np.array([self.next_node.x,self.next_node.y])
+                        neighbor_position=np.array([n.x,n.y])
+                        vec_edge=neighbor_position-next_node_position
+                        vec_edge=vec_edge/np.linalg.norm(vec_edge)
+                        world_angle=np.arctan2(vec_edge[1],vec_edge[0])
+                        directions+=[[n.index,vec_edge,world_angle]]
+                        
+                # select new heading randomly
+                new_heading_selection=random.choice(directions)
+                new_heading_angle=new_heading_selection[2]
+                new_heading_vector=new_heading_selection[1]
+                
+                # update the agents position and orientation (heading)
+                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle])) 
+                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle]))
+                self.update_position_marker([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
+                
+                # update the observation
+                self.observation_module.update()
+            
+            
+            
+            # if possible try to update the visual debugging display
+            # TODO: previous version had a double call to processEvents(). Intended?
+            # was:
+            #if qt.QtGui.QApplication.instance() is not None:
+            #    qt.QtGui.QApplication.instance().processEvents()
+            #    qt.QtGui.QApplication.instance().processEvents()
+    
+            if hasattr(qt.QtGui, 'QApplication'):
+                if qt.QtGui.QApplication.instance() is not None:
+                    qt.QtGui.QApplication.instance().processEvents()
+            else:
+                if qt.QtWidgets.QApplication.instance() is not None:
+                    qt.QtWidgets.QApplication.instance().processEvents()
+
         
         return callback_value
 
             
     def get_action_space(self) : 
-        #if rotation is True : 
-            #left, right, forward
+
         if self.rotation:
             return gym.spaces.Discrete(3)
-        #if rotation is False : 
-            #pick neighbor
+
         else :
             return gym.spaces.Discrete(self.n_neighbors)
 
@@ -362,12 +420,11 @@ class GridGraph(AbstractTopologyGraph) :
         self.init_visual_elements()
     
     def init_visual_elements(self) :
-        # do basic visualization
-        # iff visualOutput is set to True!
+
         if self.visual_output:
 
             self.plot = self.gui_parent.addPlot(title='Topology graph')
-            # set extension of the plot, lock aspect ratio
+
             if self.use_world_limits :
                 self.plot.setXRange(self.x_limits[0], self.x_limits[1])
                 self.plot.setYRange(self.y_limits[0], self.y_limits[1])
@@ -437,8 +494,7 @@ class GridGraph(AbstractTopologyGraph) :
         --------
         none
         '''
-       
-        #somehow remove direct dependence on rlAgent
+
         if not self.rotation : 
             self.sample_state_space() 
                 
@@ -491,8 +547,6 @@ class GridGraph(AbstractTopologyGraph) :
         state of the agent i.e. list of images from each node
         '''
         # TODO : test what this does
-        # the world module is required here
-        #returns [timeData,poseData,sensorData,imageData]
 
         if self.world_module is not None and self.observation_module is not None : 
             self.state_space = []
@@ -511,7 +565,123 @@ class GridGraph(AbstractTopologyGraph) :
         
         
         
+
+
+class HexagonalGraph(GridGraph) : 
+
+
+    @staticmethod    
+    def calculate_angle(node_info, neighbor_info) : 
+        ref = np.array([node_info.x,node_info.y-1])
+        node = np.array([node_info.x,node_info.y])
+        neighbor = np.array([neighbor_info.x,neighbor_info.y])
+        ref_vector = ref - node
+        vector = neighbor - node
+    
+        cos_ang = np.dot(ref_vector, vector) / (np.linalg.norm(ref_vector) * np.linalg.norm(vector))
+        det = ref_vector[0] * vector[1] - ref_vector[1] * vector[0]
+        angle = np.arccos(cos_ang)
+        if det>0 :
+            return 360 - np.degrees(angle)
+        else : 
+            return np.degrees(angle)
+        
+    def sort_graph(self, node_info) :
+        none_node = TopologyNode(-1,0.0,0.0)
+        n_sorted_index = np.full(6,none_node)
+        
+        for n in node_info.neighbors : 
+            a = self.calculate_angle(node_info,n)
+            if 0 <= a < 89 :
+                n_sorted_index[0] = n
+            if 89 < a < 149 :
+                n_sorted_index[1] = n
+            if 149 < a < 209 :
+                n_sorted_index[2] = n
+            if 209 < a < 269 :
+                n_sorted_index[3] = n
+            if 269 < a < 329 :
+                n_sorted_index[4] = n
+            if 329 < a < 360 :
+                n_sorted_index[5] = n
+                
+        node_info.neighbors = n_sorted_index
+        
+    @staticmethod
+    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits) :
+        
+        nodes_x = np.linspace(x_limits[0], x_limits[1], n_nodes_x)
+        nodes_y = np.linspace(y_limits[0], y_limits[1], n_nodes_y)
+        
+        period = nodes_x[1] - nodes_x[0]
+        grid_points = np.array([[x, y] for y in nodes_y for x in nodes_x])
+        shift_indices =  []
+        
+        for y in nodes_y[1::2] :
+            shift_indices.append(np.where(grid_points[:,1]==y)[0])
+
+        s = np.ravel(shift_indices)
+            
+        for idx in s:
+            grid_points[idx][0] += period/2 
+
+        del_indices = np.where(grid_points[:,0] > x_limits[1])[0]
+        grid_points = np.delete(grid_points,del_indices,0)
+        
+        return grid_points
+    
+    
+    def build_graph(self, grid_points) : 
+        """
+        
+        Parameters
+        ----------
+        grid_points : LIST 
+            list of x,y coordinates of nodes in the grid
+            
+            Builds the actual nodes (type : topologynode object) and edges and 
+            fills in the neighborhood corresponding to the following scheme : 
+                0 - RIGHT
+                1 - TOP
+                2 - LEFT
+                3 - BOTTOM
+        Returns
+        -------
+        None.
+
+        """
+        
+        mesh = Delaunay(grid_points, qhull_options='Qt Qbb Qc')        
+        ne = mesh.simplices.shape[0]
+        edges = np.array([mesh.simplices[:,0], mesh.simplices[:,1], 
+                            mesh.simplices[:,1], mesh.simplices[:,2],
+                            mesh.simplices[:,2], mesh.simplices[:,0]]).T.reshape(3*ne,2)
+        edges = np.sort(edges)
+        
+        edges = np.unique(edges,axis=0)
+
+        # transfer the node points into the self.nodes list
+        indexCounter=0
+        for p in mesh.points:
+            # create the corresponding node, where i is the running index of the mesh_points/corresponding nodes
+            node=TopologyNode(indexCounter,p[0],p[1])
+            self.nodes=self.nodes+[node]
+            indexCounter+=1
         
         
-        
-        
+        # fill in the self.edges list from the edges information
+        for e in edges:
+            self.edges=self.edges+[[int(e[0]),int(e[1])]]
+                
+        # construct the neighborhoods of each node in the graph
+        for edge in self.edges:
+            # first edge node
+            a=self.nodes[int(edge[0])]
+            # second edge node
+            b=self.nodes[int(edge[1])]
+            # add node a to the neighborhood of node b, and vice versa
+            a.neighbors=a.neighbors+[b]
+            b.neighbors=b.neighbors+[a]
+    
+        for node in self.nodes:
+            self.sort_graph(node)
