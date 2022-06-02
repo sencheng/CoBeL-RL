@@ -183,8 +183,7 @@ class GridGraph(AbstractTopologyGraph) :
     def generate_behavior_from_action(self, action) :
         
         next_node_pos  = np.array([0.0,0.0])
-        #TODO : is there a more intuitive way to accomplish all of this 
-        #instead of using callback_value?
+        
         callback_value = dict()
         
         if not self.rotation :
@@ -213,9 +212,7 @@ class GridGraph(AbstractTopologyGraph) :
                                           self.nodes[self.next_node].y])
                 
             if self.world_module is not None : 
-                #TODO : implement fix for calling twice
-                #TODO : maybe change "actuate robot" to a more general name
-                #that can be implemented by different world modules
+
                 self.world_module.actuateRobot(np.array([next_node_pos[0],
                                                          next_node_pos[1],
                                                          90.0]))
@@ -290,8 +287,7 @@ class GridGraph(AbstractTopologyGraph) :
                 
                 # store the current node as previous node
                 previous_node=self.current_node
-            
-            
+                        
             # with action given, the next node can be computed
                 if action==0:
                     
@@ -303,8 +299,7 @@ class GridGraph(AbstractTopologyGraph) :
                         self.next_node=forward_edge[0]
                         
                         nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                        
-                
+                                       
                     else:
                         # no forward edge found, the agent has to wait for a rotation action
                         self.next_node=self.current_node
@@ -313,8 +308,7 @@ class GridGraph(AbstractTopologyGraph) :
                     self.update_position_marker([nextNodePos[0],nextNodePos[1],heading[0],heading[1]])
                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
-                
-                
+                                
                 if action==1:
                     # this is a left turn movement
                     self.next_node=self.current_node
@@ -339,8 +333,7 @@ class GridGraph(AbstractTopologyGraph) :
             
             # make the current node the one the agent travelled to
                 self.current_node=self.next_node
-            
-                
+                            
                 # here, next node is already set and the current node is set to this next node.
                 callback_value['currentNode']=self.nodes[self.next_node]
                 
@@ -385,7 +378,6 @@ class GridGraph(AbstractTopologyGraph) :
                 self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle]))
                 self.update_position_marker([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
                 
-            
                 # update the observation
                 self.observation_module.update()
             
@@ -410,12 +402,10 @@ class GridGraph(AbstractTopologyGraph) :
 
             
     def get_action_space(self) : 
-        #if rotation is True : 
-            #left, right, forward
+
         if self.rotation:
             return gym.spaces.Discrete(3)
-        #if rotation is False : 
-            #pick neighbor
+
         else :
             return gym.spaces.Discrete(self.n_neighbors)
 
@@ -425,12 +415,11 @@ class GridGraph(AbstractTopologyGraph) :
         self.init_visual_elements()
     
     def init_visual_elements(self) :
-        # do basic visualization
-        # iff visualOutput is set to True!
+
         if self.visual_output:
 
             self.plot = self.gui_parent.addPlot(title='Topology graph')
-            # set extension of the plot, lock aspect ratio
+
             if self.use_world_limits :
                 self.plot.setXRange(self.x_limits[0], self.x_limits[1])
                 self.plot.setYRange(self.y_limits[0], self.y_limits[1])
