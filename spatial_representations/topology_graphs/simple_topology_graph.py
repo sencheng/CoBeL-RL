@@ -11,6 +11,8 @@ import gym
 import random
 
 from scipy.spatial import Delaunay
+import math 
+import time
 
 class AbstractTopologyGraph(SpatialRepresentation) : 
     
@@ -242,7 +244,7 @@ class GridGraph(AbstractTopologyGraph) :
         
         else : #ROTATION IS ENABLED
             
-            if action!='reset':                   
+            if action!='reset':    
                 if self.world_module is not None : 
                     heading = np.array([self.world_module.envData['poseData'][2],
                                       self.world_module.envData['poseData'][3]])
@@ -273,27 +275,27 @@ class GridGraph(AbstractTopologyGraph) :
                         angle = angle/np.pi*180.0
                         
                         
-                        if angle<-1e-5:
+                        if angle<-5:
                             right_edges+=[[n.index,vec_edge,angle]]
                             left_edges+=[[n.index,vec_edge,(360.0+angle)]]
                     
-                        if angle>1e-5:
+                        if angle>5:
                             left_edges+=[[n.index,vec_edge,angle]]
                             right_edges+=[[n.index,vec_edge,-(360.0-angle)]]
                         
-                        if angle<1e-5 and angle>-1e-5:
+                        if angle<5 and angle>-5:
                             forward_edge=[n.index,vec_edge,angle]
                             
 
                 left_edges=sorted(left_edges,key=lambda element: element[2],reverse=False)
                 right_edges=sorted(right_edges,key=lambda element: element[2],reverse=True)
+
                 
                 # store the current node as previous node
                 previous_node=self.current_node
                         
             # with action given, the next node can be computed
                 if action==0:
-                    
                     # this is a forward movement
                     angle=180.0/np.pi*np.arctan2(heading[1],heading[0])
                         
@@ -563,6 +565,8 @@ class GridGraph(AbstractTopologyGraph) :
         
         
         
+
+
 class HexagonalGraph(GridGraph) : 
 
 
@@ -681,9 +685,3 @@ class HexagonalGraph(GridGraph) :
     
         for node in self.nodes:
             self.sort_graph(node)
-    
-        
-        
-        
-        
-        
