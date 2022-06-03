@@ -185,222 +185,251 @@ class GridGraph(AbstractTopologyGraph) :
     
     
     def generate_behavior_from_action(self, action) :
-        
         next_node_pos  = np.array([0.0,0.0])
         
         callback_value = dict()
         
         if not self.rotation :
             
-            if action!='reset':
-                previous_node = self.current_node 
-                self.next_node = self.nodes[self.current_node].neighbors[action].index
-                
-                if self.next_node != -1 :
-                    next_node_pos = np.array([self.nodes[self.next_node].x, 
-                                              self.nodes[self.next_node].y])
-                    
-                else : 
+            if action!='reset' : 
+                node_id = self.nodes[self.current_node].neighbors[action].index
+                if node_id != -1 : 
+                    self.move_to_node(node_id)
+                else  :
                     self.next_node = self.current_node
-                    if self.world_module is not None : 
-                        self.world_module.goalReached = True
-                    next_node_pos = np.array([self.nodes[self.next_node].x, 
-                                              self.nodes[self.next_node].y])
-                
-        
-                callback_value['currentNode'] = self.nodes[self.next_node]
-                
+                    self.world_module.goalReached = True
+                                                    
             else : 
-
-                self.next_node = np.random.choice(self.start_nodes)
-                next_node_pos = np.array([self.nodes[self.next_node].x, 
-                                          self.nodes[self.next_node].y])
-                
-            if self.world_module is not None : 
-
-                self.world_module.actuateRobot(np.array([next_node_pos[0],
-                                                         next_node_pos[1],
-                                                         90.0]))
-                self.world_module.actuateRobot(np.array([next_node_pos[0],
-                                         next_node_pos[1],
-                                         90.0]))
-            
+                node_id = np.random.choice(self.start_nodes)
+                self.move_to_node(node_id)
+                            
             self.current_node = self.next_node
+            callback_value['currentNode'] = self.nodes[self.current_node]
             
-            if self.observation_module is not None : 
-                self.observation_module.update()
-                
-            #TODO : else, write in a mechanism to navigate on the same graph
-            #only based on indices
-            if self.visual_output : 
-                self.update_position_marker([next_node_pos[0], next_node_pos[1],
-                                             0.0, 1.0])
-                if hasattr(qt.QtGui, 'QApplication'):
-                    if qt.QtGui.QApplication.instance() is not None:
-                        qt.QtGui.QApplication.instance().processEvents()
-                else:
-                    if qt.QtWidgets.QApplication.instance() is not None:
-                        qt.QtWidgets.QApplication.instance().processEvents()
-        
+            
         else : #ROTATION IS ENABLED
             
             if action!='reset':    
-                if self.world_module is not None : 
-                    heading = np.array([self.world_module.envData['poseData'][2],
-                                      self.world_module.envData['poseData'][3]])
-                    heading = heading/np.linalg.norm(heading)
-                # get directions of all edges
-                actual_node = self.nodes[self.current_node]
-                neighbors = self.nodes[self.current_node].neighbors
+                heading = np.array([self.world_module.envData['poseData'][2],
+                                    self.world_module.envData['poseData'][3]])
                 
-                # lists for edges
+                heading = heading/np.linalg.norm(heading)
+                
                 left_edges   = []
                 right_edges  = []
                 forward_edge = []
                 
-                
-                # find possible movement directions. Note: when a left edge is found, it is simultaneously stored as a right edge with huge turning angle, and vice versa. That way,
-                # the agent does not get stuck in situations where there is only a forward edge, and say, a left edge, and the action is 'right'. In such a situation, the agent will just turn
-                # right using the huge 'right' turning angle.
-                for n in neighbors:
-                    if n.index!=-1:
-                        actual_node_position = np.array([actual_node.x,actual_node.y])
+                neighbors = self.nodes[self.current_node].neighbors
+                for node in neighbors : 
+                    if node.index != -1 : 
+                        current_node_pos = np.array([self.nodes[self.current_node].x,
+                                                     self.nodes[self.current_node].y])
+                        neighbor_pos     = np.array([node.x, node.y])
+                        edge_vector      = neighbor_pos - current_node_pos
+                        edge_vector      = edge_vector / np.linalg.norm(edge_vector)
                         
-                        neighbor_position = np.array([n.x,n.y])
-                        vec_edge = neighbor_position-actual_node_position
-                        vec_edge = vec_edge/np.linalg.norm(vec_edge)
-                        
-                        angle = np.arctan2(heading[0]*vec_edge[1]-heading[1]*vec_edge[0],
-                                           heading[0]*vec_edge[0]+heading[1]*vec_edge[1])
-                        angle = angle/np.pi*180.0
-                        
+                        angle = np.arctan2(heading[0]*edge_vector[1] - heading[1]*edge_vector[0],
+                                           heading[0]*edge_vector[0] + heading[1]*edge_vector[1])
+                        angle = angle / np.pi*180.0
                         
                         if angle<-5:
-                            right_edges+=[[n.index,vec_edge,angle]]
-                            left_edges+=[[n.index,vec_edge,(360.0+angle)]]
-                    
+                            right_edges+=[[node.index,edge_vector,angle]]
+                            left_edges+=[[node.index,edge_vector,(360.0+angle)]]
+                     
                         if angle>5:
-                            left_edges+=[[n.index,vec_edge,angle]]
-                            right_edges+=[[n.index,vec_edge,-(360.0-angle)]]
-                        
+                             left_edges+=[[node.index,edge_vector,angle]]
+                             right_edges+=[[node.index,edge_vector,-(360.0-angle)]]
+                         
                         if angle<5 and angle>-5:
-                            forward_edge=[n.index,vec_edge,angle]
+                            forward_edge=[node.index,edge_vector,angle]
                             
-
-                left_edges=sorted(left_edges,key=lambda element: element[2],reverse=False)
-                right_edges=sorted(right_edges,key=lambda element: element[2],reverse=True)
-
+                left_edges  = sorted(left_edges, key=lambda element: element[2],
+                                     reverse=False)
+                right_edges = sorted(right_edges, key=lambda element: element[2],
+                                     reverse=True)
                 
-                # store the current node as previous node
-                previous_node=self.current_node
+                if action == 0 : 
+                    # MOVE FORWARD
+                    angle = 180.0 / np.pi * np.arctan2(heading[1], heading[0])
+                    if len(forward_edge) != 0 :
+                        next_node_id = forward_edge[0]
+                        self.move_to_node(next_node_id, angle)
+                    else : 
+                        self.next_node = self.current_node
                         
-            # with action given, the next node can be computed
-                if action==0:
-                    # this is a forward movement
-                    angle=180.0/np.pi*np.arctan2(heading[1],heading[0])
-                        
-                    if len(forward_edge)!=0:
-                        # there is a forward edge that the agent can use
-                        self.next_node=forward_edge[0]
-                        
-                        nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                                       
-                    else:
-                        # no forward edge found, the agent has to wait for a rotation action
-                        self.next_node=self.current_node
-                        nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                        
-                    self.update_position_marker([nextNodePos[0],nextNodePos[1],heading[0],heading[1]])
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
-                                
-                if action==1:
-                    # this is a left turn movement
-                    self.next_node=self.current_node
-                    nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                        
-                    angle=180.0/np.pi*np.arctan2(left_edges[0][1][1],left_edges[0][1][0])
-                    self.update_position_marker([nextNodePos[0],nextNodePos[1],left_edges[0][1][0],left_edges[0][1][1]])
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+                if action == 1 : 
+                    # TURN LEFT
+                    angle = 180.0 / np.pi * np.arctan2(left_edges[0][1][1],
+                                                     left_edges[0][1][0])
+                    next_node_id = self.current_node
+                    self.move_to_node(next_node_id, angle)
+                    
+                if action == 2 : 
+                    #TURN RIGHT
+                    angle = 180.0 / np.pi * np.arctan2(right_edges[0][1][1],
+                                                     right_edges[0][1][0])
+                    next_node_id = self.current_node
+                    self.move_to_node(next_node_id, angle)
+                    
+            else :                 
+                node_id = np.random.choice(self.start_nodes)
+                #TODO : randomly select angle
+                self.move_to_node(node_id)
                 
-                if action==2:
-                    # this is a right turn movement
-                    self.next_node=self.current_node
-                    nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
-                    angle=180.0/np.pi*np.arctan2(right_edges[0][1][1],right_edges[0][1][0])
-                    self.update_position_marker([nextNodePos[0],nextNodePos[1],right_edges[0][1][0],right_edges[0][1][1]])
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
-                    self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
-            
-                if self.observation_module is not None : 
-                    self.observation_module.update()
-            
-            # make the current node the one the agent travelled to
-                self.current_node=self.next_node
-                            
-                # here, next node is already set and the current node is set to this next node.
-                callback_value['currentNode']=self.nodes[self.next_node]
+            self.current_node = self.next_node
+            callback_value['currentNode'] = self.nodes[self.current_node]
                 
-            else : 
-                            # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
-            
-                nodes=self.nodes
-                nodes_selection=[n for n in nodes if n.startNode==True]
+                    
                 
-                # store the current node as previous node
-                previousNode=self.current_node
-                
-                self.next_node=random.choice(nodes_selection)
-                
-                nextNodePos=np.array([self.next_node.x,self.next_node.y])
-                
-                # from all heading directions available at the chosen node, select one randomly
-                
-                self.current_node=self.next_node.index
-                neighbors=self.next_node.neighbors
-                
-                # list for available neighbor directions
-                directions=[]
-                
-                for n in neighbors:
-                    if n.index!=-1:
-                        # only parse valid neighbors
-                        next_node_position=np.array([self.next_node.x,self.next_node.y])
-                        neighbor_position=np.array([n.x,n.y])
-                        vec_edge=neighbor_position-next_node_position
-                        vec_edge=vec_edge/np.linalg.norm(vec_edge)
-                        world_angle=np.arctan2(vec_edge[1],vec_edge[0])
-                        directions+=[[n.index,vec_edge,world_angle]]
-                        
-                # select new heading randomly
-                new_heading_selection=random.choice(directions)
-                new_heading_angle=new_heading_selection[2]
-                new_heading_vector=new_heading_selection[1]
-                
-                # update the agents position and orientation (heading)
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle])) 
-                self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle]))
-                self.update_position_marker([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
-                
-                # update the observation
-                self.observation_module.update()
-            
-            
-            
-            # if possible try to update the visual debugging display
-            # TODO: previous version had a double call to processEvents(). Intended?
-            # was:
-            #if qt.QtGui.QApplication.instance() is not None:
-            #    qt.QtGui.QApplication.instance().processEvents()
-            #    qt.QtGui.QApplication.instance().processEvents()
-    
-            if hasattr(qt.QtGui, 'QApplication'):
-                if qt.QtGui.QApplication.instance() is not None:
-                    qt.QtGui.QApplication.instance().processEvents()
-            else:
-                if qt.QtWidgets.QApplication.instance() is not None:
-                    qt.QtWidgets.QApplication.instance().processEvents()
+# =============================================================================
+#                 if self.world_module is not None : 
+#                     heading = np.array([self.world_module.envData['poseData'][2],
+#                                       self.world_module.envData['poseData'][3]])
+#                     heading = heading/np.linalg.norm(heading)
+#                 # get directions of all edges
+#                 actual_node = self.nodes[self.current_node]
+#                 neighbors = self.nodes[self.current_node].neighbors
+#                 
+#                 # lists for edges
+#                 left_edges   = []
+#                 right_edges  = []
+#                 forward_edge = []
+#                 
+#                 
+#                 # find possible movement directions. Note: when a left edge is found, it is simultaneously stored as a right edge with huge turning angle, and vice versa. That way,
+#                 # the agent does not get stuck in situations where there is only a forward edge, and say, a left edge, and the action is 'right'. In such a situation, the agent will just turn
+#                 # right using the huge 'right' turning angle.
+#                 for n in neighbors:
+#                     if n.index!=-1:
+#                         actual_node_position = np.array([actual_node.x,actual_node.y])
+#                         
+#                         neighbor_position = np.array([n.x,n.y])
+#                         vec_edge = neighbor_position-actual_node_position
+#                         vec_edge = vec_edge/np.linalg.norm(vec_edge)
+#                         
+#                         angle = np.arctan2(heading[0]*vec_edge[1]-heading[1]*vec_edge[0],
+#                                            heading[0]*vec_edge[0]+heading[1]*vec_edge[1])
+#                         angle = angle/np.pi*180.0
+#                         
+#                         
+#                         if angle<-5:
+#                             right_edges+=[[n.index,vec_edge,angle]]
+#                             left_edges+=[[n.index,vec_edge,(360.0+angle)]]
+#                     
+#                         if angle>5:
+#                             left_edges+=[[n.index,vec_edge,angle]]
+#                             right_edges+=[[n.index,vec_edge,-(360.0-angle)]]
+#                         
+#                         if angle<5 and angle>-5:
+#                             forward_edge=[n.index,vec_edge,angle]
+#                             
+# 
+#                 left_edges=sorted(left_edges,key=lambda element: element[2],reverse=False)
+#                 right_edges=sorted(right_edges,key=lambda element: element[2],reverse=True)
+# 
+#                 
+#                 # store the current node as previous node
+#                 previous_node=self.current_node
+#                         
+#             # with action given, the next node can be computed
+#                 if action==0:
+#                     # this is a forward movement
+#                     angle=180.0/np.pi*np.arctan2(heading[1],heading[0])
+#                         
+#                     if len(forward_edge)!=0:
+#                         # there is a forward edge that the agent can use
+#                         self.next_node=forward_edge[0]
+#                         
+#                         nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+#                                        
+#                     else:
+#                         # no forward edge found, the agent has to wait for a rotation action
+#                         self.next_node=self.current_node
+#                         nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+#                         
+#                     self.update_position_marker([nextNodePos[0],nextNodePos[1],heading[0],heading[1]])
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+#                                 
+#                 if action==1:
+#                     # this is a left turn movement
+#                     self.next_node=self.current_node
+#                     nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+#                         
+#                     angle=180.0/np.pi*np.arctan2(left_edges[0][1][1],left_edges[0][1][0])
+#                     self.update_position_marker([nextNodePos[0],nextNodePos[1],left_edges[0][1][0],left_edges[0][1][1]])
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+#                 
+#                 if action==2:
+#                     # this is a right turn movement
+#                     self.next_node=self.current_node
+#                     nextNodePos=np.array([self.nodes[self.next_node].x,self.nodes[self.next_node].y])
+#                     angle=180.0/np.pi*np.arctan2(right_edges[0][1][1],right_edges[0][1][0])
+#                     self.update_position_marker([nextNodePos[0],nextNodePos[1],right_edges[0][1][0],right_edges[0][1][1]])
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle])) 
+#                     self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],angle]))
+#             
+#                 if self.observation_module is not None : 
+#                     self.observation_module.update()
+#             
+#             # make the current node the one the agent travelled to
+#                 self.current_node=self.next_node
+#                             
+#                 # here, next node is already set and the current node is set to this next node.
+#                 callback_value['currentNode']=self.nodes[self.next_node]
+#                 
+#             else : 
+#                             # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
+#             
+#                 nodes=self.nodes
+#                 nodes_selection=[n for n in nodes if n.startNode==True]
+#                 
+#                 # store the current node as previous node
+#                 previousNode=self.current_node
+#                 
+#                 self.next_node=random.choice(nodes_selection)
+#                 
+#                 nextNodePos=np.array([self.next_node.x,self.next_node.y])
+#                 
+#                 # from all heading directions available at the chosen node, select one randomly
+#                 
+#                 self.current_node=self.next_node.index
+#                 neighbors=self.next_node.neighbors
+#                 
+#                 # list for available neighbor directions
+#                 directions=[]
+#                 
+#                 for n in neighbors:
+#                     if n.index!=-1:
+#                         # only parse valid neighbors
+#                         next_node_position=np.array([self.next_node.x,self.next_node.y])
+#                         neighbor_position=np.array([n.x,n.y])
+#                         vec_edge=neighbor_position-next_node_position
+#                         vec_edge=vec_edge/np.linalg.norm(vec_edge)
+#                         world_angle=np.arctan2(vec_edge[1],vec_edge[0])
+#                         directions+=[[n.index,vec_edge,world_angle]]
+#                         
+#                 # select new heading randomly
+#                 new_heading_selection=random.choice(directions)
+#                 new_heading_angle=new_heading_selection[2]
+#                 new_heading_vector=new_heading_selection[1]
+#                 
+#                 # update the agents position and orientation (heading)
+#                 self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle])) 
+#                 self.world_module.actuateRobot(np.array([nextNodePos[0],nextNodePos[1],new_heading_angle]))
+#                 self.update_position_marker([nextNodePos[0],nextNodePos[1],new_heading_vector[0],new_heading_vector[1]])
+#                 
+#                 # update the observation
+#                 self.observation_module.update()
+#                 
+#             if hasattr(qt.QtGui, 'QApplication'):
+#                 if qt.QtGui.QApplication.instance() is not None:
+#                     qt.QtGui.QApplication.instance().processEvents()
+#             else:
+#                 if qt.QtWidgets.QApplication.instance() is not None:
+#                     qt.QtWidgets.QApplication.instance().processEvents()
+# =============================================================================
 
         
         return callback_value
@@ -546,7 +575,6 @@ class GridGraph(AbstractTopologyGraph) :
         --------
         state of the agent i.e. list of images from each node
         '''
-        # TODO : test what this does
 
         if self.world_module is not None and self.observation_module is not None : 
             self.state_space = []
@@ -563,10 +591,35 @@ class GridGraph(AbstractTopologyGraph) :
             #return list of state space
             return
         
+    def move_to_node(self, node_id, angle=90.0) :
+        self.next_node = node_id
+        next_node_pos = np.array([self.nodes[self.next_node].x, 
+                          self.nodes[self.next_node].y])
+    
+        self.world_module.actuateRobot(np.array([next_node_pos[0],
+                                         next_node_pos[1],
+                                         angle]))
+    
+        self.current_node = self.next_node
+        self.observation_module.update()
         
+        if self.visual_output : 
+            self.update_position_marker([next_node_pos[0], next_node_pos[1],
+                                         np.cos(np.deg2rad(angle)),  
+                                         np.sin(np.deg2rad(angle))])
+            
+            if hasattr(qt.QtGui, 'QApplication'):
+                if qt.QtGui.QApplication.instance() is not None:
+                    qt.QtGui.QApplication.instance().processEvents()
+            else:
+                if qt.QtWidgets.QApplication.instance() is not None:
+                    qt.QtWidgets.QApplication.instance().processEvents()
         
 
-
+        
+        
+        
+    
 class HexagonalGraph(GridGraph) : 
 
 

@@ -140,16 +140,16 @@ def singleRun():
     # Observation module: bring the observations of the environment
     modules['observation'] = ImageObservationBaseline(modules['world'], mainWindow, visualOutput)
     # spatial obs: pass world instance
-    modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[5],
+    modules['spatial_representation'] = GridGraph(n_nodes_x=4,n_nodes_y=4,start_nodes=[0], goal_nodes=[15],
            visual_output=True,world_module=modules['world'],use_world_limits=True,
-           observation_module=modules['observation'],rotation=False)
+           observation_module=modules['observation'],rotation=True)
     modules['spatial_representation'].set_visual_debugging(mainWindow)
     modules['rl_interface'] = OAIGymInterface(modules, visualOutput, rewardCallback)
 
     rlAgent = DQNAgentBaseline(modules['rl_interface'], 5000, 0.3, None, trialBeginCallback, trialEndCallback)
 
     # set the experimental parameters
-    rlAgent.trialNumber = 1000
+    rlAgent.trialNumber = 100
 
     perfMon = RLPerformanceMonitorBaseline(rlAgent, rlAgent.trialNumber, mainWindow, visualOutput)
     rlAgent.performanceMonitor = perfMon

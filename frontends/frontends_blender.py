@@ -15,7 +15,7 @@ class FrontendBlenderInterface():
     to/comes from the Blender environment.
     """
 
-    def __init__(self, scenarioName):
+    def __init__(self, scenarioName, full_path=False):
         """
         Parameters:
         ----------
@@ -30,17 +30,19 @@ class FrontendBlenderInterface():
         self.BLENDER_EXECUTABLE = path +'blender'
 
         paths=os.environ['PYTHONPATH'].split(os.pathsep)
-        path=None
-
-        for p in paths:
-            if 'CoBeL-RL' in p:
-                full_path = p
-                base_folder = full_path.split(sep ='CoBeL-RL')[0]
-                path = base_folder +'CoBeL-RL'
-                break
-
-        scenarioName = path + '/environments/environments_blender/' + scenarioName
-        print(path)
+        
+        if not full_path : 
+            path=None
+    
+            for p in paths:
+                if 'CoBeL-RL' in p:
+                    full_path = p
+                    base_folder = full_path.split(sep ='CoBeL-RL')[0]
+                    path = base_folder +'CoBeL-RL'
+                    break
+    
+            scenarioName = path + '/environments/environments_blender/' + scenarioName
+        
         subprocess.Popen \
             ([self.BLENDER_EXECUTABLE, scenarioName, '--window-border', '--window-geometry', '1320', '480', '600', '600'
             , '--enable-autoexec'])
