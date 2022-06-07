@@ -24,7 +24,7 @@ except IndexError:
 
 
 from frontends.frontends_blender import FrontendBlenderInterface
-from spatial_representations.topology_graphs.simple_topology_graph import GridGraph
+from spatial_representations.topology_graphs.simple_topology_graph import GridGraph, HexagonalGraph
 from agents.dqn_agents import DQNAgentBaseline
 from observations.image_observations import ImageObservationBaseline
 from interfaces.oai_gym_interface import OAIGymInterface
@@ -136,13 +136,13 @@ def singleRun():
     # a dictionary that contains all employed modules
     modules = dict()
     # world module: Initiates Blender and returns environment limits, robot pose
-    modules['world'] = FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
+    modules['world'] = FrontendBlenderInterface('simple_grid_graph_maze.blend')
     # Observation module: bring the observations of the environment
     modules['observation'] = ImageObservationBaseline(modules['world'], mainWindow, visualOutput)
     # spatial obs: pass world instance
-    modules['spatial_representation'] = GridGraph(n_nodes_x=4,n_nodes_y=4,start_nodes=[0], goal_nodes=[15],
-           visual_output=True,world_module=modules['world'],use_world_limits=True,
-           observation_module=modules['observation'],rotation=True)
+    modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[24],
+           visual_output=True, world_module=modules['world'], use_world_limits=True,
+           observation_module=modules['observation'], rotation=True)
     modules['spatial_representation'].set_visual_debugging(mainWindow)
     modules['rl_interface'] = OAIGymInterface(modules, visualOutput, rewardCallback)
 

@@ -101,7 +101,7 @@ def singleRun():
     mainWindow=None
     # if visual output is required, activate an output window
     if visualOutput:
-        mainWindow = qg.GraphicsWindow( title="workingTitle_Framework" )
+        mainWindow = qg.GraphicsWindow( title="CoBeL-RL")
     
     
     
