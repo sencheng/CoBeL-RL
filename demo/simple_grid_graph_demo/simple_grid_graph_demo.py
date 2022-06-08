@@ -131,12 +131,12 @@ def singleRun():
     mainWindow = None
     # if visual output is required, activate an output window
     if visualOutput:
-        mainWindow = qg.GraphicsWindow(title="workingTitle_Framework")
+        mainWindow = qg.GraphicsWindow(title="CoBeL-RL")
 
     # a dictionary that contains all employed modules
     modules = dict()
     # world module: Initiates Blender and returns environment limits, robot pose
-    modules['world'] = FrontendBlenderInterface('simple_grid_graph_env/simple_grid_graph_maze.blend')
+    modules['world'] = FrontendBlenderInterface('simple_grid_graph_maze.blend')
     # Observation module: bring the observations of the environment
     modules['observation'] = ImageObservationBaseline(modules['world'], mainWindow, visualOutput)
     # spatial obs: pass world instance

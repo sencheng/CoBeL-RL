@@ -220,7 +220,7 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
 
     def generate_behavior_from_action(self,action):
        
-        
+        time.sleep(0.1)
         # the world module is required here
         world_module=self.modules['world']
         nextNodePos=np.array([0.0,0.0])
