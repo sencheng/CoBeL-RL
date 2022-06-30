@@ -1,11 +1,13 @@
 # basic imports
+import os
 import numpy as np
+import PyQt5 as qt
 import pyqtgraph as qg
 # tensorflow
-import tensorflow as tf
+from tensorflow.keras import backend as K
 # CoBel-RL framework
-from cobel.agents.dyna_dqn import DynaDQN
-from cobel.interfaces.oai_gym_gridworlds import OAIGymInterface
+from cobel.agents.dqn_agents import DQNAgentSTR
+from cobel.interfaces.oai_gym_discrete import OAIGymInterfaceDiscrete
 from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor
 from cobel.misc.gridworld_tools import makeGridworld
 
@@ -26,46 +28,46 @@ def single_run():
     main_window = None
     # if visual output is required, activate an output window
     if visual_output:
-        main_window = qg.GraphicsWindow(title='Demo: Dyna-DQN Agent')
+        main_window = qg.GraphicsWindow(title='Demo: DQN learning an environmental model')
     
-    # define environmental barriers
-    invalid_transitions = [(3, 4), (4, 3), (8, 9), (9, 8), (13, 14), (14, 13), (18, 19), (19, 18)]
-    
-    # initialize world
-    world = makeGridworld(5, 5, terminals=[4], rewards=np.array([[4, 10]]), goals=[4], invalidTransitions=invalid_transitions)
-    world['startingStates'] = np.array([12])
+    # initialize world (we use a grid world as an example)
+    world = makeGridworld(5, 5, terminals=[4], rewards=np.array([[4, 10]]), goals=[4])
+    # let the agent always start at the lower left corner
+    world['startingStates'] = np.array([20])
+    # we use a one-hot encoding for the states
+    observations = np.eye(25)
     
     # a dictionary that contains all employed modules
     modules = dict()
-    modules['rl_interface'] = OAIGymInterface(modules, world, visual_output, main_window)
-    
+    modules['rl_interface'] = OAIGymInterfaceDiscrete(modules, world['sas'], observations, world['rewards'], world['terminals'],
+                                                      world['startingStates'], world['coordinates'], world['goals'], visual_output, main_window, None)
+
     # amount of trials
-    number_of_trials = 150
-    # maximum steps per trial
-    max_steps = 50
+    number_of_trials = 1000
+    # maximum steos per trial
+    max_steps = 30
     
     # initialize reward monitor
     reward_monitor = RewardMonitor(number_of_trials, main_window, visual_output, [0, 10])
     
     # initialize RL agent
-    rl_agent = DynaDQN(interface_OAI=modules['rl_interface'], epsilon=0.3, beta=5, learning_rate=0.9,
-                                   gamma=0.9, custom_callbacks={'on_trial_end': [reward_monitor.update]})
-    rl_agent.mask_actions = True
-    rl_agent.policy = 'softmax'
+    rl_agent = DQNAgentSTR(modules['rl_interface'], 10000, 0.3, None, custom_callbacks={'on_trial_end': [reward_monitor.update]})
     
     # eventually, allow the OAI class to access the robotic agent class
     modules['rl_interface'].rl_agent = rl_agent
     
     # let the agent learn
-    rl_agent.train(number_of_trials, max_steps, replay_batch_size=32)
+    rl_agent.train(600, max_steps)
+    rl_agent.simulate(200, 10, 32, observations)
+    rl_agent.train(200, max_steps)
+    
+    # clear keras session (for performance)
+    K.clear_session()
     
     # and also stop visualization
     if visual_output:
         main_window.close()
 
 
-if __name__ == "__main__":
-    # run demo
+if __name__ == '__main__':
     single_run()
-    # clear keras session (for performance)
-    tf.keras.backend.clear_session()
