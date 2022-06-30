@@ -19,9 +19,12 @@ from bge import texture
 class BlenderFrontend():
     '''
     Basic frontend.
+    
+    | **Args**
+    | control_buffer_size:          The buffer size of the control connection when receiving commands from the framework.
     '''
     
-    def __init__(self):
+    def __init__(self, control_buffer_size=100):
         # initialize variables
         # port/address for controlling the simulation
         self.CONTROL_IP_ADDRESS = '127.0.0.1'
@@ -35,6 +38,8 @@ class BlenderFrontend():
         # define camera resolution
         self.capAreaWidth = 64
         self.capAreaHeight = 64
+        # buffer size of the control connection
+        self.control_buffer_size = control_buffer_size
         # tell wether or not the network has to become active
         self.NETWORK_REQUIRED = True
         # the simulation time counter
@@ -284,7 +289,7 @@ class BlenderFrontend():
                 # if the network is up start listening
                 if self.controller['networkUp'] == True:
                     # retrieve data string from port
-                    data = self.controller['controlConnection'].recv(100).decode('utf-8').split(',')
+                    data = self.controller['controlConnection'].recv(self.control_buffer_size).decode('utf-8').split(',')
                     # execute command if it exists
                     if data[0] in self.functions:
                         if len(data) > 1:
