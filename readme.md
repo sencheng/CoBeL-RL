@@ -18,7 +18,7 @@ To quickly get started and test the system, you can run one of the demos.
 
      `https://download.blender.org/release/Blender2.79/`  
 
-Note : Only v2.79b is supported. Newer versions of Blender might not work with the system.  
+Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
 * Install required python packages  
 
 `pip install -r requirements.txt`
@@ -31,23 +31,32 @@ Run Demo
 </summary>
 
 
-*  First, clone the project  
+*  First, clone the project.
 
 `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
 
-* Setup environment variables. You will need to set up a variable for the Blender path, and for the project directory.  
+*  Then, move the cloned project to the `site-packages` of your Python installation and rename the project directory to `cobel`.
 
-`export BLENDER_EXECUTABLE_PATH="/path/to/blender2.79b/"`  
+* You will need to set up an environment variable for the Blender path to run the demos.
 
-`export PYTHONPATH="/path/to/CoBeL-RL/"`  
+`export BLENDER_EXECUTABLE_PATH="/path/to/blender2.79b/"`
 
-If you plan to use the framework more than once, it is useful to set these variables permanently. On Linux distributions, you can do this by editing the .bashrc file. 
+* Alternatively, you can set the variable manually in Python before running the script.
+
+`import os`
+
+`os.environ['BLENDER_EXECUTABLE_PATH'] = '/path/to/blender2.79b/'`
+
+If you plan to use the framework more than once, it is useful to set this variable permanently. On Linux distributions, you can do this by editing the .bashrc file. 
 
 * Go to demo folder
-`cd ~/CoBeL-RL/demo/simpleGridGraphDemo/`
+`cd ~/cobel/demo/simple_grid_graph_demo/`
 
 *  Start the demo simulation:
-`python simpleGridGraphDemo.py`
+`python simple_grid_graph_demo.py`
+
+**Note: The Blender path can also be passed as a parameter to the Blender frontend module. For your own simulations it is therefore not necessary to set a permanent variable.**
+
 </details>
 
 ------------------------------
@@ -62,15 +71,9 @@ If you want to try the unity interface demo, you need to perform the the steps d
 
 Please report all bugs you find :)
 
-**Password for all 'Sciebo' downloads: cobel_rl**
-
 You got two options to run a demo.
 
 *  You can use the precompiled versions of the unity environments.
-
-    * Linux: **https://ruhr-uni-bochum.sciebo.de/s/3iFYDgzGxLJ57tv**
-    
-    * Windows **https://ruhr-uni-bochum.sciebo.de/s/F56wugRAdWRfTj3**
     
     You have to set a system variable named 'UNITY_ENVIRONMENT_EXECUTABLE' to the path of the downloaded environments
     
@@ -80,7 +83,7 @@ You got two options to run a demo.
     
     > python3 demo/unity_demo/unity_demo.py
         
-* The other option is to install the unity editor and connect the interface directly with the editor.
+* To build the environments yourself and custom environments do the following:
 
     * you need to download and install the 'Unity Hub': **https://docs.unity3d.com/Manual/GettingStartedInstallingHub.html**
     
@@ -97,6 +100,8 @@ You got two options to run a demo.
     
     To import the environments you select the menu item 'Assets/Import Package/Custom Package' in the editor and open the 
     'unity_resources.unitypackage' you downloaded.
+
+* The other option is to connect the interface directly with the Unity editor.
     
     You start training an environment by opening a scene in the 'Assets/Scenes' folder with the 'Project Explorer' of the editor, 
     running the unity_demo.py first and pressing the 'Play' button at the top of the editor screen.
@@ -104,4 +109,16 @@ You got two options to run a demo.
     **Note: the demo tries to do option 1) automatically when 'UNITY_ENVIRONMENT_EXECUTABLE' variable is set.**
     
      
+ </details> 
+ 
+ ------------------------------
+ 
+ <details>
+________________________________________________________________________________________________
+<summary>
+Godot interface (TBD)
+</summary>
+
+Expected to be available after summer semester 2022.
+  
  </details>    

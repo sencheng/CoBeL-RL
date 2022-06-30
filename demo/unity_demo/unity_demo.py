@@ -1,136 +1,91 @@
+# basic imports
+import numpy as np
 import os
-from keras import backend
-from agents.dqn_agents import DQNAgentBaseline
-from analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
-from interfaces.oai_gym_interface import UnityInterface
-from interfaces.oai_gym_interface import get_cobel_path, get_env_path
+import pyqtgraph as pg
+# tensorflow
+from tensorflow.keras import backend as K
+# framework imports
+from cobel.frontends.frontends_unity import FrontendUnityInterface
+from cobel.spatial_representations.topology_graphs.four_connected_graph_rotation import Four_Connected_Graph_Rotation
+from cobel.agents.dqn_agents import DQNAgentBaseline
+from cobel.observations.image_observations import ImageObservationUnity
+from cobel.interfaces.oai_gym_interface import OAIGymInterface
+from cobel.analysis.rl_monitoring.rl_performance_monitors import UnityPerformanceMonitor
 
 # set some python environment properties
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # reduces the amount of debug messages from tensorflow.
-backend.set_image_data_format(data_format='channels_last')
-visualOutput = True
+K.set_image_data_format(data_format='channels_last')
+# shall the system provide visual output while performing the experiments? NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'!
+visual_output = True
 
 
-def reward_callback(*args, **kwargs):
-    """
-    ATTENTION: This function is deprecated.
-    These changes should be encoded in the Academy object of the environment, and triggered via a side channel, or in
-    the Agent definition inside Unity.
-
-    :return: None
-    """
-
-    raise NotImplementedError('This function is deprecated. These changes should either be encoded in the Academy '
-                              'object of the environment, and triggered via a side channel, or in the Agent definition'
-                              'inside Unity.')
-
-
-def trial_begin_callback(trial, rl_agent):
-    """
-    This is a callback function that is called in the beginning of each trial. Here, experimental behavior can be
-    defined (ABA renewal and the like).
-    :param trial: the number of the finished trial
-    :param rl_agent: the employed reinforcement learning agent
-    :return: None
-    """
-    pass
-    # print("Episode begin")
-
-
-def trial_end_callback(trial, rl_agent, logs):
-    """
-    This is a callback routine that is called when a single trial ends. Here, functionality for performance evaluation
-    can be introduced.
-    :param trial: the number of the finished trial
-    :param rl_agent: the employed reinforcement learning agent
-    :param logs: output of the reinforcement learning subsystem
-    :return:
-    """
-    print("Episode end", logs)
-
-
-def single_run(env_exec_path, scene_name=None, n_train=1):
-    """
-    :param env_exec_path:           full path to a Unity executable
-    :param scene_name:              the name of the scene to be loaded
-    :param n_train:                 total number of rl steps. Note that it's affected by the action repetition
-    :return:
-
-    This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization
-    mechanism (without visual output), or by a direct call (in this case, visual output can be used).
-
-    In this case it acts as a tutorial for using the UnityInterface
-    """
-    # first you create your environment, you can check detailed parameter descriptions in the constructor docstring.
-    #
-    # note that the decision interval is set to 10.
-    # this means that cobel only observers and acts in every 10th simulation step. this is aka frame skipping.
-    # it increases the performance and is helpful when training envs where the consequence of an action can only
-    # be observed after some time.
-    unity_env = UnityInterface(env_path=env_exec_path, scene_name=scene_name,
-                               nb_max_episode_steps=100, decision_interval=5,
-                               agent_action_type="discrete", use_gray_scale_images=False,
-                               performance_monitor=UnityPerformanceMonitor(update_period=1,
-                                                                           reward_plot_viewbox=(-10, 10, 50),
-                                                                           steps_plot_viewbox=(0, 100, 50)),
-                               with_gui=True)
-
-    # then you can set some experiment parameters
-    # these are specific to the environment you've chosen. you can find the parameters for the examples here:
-    # https://github.com/Unity-Technologies/ml-agents/blob/0.15.1/docs/Learning-Environment-Examples.md
-    # below you can find the parameters for the custom envs
-
-    """
-    robot_maze parameters
+def reward_callback(values):
+    '''
+    This is a callback function that defines the reward provided to the robotic agent. Note: this function has to be adopted to the current experimental design.
     
-    unity_env.env_configuration_channel.set_property("has_walls", 1)  # enable walls
-    unity_env.env_configuration_channel.set_property("maze_algorithm", 0)  # just exterior walls
-    unity_env.env_configuration_channel.set_property("size_x", 2)  # set cell grid width
-    unity_env.env_configuration_channel.set_property("size_y", 2)  # set cell grid height
-    unity_env.env_configuration_channel.set_property("random_target_pos", 0)  # disable target repositioning
-    unity_env.env_configuration_channel.set_property("random_rotation_mode", 1)  # enable random robot spawn rotation
-    unity_env.env_configuration_channel.set_property("max_velocity", 0)  # disable max agent velocity
-    unity_env.env_configuration_channel.set_property("target_reached_radius", 20)  #
-    unity_env.env_configuration_channel.set_property("target_visible", 1)  #
-    """
+    values: a dict of values that are transferred from the OAI module to the reward function. This is flexible enough to accommodate for different experimental setups.
+    '''
+    # the standard reward for each step taken is negative, making the agent seek short routes
+    reward = -1.0
+    end_trial = False
+    if values['currentNode'].goalNode:
+        reward = 10.0
+        end_trial = True
 
-    """
-    morris_water_maze parameters
+    return reward, end_trial
+
+
+available_mazes = ['TMaze', 'TMaze_LV1', 'TMaze_LV2', 'DoubleTMaze', 'TunnelMaze_new']
+
+def single_run():
+    # the length of the edge in the topology graph
+    step_size = 1.0
+    # this is the main window for visual output
+    main_window = None
+    # if visual output is required, activate an output window
+    if visual_output:
+        main_window = pg.GraphicsWindow(title='Unity Demo')
+        # layout
+        layout = pg.GraphicsLayout(border=(30, 30, 30))
+        main_window.setCentralItem(layout)
     
-    # scale the water pool size. default is 150x150 cm
-    unity_env.env_configuration_channel.set_property("area_scale", 1)
-    # set the platform position (1 = north, 2 = north east, ...)
-    unity_env.env_configuration_channel.set_property("platform_direction", 1)
-    # the scale factor of the platform. default is 10x10 cm
-    unity_env.env_configuration_channel.set_property("platform_scale", 4)
-    # whether of not the platform is visible to the rat agent
-    unity_env.env_configuration_channel.set_property("platform_visible", 1)
-    """
+    # a dictionary that contains all employed modules
+    modules = {}
+    modules['world'] = FrontendUnityInterface('TMaze')
+    modules['observation'] = ImageObservationUnity(modules['world'], main_window, visual_output, False, (30, 1, 3))
+    modules['spatial_representation'] = Four_Connected_Graph_Rotation(modules, {'startNodes':[3], 'goalNodes':[0], 'start_ori': 90, 'cliqueSize':4}, step_size=step_size)
+    modules['spatial_representation'].set_visual_debugging(visual_output, main_window)
+    modules['rl_interface'] = OAIGymInterface(modules, visual_output, reward_callback)
+    
+    # amount of trials
+    number_of_trials = 50
+    # maximum steos per trial
+    max_steps = 100
+    
+    # set the experimental parameters
+    performanceMonitor = UnityPerformanceMonitor(main_window, visual_output)
+    
+    # initialize RL agent
+    rl_agent = DQNAgentBaseline(modules['rl_interface'], 1000000, 0.3, None, custom_callbacks={'on_trial_end': [performanceMonitor.update]})
 
-    # don't forget to reset your env after setting the experimental parameters to apply them
-    unity_env._reset()
+    # eventually, allow the OAI class to access the robotic agent class
+    modules['rl_interface'].rl_agent = rl_agent
 
-    # create your agent with the unity processor
-    rl_agent = DQNAgentBaseline(interfaceOAI=unity_env, processor=unity_env.processor)
+    # and allow the topology class to access the rlAgent
+    modules['spatial_representation'].rl_agent = rl_agent
 
-    # train the agent
-    rl_agent.train(n_train)
+    # let the agent learn for 100 episode
+    rl_agent.train(number_of_trials, max_steps)
 
-    # clear session
-    backend.clear_session()
-    unity_env.close()
+    # clear keras session (for performance)
+    K.clear_session()
+    
+    # stop Unity
+    modules['world'].stopUnity()
+    
+    # and also stop visualization
+    if visual_output:
+        main_window.close()
 
-
-if __name__ == "__main__":
-    # TODO Make a loop and try out different hyperparameters.
-    project = get_cobel_path()
-    env_path = get_env_path()
-
-    env_names = ['3DBall', '3DBallHard', 'Basic', 'Bouncer', 'CrawlerDynamicTarget', 'CrawlerStaticTarget',
-                 'FoodCollector', 'GridWorld', 'Hallway', 'MorrisWaterMaze', 'PushBlock', 'Pyramids', 'RandomRobotMaze',
-                 'Reacher', 'VisualFoodCollector', 'VisualHallway', 'VisualPushBlock', 'VisualPyramids', 'Walker',
-                 'VisualRandomRobotMaze']
-
-    single_run(env_exec_path=env_path,
-               scene_name='VisualRandomRobotMaze',
-               n_train=1000)
+if __name__ == '__main__':
+    single_run()
