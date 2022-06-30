@@ -15,7 +15,7 @@ from .misc.cog_arrow import CogArrow
 from math import atan2
 from numpy.linalg import norm
 
-from spatial_representations.spatial_representation import SpatialRepresentation
+from cobel.spatial_representations.spatial_representation import SpatialRepresentation
 
 import time
 import random
@@ -220,7 +220,7 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
 
     def generate_behavior_from_action(self,action):
        
-        time.sleep(0.1)
+        
         # the world module is required here
         world_module=self.modules['world']
         nextNodePos=np.array([0.0,0.0])
