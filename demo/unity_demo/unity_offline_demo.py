@@ -5,7 +5,7 @@ import pyqtgraph as pg
 # tensorflow
 from tensorflow.keras import backend as K
 # framework imports
-from cobel.frontends.frontends_unity import FrontendUnityInterface
+from cobel.frontends.frontends_unity import FrontendUnityOfflineInterface
 from cobel.spatial_representations.topology_graphs.four_connected_graph_rotation import Four_Connected_Graph_Rotation
 from cobel.agents.dqn_agents import DQNAgentBaseline
 from cobel.observations.image_observations import ImageObservationUnity
@@ -22,7 +22,7 @@ visual_output = True
 def reward_callback(values):
     '''
     This is a callback function that defines the reward provided to the robotic agent. Note: this function has to be adopted to the current experimental design.
-    
+
     values: a dict of values that are transferred from the OAI module to the reward function. This is flexible enough to accommodate for different experimental setups.
     '''
     # the standard reward for each step taken is negative, making the agent seek short routes
@@ -33,7 +33,6 @@ def reward_callback(values):
         end_trial = True
 
     return reward, end_trial
-
 
 available_mazes = ['TMaze', 'TMaze_LV1', 'TMaze_LV2', 'DoubleTMaze', 'TunnelMaze_new']
 
@@ -49,9 +48,12 @@ def single_run():
         layout = pg.GraphicsLayout(border=(30, 30, 30))
         main_window.setCentralItem(layout)
     
+    # determine world info file path
+    worldInfo = os.path.abspath(__file__).split('cobel')[0] + '/cobel/demo/unity_demo/worldInfo/TMaze_Infos.pkl'
+    
     # a dictionary that contains all employed modules
     modules = {}
-    modules['world'] = FrontendUnityInterface('TMaze')
+    modules['world'] = FrontendUnityOfflineInterface(worldInfo)
     modules['observation'] = ImageObservationUnity(modules['world'], main_window, visual_output, False, (30, 1, 3))
     modules['spatial_representation'] = Four_Connected_Graph_Rotation(modules, {'startNodes':[3], 'goalNodes':[0], 'start_ori': 90, 'cliqueSize':4}, step_size=step_size)
     modules['spatial_representation'].set_visual_debugging(visual_output, main_window)
