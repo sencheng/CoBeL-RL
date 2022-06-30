@@ -50,7 +50,7 @@ def single_run():
         
     # determine demo scene path
     demo_scene = os.path.abspath(__file__).split('cobel')[0] + '/cobel/environments/environments_blender/simple_grid_graph_maze.blend'
-    
+    print(demo_scene)
     # a dictionary that contains all employed modules
     modules = {}
     modules['world'] = FrontendBlenderInterface(demo_scene)

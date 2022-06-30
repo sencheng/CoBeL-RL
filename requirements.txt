@@ -8,7 +8,7 @@ tensorflow>=2.5.0
 pyqtgraph>=0.10.0
 mlagents>=0.24.0
 mlagents-envs>=0.24.0
-PyQt5>=5.14.0
+PyQt5>=5.15.0
 PyQt5-sip>=12.7.1
 PyQt5-stubs>=5.14.2.0
-
+scipy
