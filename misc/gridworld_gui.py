@@ -4,11 +4,10 @@ import math
 import pickle
 import numpy as np
 # framework imports
-import gridworld_tools
 import gridworld_tools as gridTools
 #Qt imports
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QPen, QBrush, QColor, QIntValidator, QDoubleValidator
+from PyQt5.QtGui import QPen, QBrush, QColor, QIntValidator
 from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QAction, QWidget, QHBoxLayout, QVBoxLayout, QGridLayout, \
     QLabel, QRadioButton, QTableWidget, QGraphicsScene, QLineEdit, QGraphicsView, QSplitter, QPushButton, QFileDialog
 from PyQt5 import QtWidgets
@@ -16,31 +15,29 @@ from PyQt5 import QtWidgets
 
 def updateProbability(world, index, probabilities=[]):
     '''
-    Updates the world  directory according to the applied changes in the GUI advanced settings table.
+    Updates the world dictionary according to the applied changes in the GUI advanced settings table.
     Takes the index to determine at what position in the directory the changes have to be made.
 
     | **Args**
-    | world: The gridworld  directory created using the  makeGridworld function
-    | index: The index of the state that is being edited
-    | probabilities: The changed transistion probabilities
+    | world:                        The gridworld dictionary created using the  makeGridworld function
+    | index:                        The index of the state that is being edited
+    | probabilities:                The changed transistion probabilities
     '''
     for state in range(world['states']):
         for action in range(4):
-            world["sas"][index][action][state] = probabilities[action][state]
+            world['sas'][index][action][state] = probabilities[action][state]
 
-# Funktion um invalid States und invalid Transitions zu bearbeiten
 def updateTransitions(world, invalidStates=[], invalidTransitions=[]):
     '''
-    Updates the world  directory according to the applied changes, through douuble clicking the state borders.
+    Updates the world dictionary according to the applied changes, through douuble clicking the state borders.
 
     | **Args**
-    | world: The gridworld directory created using the makeGridworld function
-    | invalidStates: All states which have become unreachable
-    | invalidTransitions: All transistion which have turned invalid
+    | world:                        The gridworld dictionary created using the makeGridworld function
+    | invalidStates:                All states which have become unreachable
+    | invalidTransitions:           All transistion which have turned invalid
     '''
     world['invalidStates'] = invalidStates
     world['invalidTransitions'] = invalidTransitions
-
     #Updates the state-action-state array according to the now invalid states
     world['sas'] = np.zeros((world['states'], 4, world['states']))
     for state in range(world['states']):
@@ -71,33 +68,29 @@ def updateTransitions(world, invalidStates=[], invalidTransitions=[]):
                 nextState = state
             world['sas'][state][action][nextState] = 1
 
-def updateState(world, index, reward, terminal, starting, none):
+def updateState(world, index, reward, terminal, starting):
     '''
-    Updates the world  directory according to the applied changes in the GUI state information side panel.
+    Updates the world dictionary according to the applied changes in the GUI state information side panel.
     Takes the index to determine at what position in the diretory the changes have to be made.
 
     | **Args**
-    | world: The gridworld  directory created using the  makeGridworld function
-    | index: The index of the state that is being edited
-    | reward: The reward value that will be used for the world directory
-    | terminal: Is true if the state will be of type terminal
-    | starting: Is true if the state willbe of type starting
-    | none: Is true if the state will be neither terminal nor starting
+    | world:                        The gridworld dictionary created using the  makeGridworld function
+    | index:                        The index of the state that is being edited
+    | reward:                       The reward value that will be used for the world directory
+    | terminal:                     Is true if the state will be of type terminal
+    | starting:                     Is true if the state willbe of type starting
     '''
-    #add new terminal state at position index to the directory
-    if terminal:
-        world["terminals"][index] = 1
-    #remove terminal state
-    elif not terminal:
-        world["terminals"][index] = 0
+    # update terminal status
+    world['terminals'][index] = int(terminal)
     #removes index from the starting state list
     if not starting:
-        world["startingStates"] = world["startingStates"][world["startingStates"] != index]
+        world['startingStates'] = world['startingStates'][world['startingStates'] != index]
     #add index as new starting state if it does not already exist
-    elif(starting and not(index in world["startingStates"])):
-        world["startingStates"] = np.append(world["startingStates"], index)
-    #add new reward to world.["rewards"]. change value for the state index
-    world["rewards"][index] = reward
+    elif starting and not(index in world['startingStates']):
+        world['startingStates'] = np.append(world['startingStates'], index)
+    # update reward value
+    world['rewards'][index] = reward
+
 
 class Settings():
     WORLD = dict()
@@ -109,328 +102,204 @@ class Settings():
     InvalidTransistions = []
     InvalidStates = []
     changed = False
-    file = ""
+    file = None
 
 
 class StartWindowPanel(QWidget):
     def __init__(self):
         QWidget.__init__(self)
         self.layout = QVBoxLayout()
-
-        # makes sure you can't type in strings etc.
-        validator = QIntValidator(0, 2147483647)
-        self.heightWidget = QLineEdit()
-        self.heightWidget.setText("Height/Rows(x)")
-        self.heightWidget.setValidator(validator)
-        self.widthWidget = QLineEdit()
-        self.widthWidget.setText("Width/Collumns(y)")
-        self.widthWidget.setValidator(validator)
-
-        self.radioLabel = QLabel("Set default state type:")
-        self.startingBtn = QRadioButton("Starting")
-        self.startingBtn.click()
-        self.noneBtn = QRadioButton("None")
-
-        self.layout.addWidget(self.heightWidget)
-        self.layout.addWidget(self.widthWidget)
-
-        self.b1 = QPushButton("Generate Gridworld")
-        self.b2 = QPushButton("Load Gridworld")
-        self.layout.addWidget(self.b1)
-        self.layout.addWidget(self.b2)
-        self.layout.addWidget(self.radioLabel)
-        self.layout.addWidget(self.startingBtn)
-        self.layout.addWidget(self.noneBtn)
+        # set up height and width input fields
+        self.validator = QIntValidator(0, 2147483647)
+        self.field_height = QLineEdit()
+        self.field_height.setText('Height/Rows(x)')
+        self.field_height.setValidator(self.validator)
+        self.field_width = QLineEdit()
+        self.field_width.setText('Width/Collumns(y)')
+        self.field_width.setValidator(self.validator)
+        # prepare starting state setting selection
+        self.label_state_type = QLabel('Set default state type:')
+        self.radio_button_start = QRadioButton('Starting')
+        self.radio_button_start.click()
+        self.radio_button_none = QRadioButton('None')
+        # prepare buttons for gridworld loading/generation
+        self.button_generate = QPushButton('Generate Gridworld')
+        self.button_load = QPushButton('Load Gridworld')
+        # add elements to panel
+        self.layout.addWidget(self.field_height)
+        self.layout.addWidget(self.field_width)
+        self.layout.addWidget(self.button_generate)
+        self.layout.addWidget(self.button_load)
+        self.layout.addWidget(self.label_state_type)
+        self.layout.addWidget(self.radio_button_start)
+        self.layout.addWidget(self.radio_button_none)
         self.setLayout(self.layout)
 
 
 class StartWindow(QMainWindow):
+    
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         QMainWindow.__init__(self)
-        
-        self.setWindowTitle("Start")
-        self.StartWidget = StartWindowPanel()
-        self.setCentralWidget(self.StartWidget)
-        self.StartWidget.b1.clicked.connect(self.clickedGenerate)
-        self.StartWidget.b2.clicked.connect(self.clickedLoad)
+        self.setWindowTitle('Start')
+        self.start_widget = StartWindowPanel()
+        self.setCentralWidget(self.start_widget)
+        self.start_widget.button_generate.clicked.connect(self.clicked_generate)
+        self.start_widget.button_load.clicked.connect(self.clicked_load)
         self.resize(250, 200)
 
-    def clickedGenerate(self):
+    def clicked_generate(self):
         '''
-        This function takes the properties set by the user and
-        generates the gridworld accordingly
+        This function takes the properties set by the user and generates the gridworld accordingly.
         '''
-        # if statement to check if QLineEdits are positive
-        width = self.StartWidget.widthWidget.text()
-        height = self.StartWidget.heightWidget.text()
         # if statement makes sure you can't start with the inital text in the input fields
-        if (width.isnumeric() and height.isnumeric()):
-            # set width height from input
-            self.StartWidget.height = self.StartWidget.heightWidget.text()
-            self.StartWidget.width = self.StartWidget.widthWidget.text()
-            # set starting or none starting by default
-            # starting = self.startWidget.startingBtn.isChecked()
-            starting = self.StartWidget.startingBtn.isChecked()
+        if (self.start_widget.field_width.text().isnumeric() and self.start_widget.field_height.text().isnumeric()):
             # console test text
-            print(self.StartWidget.height + " x " + self.StartWidget.width)
-            # create gridworld from gridworld_tools.py
-            Settings.WORLD = gridTools.makeEmptyField(int(height), int(width))
-            if not starting:
-                Settings.WORLD["startingStates"] = np.empty(0)
-
+            print(self.start_widget.field_height.text(), 'x', self.start_widget.field_width.text())
+            # create gridworld
+            Settings.WORLD = gridTools.makeEmptyField(int(self.start_widget.field_height.text()),
+                                                      int(self.start_widget.field_width.text()))
+            if not self.start_widget.radio_button_start.isChecked():
+                Settings.WORLD['startingStates'] = np.array([]).astype(int)
             # open main window, close this window
-            self.b = MainWindow()
-            self.b.show()
+            self.main_window = MainWindow()
+            self.main_window.show()
             self.close()
         else:
             print("please enter width and height values")
 
-    def clickedLoad(self):
+    def clicked_load(self):
         '''
-        This function lets the user open a *.pkl file to load a
-        previously saved gridworld.
+        This function lets the user open a *.pkl file to load a previously saved gridworld.
         '''
-        print("LOAD")
-        fname = QFileDialog.getOpenFileName(self, 'Open file',
-                                            'c:\\', "Pickle files (*.pkl)")
-        fname = fname[0]
-        print(fname)
-        if fname != "":
+        file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', 'Pickle files (*.pkl)')[0]
+        print('Try loading file: ', file_name)
+        try:
             Settings.changed = False
-            Settings.file = fname
-            Settings.WORLD = pickle.load(open(fname, 'rb'))
-
-            Settings.InvalidTransistions = Settings.WORLD["invalidTransitions"]
-            Settings.InvalidStates = Settings.WORLD["invalidStates"]
-            self.b = MainWindow()
-            self.b.show()
+            Settings.file = file_name
+            Settings.WORLD = pickle.load(open(file_name, 'rb'))
+            Settings.InvalidTransistions = Settings.WORLD['invalidTransitions']
+            Settings.InvalidStates = Settings.WORLD['invalidStates']
+            self.main_window = MainWindow()
+            self.main_window.show()
             self.close()
-            print("LOAD SUCCESS")
-        else:
-            print("LOAD FAIL")
+            print('Successfully load file: ', file_name)
+        except:
+            print('Couldn\'t load file.')
 
 
 class Line(QtWidgets.QGraphicsLineItem):
+    '''
+    An extended version of the standard QGraphicsLineItem which
+    toggles the line color between gray and red on double click.
+    
+    | **Args**
+    | x1:                           X-Coordinate of first point of line
+    | y1:                           Y-Coordinate of first point of line
+    | x2:                           X-Coordinate of last point of line
+    | y2:                           Y-Coordinate of last point of line
+    | pen:                          The pen, that draws the line
+    '''
     def __init__(self, x1, y1, x2, y2, pen):
-        '''
-            An extended verion of the standard QGraphicsLineItem, to provide the on-click ability to change borders to invalid and turn
-            red
-            | **Args**
-            | x1: X-Coordinate of first point of line
-            | y1: Y-Coordinate of first point of line
-            | x2: X-Coordinate of last point of line
-            | y2: Y-Coordinate of last point of line
-            | pen: The pen, that draws the line
-        '''
         super(Line, self).__init__()
         self.setLine(x1, y1, x2, y2)
         self.setPen(pen)
-        self.changed = False
-        # Orientation vertical if false and horizontal if true
-        self.orientation = False if x1 == x2 else True
-        #Used to save position of item in array in order to pop them when they are no longer invalid
-        self.indexList1 = 0
-        self.indexList2 = 0
-        # Saves the indexes of the adjacent states of the border
-        self.index1 = 0
-        self.index2 = 0
-
-        if (self.orientation == False):
-            coordX_left = y1 // Settings.HEIGHT
+        self.highlighted = False
+        # determine the transition associated with this line
+        self.transition = (0, 0)
+        # vertical line
+        if x1 == x2:
+            coordX = y1 // Settings.HEIGHT
             coordY_left = (x1 - Settings.BORDER_WIDTH) // Settings.WIDTH
-            coordX_right = y1 // Settings.HEIGHT
             coordY_right = (x1 + Settings.BORDER_WIDTH) // Settings.WIDTH
-            # calc index
-            self.index1 = int((coordX_left * Settings.WORLD['width']) + coordY_left)
-            self.index2 = int((coordX_right * Settings.WORLD['width']) + coordY_right)
+            self.transition = (int((coordX * Settings.WORLD['width']) + coordY_left),
+                               int((coordX * Settings.WORLD['width']) + coordY_right))
+        # horizontal line
         else:
             coordX_up = (y1 - Settings.BORDER_WIDTH) // Settings.HEIGHT
-            coordY_up = x1 // Settings.WIDTH
             coordX_down = (y1 + Settings.BORDER_WIDTH) // Settings.HEIGHT
-            coordY_down = x1 // Settings.WIDTH
-            # calc index
-            self.index1 = int((coordX_up * Settings.WORLD['width']) + coordY_up)
-            self.index2 = int((coordX_down * Settings.WORLD['width']) + coordY_down)
-
-    def highlight(self):
-        '''
-        This function highlights a line in red
-        '''
-        penThick = QPen(Qt.red, Settings.BORDER_WIDTH)
-        self.setPen(penThick)
-        self.changed = True
-
-    def unhighlight(self):
-        '''
-        This function turns a red line back to being a whiteline
-        '''
-        penThick = QPen(Qt.gray, Settings.BORDER_WIDTH)
-        self.setPen(penThick)
-        self.changed = False
-
-    def checkInvalidState(self, index):
-        '''
-        This functions checks if a state is no longer reachable by the virtual agent, because all possible transistion have turned invalid
-        This only works for deterministic gridworlds
-        | **Args**
-        | index: Index of the state which is checked
-        '''
-        #Depending on the position of a state it can become unreachable after a certain number of transistions have turned invalid- e.g 2 each corner state
-        counter = 0
-        # For each possible action it is checked, whether the next state is still reachable and if not the counter increases
-        for action in range(4):
-            h = int(index / Settings.WORLD['width'])
-            w = index - h * Settings.WORLD['width']
-            # left
-            if action == 0:
-                w = max(0, w - 1)
-            # up
-            elif action == 1:
-                h = max(0, h - 1)
-            # right
-            elif action == 2:
-                w = min(Settings.WORLD['width'] - 1, w + 1)
-            # down
-            else:
-                h = min(Settings.WORLD['height'] - 1, h + 1)
-            nextState = int(h * Settings.WORLD['width'] + w)
-            if (index, nextState) in Settings.InvalidTransistions:
-                counter += 1
-
-        # If a state reaches a specific counter number it can no longer be reached and gets added to the invalidStates
-
-        if (index == 0 or index == Settings.WORLD["width"] - 1 or index == Settings.WORLD["states"] - 1 or index ==
-                Settings.WORLD["states"] - Settings.WORLD["width"]):
-            if (counter >= 2):
-                Settings.InvalidStates.append(index)
-                print("Invalid", index)
-        elif (0 == index % Settings.WORLD["width"] or 4 == index % Settings.WORLD["width"]):
-            if (counter >= 3):
-                Settings.InvalidStates.append(index)
-                print("Invalid", index)
-        elif (index > 0 and index < Settings.WORLD["width"]) or (
-                index > Settings.WORLD["states"] - Settings.WORLD["width"] and index < index == Settings.WORLD[
-            "states"] - 1):
-            if (counter >= 3):
-                Settings.InvalidStates.append(index)
-                print("Invalid", index)
-        else:
-            if (counter >= 4):
-                Settings.InvalidStates.append(index)
-                print("Invalid", index)
-
+            coordY = x1 // Settings.WIDTH
+            self.transition = (int((coordX_up * Settings.WORLD['width']) + coordY),
+                               int((coordX_down * Settings.WORLD['width']) + coordY))
+            
     def mousePressEvent(self, event):
         '''
         This function checks if a border  has been double clicked. Un/highlights the border  and
         edits the WORLD dict accordingly
 
         | **Args**
-        | event: The mouse press event
+        | event:                    The mouse press event.
         '''
         Settings.changed = True
-        if (self.changed == False):
-            self.highlight()
-            #Adds the now invalid transision double to the InvalidTransistions-array, which is later fed to the update function
-            Settings.InvalidTransistions.append((self.index1, self.index2))
-            Settings.InvalidTransistions.append((self.index2, self.index1))
-            #Checks if a state has become invalid
-            self.checkInvalidState(self.index1)
-            self.checkInvalidState(self.index2)
-            #Updates the dictionary
-            #gridTools.updateTransitions(Settings.WORLD, Settings.InvalidStates, Settings.InvalidTransistions)
-            updateTransitions(Settings.WORLD, Settings.InvalidStates, Settings.InvalidTransistions)
+        if not self.highlighted:
+            self.setPen(QPen(Qt.red, Settings.BORDER_WIDTH))
+            # add invalid transitions
+            Settings.InvalidTransistions.append(self.transition)
+            Settings.InvalidTransistions.append(self.transition[::-1])
         else:
-            self.unhighlight()
-            #Gets the position of the (index1, index2) double to remove it from array
-            self.indexList1 = Settings.InvalidTransistions.index((self.index1, self.index2))
-            Settings.InvalidTransistions.pop(self.indexList1)
-            #Gets the position of the (index2, index1) double to remove it from array
-            self.indexList2 = Settings.InvalidTransistions.index((self.index2, self.index1))
-            Settings.InvalidTransistions.pop(self.indexList2)
-            #If a state is also invald reomves it from the InvalidStates array
-            if (self.index1 in Settings.InvalidStates):
-                indexRemove = Settings.InvalidStates.index(self.index1)
-                Settings.InvalidStates.pop(indexRemove)
-            if (self.index2 in Settings.InvalidStates):
-                indexRemove = Settings.InvalidStates.index(self.index2)
-                Settings.InvalidStates.pop(indexRemove)
-
-            #gridTools.updateTransitions(Settings.WORLD, Settings.InvalidStates, Settings.InvalidTransistions)
-            updateTransitions(Settings.WORLD, Settings.InvalidStates, Settings.InvalidTransistions)
-
+            self.setPen(QPen(Qt.gray, Settings.BORDER_WIDTH))
+            # remove invalid transitions
+            Settings.InvalidTransistions.pop(Settings.InvalidTransistions.index(self.transition))
+            Settings.InvalidTransistions.pop(Settings.InvalidTransistions.index(self.transition[::-1]))
+        # update the gridworld dictionary
+        updateTransitions(Settings.WORLD, Settings.InvalidStates, Settings.InvalidTransistions)
+        self.highlighted = not self.highlighted
+        
 
 class Grid(QGraphicsScene):
+    '''
+    This class represents the grid of the gridworld.
+    '''
     def __init__(self, parent=None):
         super().__init__(parent)
         QGraphicsView.__init__(self)
         self.parent = parent
-
         self.lines = []
         self.highlight = None
-
         self.height = Settings.WORLD['height'] * Settings.HEIGHT
         self.width = Settings.WORLD['width'] * Settings.WIDTH
-
-
         self.pen = QPen(QColor(125, 175, 240, 125), 0)
         self.brush = QBrush(QColor(125, 175, 240, 125))
-
         self.draw_grid()
-
-        # self.terminalsSymbols = []
-        # self.startingsSymbols = []
-        # self.terminalsSymbols = np.zeros(Settings.WORLD['states'])
-        # self.startingsSymbols = np.zeros(Settings.WORLD['states'])
-        self.terminalsSymbols = np.empty((Settings.WORLD["states"], 1), QGraphicsScene)
-        self.startingsSymbols = np.empty((Settings.WORLD["states"], 1), QGraphicsScene)
-        # call once at creation
-        # self.highlight_terminal_starting(self.terminalsSymbols, self.startingsSymbols)
+        self.symbols_terminal = np.empty((Settings.WORLD['states'], 1), QGraphicsScene)
+        self.symbols_starting = np.empty((Settings.WORLD['states'], 1), QGraphicsScene)
 
     def draw_grid(self):
         '''
         This function draws the grid.
         '''
-        pen = QPen(Qt.gray, Settings.BORDER_WIDTH)
-        pen2 = QPen(Qt.black, Settings.BORDER_WIDTH)
-
-        # Lines parallel to GUI x-axis(vertical)
-        for x in range(1, Settings.WORLD['width']):
-            xc = x * Settings.WIDTH
-            for y in range(0, Settings.WORLD['height']):
-                yc = y * Settings.HEIGHT
-
-                d = yc + Settings.HEIGHT
-
-                line = Line(xc, yc, xc, d, pen)
-                if (line.index1, line.index2) in Settings.WORLD['invalidTransitions']:
+        pen_lines = QPen(Qt.gray, Settings.BORDER_WIDTH)
+        pen_border = QPen(Qt.black, Settings.BORDER_WIDTH)
+        # lines parallel to GUI x-axis (vertical)
+        for column in range(1, Settings.WORLD['width']):
+            x = column * Settings.WIDTH
+            for row in range(0, Settings.WORLD['height']):
+                y = row * Settings.HEIGHT
+                line = Line(x, y, x, y + Settings.HEIGHT, pen_lines)
+                if line.transition in Settings.WORLD['invalidTransitions']:
                     line.highlight()
-
                 self.lines.append(self.addItem(line))
-        # Lines parallel to GUI y-axis(horizontal)
-        for y in range(1, Settings.WORLD['height']):
-            yc = y * Settings.HEIGHT
-            for x in range(0, Settings.WORLD['width']):
-                xc = x * Settings.WIDTH
-                c = xc + Settings.WIDTH
-                line = Line(xc, yc, c, yc, pen)
-                if (line.index1, line.index2) in Settings.WORLD['invalidTransitions']:
+        # lines parallel to GUI y-axis (horizontal)
+        for row in range(1, Settings.WORLD['height']):
+            y = row * Settings.HEIGHT
+            for column in range(0, Settings.WORLD['width']):
+                x = column * Settings.WIDTH
+                line = Line(x, y, x + Settings.WIDTH, y, pen_lines)
+                if line.transition in Settings.WORLD['invalidTransitions']:
                     line.highlight()
-
                 self.lines.append(self.addItem(line))
-
         # Outer border
-        self.lines.append(self.addLine(0, 0, self.width, 0, pen2))
-        self.lines.append(self.addLine(0, 0, 0, self.height, pen2))
-        self.lines.append(self.addLine(0, self.height, self.width, self.height, pen2))
-        self.lines.append(self.addLine(self.width, 0, self.width, self.height, pen2))
+        self.lines.append(self.addLine(0, 0, self.width, 0, pen_border))
+        self.lines.append(self.addLine(0, 0, 0, self.height, pen_border))
+        self.lines.append(self.addLine(0, self.height, self.width, self.height, pen_border))
+        self.lines.append(self.addLine(self.width, 0, self.width, self.height, pen_border))
 
     def set_visible(self, visible=True):
         '''
-        Sets the grid visible/invisible
+        Sets the grid visible/invisible.
 
         | **Args**
-        | visible: Boolean, whether the grid s visible or not
+        | visible:                  Boolean, whether the grid is visible or not.
         '''
         for line in self.lines:
             line.setVisible(visible)
@@ -445,138 +314,115 @@ class Grid(QGraphicsScene):
 
     def set_opacity(self, opacity):
         '''
-        This function sets the opacity for the lines
+        This function sets the opacity of the lines.
 
         | **Args**
-        | opacity: The opacity the lines will have
+        | opacity:                  The opacity the lines will have.
         '''
         for line in self.lines:
             line.setOpacity(opacity)
 
     def highlight_state(self, x, y):
         '''
-        This function highlights a state with a blue square
+        This function highlights a state with a blue square.
 
         | **Args**
-        | x: State's x-coordinate
-        | y: State's y-coordinate
+        | x:                        State's x-coordinate.
+        | y:                        State's y-coordinate.
 
         '''
-        xc = x * Settings.HEIGHT + Settings.BORDER_WIDTH / 2
-        yc = y * Settings.WIDTH + Settings.BORDER_WIDTH / 2
-
-        brd_Wdth = Settings.BORDER_WIDTH
-
         # removes pieces old highlight
         self.removeItem(self.highlight)
-        self.highlight = self.addRect(yc, xc,
-                                      Settings.WIDTH - brd_Wdth,
-                                      Settings.HEIGHT - brd_Wdth,
+        self.highlight = self.addRect(y * Settings.WIDTH + Settings.BORDER_WIDTH / 2,
+                                      x * Settings.HEIGHT + Settings.BORDER_WIDTH / 2,
+                                      Settings.WIDTH - Settings.BORDER_WIDTH,
+                                      Settings.HEIGHT - Settings.BORDER_WIDTH,
                                       self.pen, self.brush)
         # removes artefacts of old highlights
         self.update()
 
     def highlight_terminal_starting(self, terminals, startings):
         '''
-        This function highlights the states according to theterminal and
-        starting state list in the  WORLD directory
+        This function highlights the states according to thet erminal and
+        starting state list in the world dictionary.
 
         | **Args**
-        | terminals: The terminal state list in the WORLD dict
-        | startings: The starting state  list in the WOLRD dict
+        | terminals:                The terminal state list in the WORLD dict.
+        | startings:                The starting state  list in the WOLRD dict.
         '''
-        #print("test highlight terminal starting")
         # delete all symbols created before and then empty the array
-        for index in range(len(self.terminalsSymbols)):
-            self.removeItem(self.terminalsSymbols[int(index), 0])
-        # self.terminalsSymbols = np.array([])
-
-        for index in range(len(self.startingsSymbols)):
-            self.removeItem(self.startingsSymbols[int(index), 0])
-        # self.startingsSymbols = np.array([])
+        for index in range(len(self.symbols_terminal)):
+            self.removeItem(self.symbols_terminal[int(index), 0])
+        for index in range(len(self.symbols_starting)):
+            self.removeItem(self.symbols_starting[int(index), 0])
         # create symbol at position x,y for all terminals and startings
-        for index in range(len(terminals)):
-            if terminals[index] == 1:
-                # calc x,y position
-                y = (index // Settings.WORLD["width"]) * Settings.WIDTH
-                x = (index % Settings.WORLD["width"]) * Settings.HEIGHT
-                # place X at position (x,y)
-                self.terminalsSymbols[int(index), 0] = self.addText("X")
-                self.terminalsSymbols[int(index), 0].setPos(x, y)
+        for index in np.arange(terminals.shape[0])[terminals == 1]:
+            # calculate position
+            y = (index // Settings.WORLD['width']) * Settings.WIDTH
+            x = (index % Settings.WORLD['width']) * Settings.HEIGHT
+            # place X at position (x,y)
+            self.symbols_terminal[int(index), 0] = self.addText('X')
+            self.symbols_terminal[int(index), 0].setPos(x, y)
         for index in startings:
-            # print("q" + str(index))
-            # calc x,5 position
-            y = (index // Settings.WORLD["width"]) * Settings.WIDTH
-            x = (index % Settings.WORLD["width"]) * Settings.HEIGHT
-            # print(str(x) + " xx " + str(y))
+            # calculate position
+            y = (index // Settings.WORLD['width']) * Settings.WIDTH
+            x = (index % Settings.WORLD['width']) * Settings.HEIGHT
             # place S at position (x,y)
-            self.startingsSymbols[int(index), 0] = self.addText("S")
-            self.startingsSymbols[int(index), 0].setPos(x, y)
-            # print(str(self.startingsSymbols))
+            self.symbols_starting[int(index), 0] = self.addText('S')
+            self.symbols_starting[int(index), 0].setPos(x, y)
         self.update()
 
     def mousePressEvent(self, event):
         '''
-        This function determines which state or if a border has been clicked on
+        This function determines which state or if a border has been clicked on.
         
         | **Args**
         | event:                       The triggering event.
         '''
-        
         # Gets mouse position within scene
-        posX = event.scenePos().x()
-        posY = event.scenePos().y()
-
+        posX, posY = event.scenePos().x(), event.scenePos().y()
         # check if mouse within scene at all
         if posX >= 0 and posY >= 0 and posX <= self.width and posY <= self.height:
-            absText = "a: " + str(posX) + " " + str(posY)
-
             # check if mouse position is on border (rel = relative pos in state)
             relX = (posX + Settings.BORDER_WIDTH / 2) % Settings.WIDTH
             relY = (posY + Settings.BORDER_WIDTH / 2) % Settings.HEIGHT
-
-            if relX <= Settings.BORDER_WIDTH + 0.5 or relY <= Settings.BORDER_WIDTH + 0.5:
-                relText = "r: " + str(relX) + " " + str(relY)
-                text = "Border: " + absText + " -> " + relText
-                #print(text)
-            else:
+            if relX > Settings.BORDER_WIDTH + 0.5 and relY > Settings.BORDER_WIDTH + 0.5:
                 # translate to coordinate
-                coordX = int(posY // Settings.HEIGHT)
-                coordY = int(posX // Settings.WIDTH)
+                coordX, coordY = int(posY // Settings.HEIGHT), int(posX // Settings.WIDTH)
                 # calc index
-                index = (coordX * Settings.WORLD['width']) + coordY
+                index = coordX * Settings.WORLD['width'] + coordY
                 # Console output of state coordinates
-                coordText = "(" + str(coordX) + "," + str(coordY) + ")"
-                text = "State: " + absText + " -> c: " + coordText
-                #print(text)
-
+                coordText = '(' + str(coordX) + ',' + str(coordY) + ')'
                 # highlight current state
                 self.highlight_state(coordX, coordY)
-
                 # update state info
-                self.parent.changeStateInfo(coordText, index)
+                self.parent.change_state_information(coordText, index)
 
 
 class GridViewer(QGraphicsView):
+    '''
+    The grid view class.
+    
+    | **Args**
+    | scene:                        The grid scene.
+    | parent:                       The parent window.
+    '''
     def __init__(self, scene, parent=None):
         super().__init__(parent)
         self.scene = scene
         self.setScene(self.scene)
         self.parent = parent
         self.setSceneRect(self.sceneRect())
-        
         # Zoom counter and maximum zoom count
         self.zoom = 0
-        self.maxZoom = 0
-
+        self.max_zoom = 0
         self.setTransformationAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
         self.setResizeAnchor(QtWidgets.QGraphicsView.AnchorUnderMouse)
         self.setFrameShape(QtWidgets.QFrame.NoFrame)
-        
 
     def wheelEvent(self, event):
         '''
-        This function scales the view depending on the wheel event
+        This function scales the view depending on the wheel event.
         
         | **Args**
         | event:                       The triggering event.
@@ -588,94 +434,89 @@ class GridViewer(QGraphicsView):
         else:
             factor = 4/5
             self.zoom -= 1
-
-        if self.zoom > 0 and self.zoom <= self.maxZoom:
+        # clip zoom level within valid range
+        self.zoom = np.clip(self.zoom, 0, self.max_zoom + 1)
+        # change scale
+        if self.zoom > 0 and self.zoom <= self.max_zoom:
             self.scale(factor, factor)
         elif self.zoom == 0:
-            # fits scene in view on maximum zoom out
+            # fit scene in view on maximum zoom out
             self.fitInView(self.scene.itemsBoundingRect(),Qt.KeepAspectRatio)
-        elif self.zoom >= self.maxZoom:
-            # limits zooming in
-            self.zoom = self.maxZoom
-        else:
-            self.zoom = 0
         
         self.scene.update()
             
     def showEvent(self, event):
         '''
-        This function fits the scene in view as soon as the view is shown
+        This function fits the scene in view as soon as the view is shown.
         
         | **Args**
         | event:                       The triggering event.
         '''
         super().showEvent(event)
         self.fitInView(self.scene.itemsBoundingRect(),Qt.KeepAspectRatio)
-        
         # Determines maximum zoom count so you cannot zoom further when one
         # state fits the view
         maxFactor = max(self.scene.itemsBoundingRect().width() /self.viewport().rect().width(),
                         self.scene.itemsBoundingRect().height() / self.viewport().rect().height())
         maxFactor *= min(self.viewport().rect().width()/Settings.WIDTH,
                          self.viewport().rect().height()/Settings.HEIGHT)
-        
         if maxFactor > 1:
-            self.maxZoom = math.floor(math.log(maxFactor,5/4))
+            self.max_zoom = math.floor(math.log(maxFactor, 5/4))
+
 
 class StateInformation(QWidget):
+    '''
+    The state information class.
+    
+    | **Args**
+    | parent:                       The parent window.
+    '''
     def __init__(self, parent=None):
         super(StateInformation, self).__init__(parent=parent)
         # WIDGETS
         # State Information
         heading = QLabel()
-        heading.setText("STATE INFORMATION")
+        heading.setText('STATE INFORMATION')
         # Index
-        self.index = QLabel()
-        self.indexValue = 0
+        self.label_index = QLabel()
+        self.index = 0
         # Coordinates
-        self.coordinates = QLabel()
+        self.label_coordinates = QLabel()
         # Reward
-        validator = QIntValidator(0, 2147483647)
-        reward = QLabel()
-        reward.setText("Reward:")
-        self.rewardValue = QLineEdit()
-        self.rewardValue.setText("0")
-        self.rewardValue.setValidator(validator)
-        # self.actualValue = 0
-        rewardLine = QHBoxLayout()
-        rewardLine.addWidget(reward)
-        rewardLine.addWidget(self.rewardValue)
+        self.label_reward = QLabel()
+        self.label_reward.setText('Reward:')
+        self.field_reward = QLineEdit()
+        self.field_reward.setText('0')
+        self.line_reward = QHBoxLayout()
+        self.line_reward.addWidget(self.label_reward)
+        self.line_reward.addWidget(self.field_reward)
         # Radio Button, Starting, Terminal, Goal
-        radioLabel = QLabel("Set state type:")
-        self.terminalBtn = QRadioButton("Terminal")
-        self.startBtn = QRadioButton("Starting")
-        self.noneBtn = QRadioButton("None")
+        self.label_state_type = QLabel('Set state type:')
+        self.radio_button_terminal = QRadioButton('Terminal')
+        self.radio_button_start = QRadioButton('Starting')
+        self.radio_button_none = QRadioButton('None')
         # Apply Button
-        self.applyBtn = QPushButton()
-        self.applyBtn.setText("Apply Changes")
-        self.applyBtn.clicked.connect(self.updateState)
-        # Extended Settings
-        self.extendedBtn = QPushButton()
-        self.extendedBtn.setText("Advanced Settings")
-        self.extendedBtn.clicked.connect(self.openAdvanced)
-
+        self.button_apply = QPushButton()
+        self.button_apply.setText('Apply Changes')
+        self.button_apply.clicked.connect(self.update_state)
+        # Advanced Settings
+        self.button_advanced = QPushButton()
+        self.button_advanced.setText('Advanced Settings')
+        self.button_advanced.clicked.connect(self.open_advanced)
         # Layout
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(heading)
+        self.layout().addWidget(self.label_index)
+        self.layout().addWidget(self.label_coordinates)
+        self.layout().addLayout(self.line_reward)
+        self.layout().addWidget(self.label_state_type)
+        self.layout().addWidget(self.radio_button_terminal)
+        self.layout().addWidget(self.radio_button_start)
+        self.layout().addWidget(self.radio_button_none)
+        self.layout().addWidget((self.button_advanced))
+        self.layout().addWidget(self.button_apply)
 
-        layout.addWidget(heading)
-        layout.addWidget(self.index)
-        layout.addWidget(self.coordinates)
-        self.layout().addLayout(rewardLine)
-        layout.addWidget(radioLabel)
-        layout.addWidget(self.terminalBtn)
-        layout.addWidget(self.startBtn)
-        layout.addWidget(self.noneBtn)
-
-        layout.addWidget((self.extendedBtn))
-        layout.addWidget(self.applyBtn)
-
-    def changeStateInfo(self, textCoord, index):
+    def change_state_information(self, text_coordinates, index):
         '''
         this function is used  to  update the state information panel
         text according to the selected state.
@@ -684,46 +525,36 @@ class StateInformation(QWidget):
         | textCoord: The  states coordinates
         | index: The states index
         '''
-        self.index.setText("Index: " + str(int(index)))
-        self.indexValue = index
-        self.coordinates.setText("Coordinates: " + textCoord)
-        self.rewardValue.setText(str(int(Settings.WORLD["rewards"][int(index)])))
-
-        if (Settings.WORLD["terminals"][int(index)] == 1):
-            self.terminalBtn.click()
-            print("terminal state")
-        elif index in Settings.WORLD["startingStates"]:
-            self.startBtn.click()
+        self.label_index.setText('Index: ' + str(int(index)))
+        self.index = int(index)
+        self.label_coordinates.setText('Coordinates: ' + text_coordinates)
+        self.field_reward.setText(str(float(Settings.WORLD['rewards'][int(index)])))
+        if Settings.WORLD['terminals'][int(index)]:
+            self.radio_button_start.click()
+        elif index in Settings.WORLD['startingStates']:
+            self.radio_button_start.click()
         else:
-            self.noneBtn.click()
+            self.radio_button_none.click()
 
-    def updateState(self):
+    def update_state(self):
         '''
         This function is used to update the selected states properties inside
-        the WORLD directory.
+        the WORLD dictionary.
         '''
         Settings.changed = True
+        updateState(Settings.WORLD, int(self.index), float(self.field_reward.text()),
+                    self.radio_button_terminal.isChecked(), self.radio_button_start.isChecked())
+        self.parent().parent().highlight_terminal_starting(Settings.WORLD["terminals"],
+                                                           Settings.WORLD["startingStates"])
 
-        rValue = int(self.rewardValue.text())
-        # checks that the  reward value is a positive number
-        if (rValue >= 0 and rValue <= 2147483647):
-            #gridworld_tools.updateState(Settings.WORLD, int(self.indexValue), rValue, self.terminalBtn.isChecked(),
-            #                            self.startBtn.isChecked(), self.noneBtn.isChecked())
-            updateState(Settings.WORLD, int(self.indexValue), rValue, self.terminalBtn.isChecked(),
-                                        self.startBtn.isChecked(), self.noneBtn.isChecked())
-            # updates state visualization
-            self.parent().parent().highlight_terminal_starting(Settings.WORLD["terminals"],
-                                                               Settings.WORLD["startingStates"])
-        else:
-            print("Please enter a positive number for reward")
+    def open_advanced(self):
+        '''
+        This function opens the advanced settings menu.
+        '''
+        Settings.index = int(self.index)
+        self.advanced_settings = AdvancedSettingsWindow()
+        self.advanced_settings.show()
 
-    def openAdvanced(self):
-        '''
-        This function opens the advanced settings menu
-        '''
-        Settings.index = int(self.indexValue)
-        self.advWindow = AdvancedSettingsWindow()
-        self.advWindow.show()
 
 class AdvancedSettingsWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
@@ -731,102 +562,75 @@ class AdvancedSettingsWindow(QMainWindow):
         QMainWindow.__init__(self)
         self.setWindowTitle('Advanced Settings')
         self.resize(500, 500)
+        self.advanced_widget = AdvancedSettingsWidget()
+        self.setCentralWidget(self.advanced_widget)
 
-        self.advancedWidget = AdvancedSettingsWidget()
-        self.setCentralWidget(self.advancedWidget)
 
 class AdvancedSettingsWidget(QWidget):
     '''
-    The Widget, that handles the table for the transition probabilities
+    The Widget, that handles the table for the transition probabilities.
     '''
     def __init__(self):
         QWidget.__init__(self)
-        #The table with 4 columns and as many roows as there are states
-        self.tableWidget = QTableWidget(Settings.WORLD["states"], 4, self)
-        self.tableWidget.setHorizontalHeaderLabels([str(i) for i in range(self.tableWidget.columnCount())])
-        self.tableWidget.setVerticalHeaderLabels([str(i) for i in range(self.tableWidget.rowCount())])
-        self.rows = self.tableWidget.rowCount()
-        self.columns = self.tableWidget.columnCount()
-        #This fills the table with QLineEdits, which are filled with the data from the ["sas"] array
-        for column in range(self.columns):
-            for row in range(self.rows):
-                print("1")
-                item = float(Settings.WORLD["sas"][int(Settings.index)][column][row])
-
+        # The table with 4 columns and as many roows as there are states
+        self.table_widget = QTableWidget(Settings.WORLD['states'], 4, self)
+        self.table_widget.setHorizontalHeaderLabels([str(i) for i in range(self.table_widget.columnCount())])
+        self.table_widget.setVerticalHeaderLabels([str(i) for i in range(self.table_widget.rowCount())])
+        # This fills the table with QLineEdits, which are filled with the data from the ["sas"] array
+        for column in range(self.table_widget.columnCount()):
+            for row in range(self.table_widget.rowCount()):
                 cellValue = QLineEdit()
-                cellValue.setText(str(item))
-                print("2")
-                validator = QDoubleValidator(0.0, 1.0, 2)
-
+                cellValue.setText(str(float(Settings.WORLD['sas'][int(Settings.index)][column][row])))
                 cellValue.setFrame(False)
-                cellValue.setValidator(validator)
-                self.tableWidget.setCellWidget(row, column, cellValue)
-
-        #Save Button
-        saveBtn = QPushButton()
-        saveBtn.setText("Save Changes")
-        saveBtn.clicked.connect(self.saveChanges)
-        #Layout
+                self.table_widget.setCellWidget(row, column, cellValue)
+        # make save button
+        button_apply = QPushButton()
+        button_apply.setText('Apply Changes')
+        button_apply.clicked.connect(self.apply_changes)
+        # set layout
         self.layout = QVBoxLayout()
         self.setLayout(self.layout)
-        self.layout.addWidget(self.tableWidget)
-        self.layout.addWidget(saveBtn)
+        self.layout.addWidget(self.table_widget)
+        self.layout.addWidget(button_apply)
 
-    def saveChanges(self):
+    def apply_changes(self):
         '''
-        This function closes the advanced settings window and saves the changes made
+        This function closes the advanced settings window and applies the changes made.
         '''
         #Array to save the changed transition probabilities and check if the entered data is valid - smaller than 1
-        probabilityChanges = np.zeros((4, Settings.WORLD["states"]))
-        for column in range(self.columns):
-            for row in range(self.rows):
-                probabilityChanges[column][row] = float(self.tableWidget.cellWidget(row, column).text())
-
-        savable = False
-        # Checks if the entered data for each columns does not exceed 1
-        count = 0
-        for column in range(self.columns):
-            if (count > 1):
-                print("Your probabilities exceed 100%")
-                savable = False
-                break
-            else:
-                savable = True
-            count = 0
-            for row in range(self.rows):
-                count += probabilityChanges[column][row]
-
-        if (savable == True):
-            #gridworld_tools.updateProbability(Settings.WORLD, Settings.index, probabilityChanges)
-            updateProbability(Settings.WORLD, Settings.index, probabilityChanges)
-            self.parent().close()
+        transition_probabilities = np.zeros((4, Settings.WORLD['states']))
+        for column in range(self.table_widget.columnCount()):
+            for row in range(self.table_widget.rowCount()):
+                transition_probabilities[column][row] = float(self.table_widget.cellWidget(row, column).text())
+        # ensure that probabilities sum to one
+        transition_probabilities /= np.sum(transition_probabilities, axis=1).reshape((4, 1))
+        updateProbability(Settings.WORLD, Settings.index, transition_probabilities)
+        self.parent().close()
 
 
 class CentralPanel(QWidget):
+    '''
+    The Widget, that handles the two main widgets (grid and state information).
+    '''
     def __init__(self):
         QWidget.__init__(self)
-
         # Grid and View
-        self.scene1 = Grid(self)
-        self.view = GridViewer(self.scene1, self)
-
-        self.scene1.highlight_terminal_starting(Settings.WORLD["terminals"], Settings.WORLD["startingStates"])
+        self.scene = Grid(self)
+        self.view = GridViewer(self.scene, self)
+        self.scene.highlight_terminal_starting(Settings.WORLD["terminals"], Settings.WORLD["startingStates"])
         # Sidebar
-        # self.lblState = QLabel('State-Info:')
-        self.stateMenu = StateInformation(self)
-
+        self.state_menu = StateInformation(self)
         # splitter
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.view)
-        splitter.addWidget(self.stateMenu)  # sidebar here
-        splitter.setStretchFactor(0, 10)
-
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.addWidget(self.view)
+        self.splitter.addWidget(self.state_menu)  # sidebar here
+        self.splitter.setStretchFactor(0, 10)
         # add splitter(Grid & InfoBar) to layout
-        mainLayout = QHBoxLayout()
-        mainLayout.addWidget(splitter)
-        self.setLayout(mainLayout)
+        self.main_layout = QHBoxLayout()
+        self.main_layout.addWidget(self.splitter)
+        self.setLayout(self.main_layout)
 
-    def changeStateInfo(self, textCoord, index):
+    def change_state_information(self, textCoord, index):
         '''
         Used to pass the fucntion to the children of Central Panel.
 
@@ -834,7 +638,7 @@ class CentralPanel(QWidget):
         | textCoord:  states coordinates
         | index: states index
         '''
-        self.stateMenu.changeStateInfo(textCoord, index)
+        self.state_menu.change_state_information(textCoord, index)
 
     def highlight_terminal_starting(self, terminals, startings):
         '''
@@ -844,20 +648,20 @@ class CentralPanel(QWidget):
         | terminals: worlds terminal states
         | startings: worlds starting states
         '''
-        self.scene1.highlight_terminal_starting(terminals, startings)
+        self.scene.highlight_terminal_starting(terminals, startings)
 
 
 class MainWindow(QMainWindow):
+    '''
+    This class implements the main window.
+    '''
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         QMainWindow.__init__(self)
         self.setWindowTitle('Gridworld Editor')
-
         self.create_MenuBar()
-
-        self.CenterPanel = CentralPanel()
-        self.setCentralWidget(self.CenterPanel)
-
+        self.central_panel = CentralPanel()
+        self.setCentralWidget(self.central_panel)
         # Window size
         self.resize(1000, 563)
 
@@ -866,149 +670,118 @@ class MainWindow(QMainWindow):
         This function creates the menu bar.
         '''
         # Define actions
-        actionNew = QAction('&New', self)
-        actionNew.setShortcut("Ctrl+N")
-        actionNew.triggered.connect(self.new)
-
-        actionOpen = QAction('&Open', self)
-        actionOpen.setShortcut("Ctrl+O")
-        actionOpen.triggered.connect(self.load)
-
-        actionSave = QAction('&Save', self)
-        actionSave.setShortcut("Ctrl+S")
-        actionSave.triggered.connect(self.saveCurrentFile)
-
-        actionSaveAs = QAction('&Save as', self)
-        actionSaveAs.setShortcut("Ctrl+Shift+S")
-        actionSaveAs.triggered.connect(self.saveAs)
-
-        actionQuit = QAction('&Quit', self)
-        actionQuit.setShortcut("Ctrl+Q")
-        actionQuit.triggered.connect(self.close)
-
-        actionInfo = QAction('&Info', self)
-        actionInfo.setShortcut("Ctrl+I")
-        actionInfo.triggered.connect(self.info)
-
+        # new
+        self.action_new = QAction('&New', self)
+        self.action_new.setShortcut("Ctrl+N")
+        self.action_new.triggered.connect(self.new)
+        # open
+        self.action_open = QAction('&Open', self)
+        self.action_open.setShortcut("Ctrl+O")
+        self.action_open.triggered.connect(self.load)
+        # save
+        self.action_save = QAction('&Save', self)
+        self.action_save.setShortcut("Ctrl+S")
+        self.action_save.triggered.connect(self.save)
+        # save as
+        self.action_save_as = QAction('&Save as', self)
+        self.action_save_as.setShortcut("Ctrl+Shift+S")
+        self.action_save_as.triggered.connect(self.save_as)
+        # quit
+        self.action_quit = QAction('&Quit', self)
+        self.action_quit.setShortcut("Ctrl+Q")
+        self.action_quit.triggered.connect(self.close)
+        # info
+        self.action_info = QAction('&Info', self)
+        self.action_info.setShortcut("Ctrl+I")
+        self.action_info.triggered.connect(self.info)
         # Create menuBar
-        self.MenuBar = self.menuBar()
+        self.menu_bar = self.menuBar()
         # Add menus to menuBar
-        fileMenu = self.MenuBar.addMenu('&File')
-
-        infoMenu = self.MenuBar.addMenu('&Info')
+        self.file_menu = self.menu_bar.addMenu('&File')
+        self.info_menu = self.menu_bar.addMenu('&Info')
         # Add actions to menu
-        fileMenu.addAction(actionNew)
-        fileMenu.addAction(actionOpen)
-        fileMenu.addAction(actionSave)
-        fileMenu.addAction(actionSaveAs)
-        fileMenu.addAction(actionQuit)
-
-        infoMenu.addAction(actionInfo)
-
-    def getOpenFile(self):
-        '''
-        This function calls the Windows file explorer to get an existing file path.
-        '''
-        fname = QFileDialog.getOpenFileName(self, 'Open file',
-                                            'c:\\', "Pickle files (*.pkl)")
-        fname = fname[0]
-
-        print(fname)
-        return fname
-
-    def getSaveFile(self):
-        '''
-        This function calls the Windows file explorer to get any file path.
-        '''
-        fname = QFileDialog.getSaveFileName(self, 'Open file',
-                                            'c:\\', "Pickle files (*.pkl)")
-        fname = fname[0]
-        # To-Do check .pkl ending
-
-        print(fname)
-        return fname
+        self.file_menu.addAction(self.action_new)
+        self.file_menu.addAction(self.action_open)
+        self.file_menu.addAction(self.action_save)
+        self.file_menu.addAction(self.action_save_as)
+        self.file_menu.addAction(self.action_quit)
+        self.info_menu.addAction(self.action_info)
 
     def new(self):
         '''
         This function returns the user to the starting window.
         '''
-        print("NEW")
-        if not self.unsavedChanges():
+        if not self.unsaved_changes():
             Settings.changed = False
-            Settings.file = ""
+            Settings.file = None
             Settings.InvalidTransistions = []
             Settings.InvalidStates = []
-
-            self.b = StartWindow()
-            self.b.show()
+            self.start_widget = StartWindow()
+            self.start_widget.show()
             self.close()
 
     def load(self):
         '''
         This function asks the user to select a file and opens it.
         '''
-        print("LOAD")
-        if not self.unsavedChanges():
-            fname = self.getOpenFile()
-            if fname != "":
-
-                Settings.changed = False
-                Settings.file = fname
-                Settings.WORLD = pickle.load(open(fname, 'rb'))
-                Settings.InvalidTransistions = Settings.WORLD["invalidTransitions"]
-                Settings.InvalidStates = Settings.WORLD["invalidStates"]
-                self.b = MainWindow()
-                self.b.show()
+        if not self.unsaved_changes():
+            file_name = QFileDialog.getOpenFileName(self, 'Open file', 'c:\\', "Pickle files (*.pkl)")[0]
+            print('Try loading file: ', file_name)
+            try:
+                Settings.changed = file_name
+                Settings.file = file_name
+                Settings.WORLD = pickle.load(open(file_name, 'rb'))
+                Settings.InvalidTransistions = Settings.WORLD['invalidTransitions']
+                Settings.InvalidStates = Settings.WORLD['invalidStates']
+                self.main_window = MainWindow()
+                self.main_window.show()
                 self.close()
-                print("LOAD SUCCESS")
-            else:
-                print("LOAD FAIL")
+                print('Successfully loaded file. ')
+            except:
+                print('Couldn\'t load file.')
 
-    def save(self, fname):
+    def save_as(self):
         '''
         This function saves the current gridworld in a file
-
+        
         | **Args**
-        | fname:                       File name/Target file.
+        | file_name:                    File name/Target file.
         '''
-        print("SAVE")
-        if fname != "":
-            pickle.dump(Settings.WORLD, open(fname, 'wb'))
+        file_name = QFileDialog.getSaveFileName(self, 'Open file', 'c:\\', "Pickle files (*.pkl)")[0]
+        print('Try saving file: ', file_name)
+        try:
+            pickle.dump(Settings.WORLD, open(file_name, 'wb'))
             Settings.changed = False
-            print("SAVE SUCCESS")
-        else:
-            print("SAVE FAIL")
+            Settings.file = file_name
+            print('Successfully saved file. ')
+        except:
+            print('Couldn\'t save file.')
 
-    def saveAs(self):
+    def save(self):
         '''
         This function asks the user to select a file save the gridworld in it.
         '''
-        print("SAVE AS")
-        fname = self.getSaveFile()
-        if fname != "":
-            self.save(fname)
+        if Settings.file is None:
+            self.save_as()
+        else:
+            print('Try saving file: ', Settings.file)
+            try:
+                pickle.dump(Settings.WORLD, open(Settings.file, 'wb'))
+                Settings.changed = False
+                print('Successfully saved file. ')
+            except:
+                print('Couldn\'t save file.')
 
-    def saveCurrentFile(self):
-        '''
-        This function saves the gridworld in its currently selected file.
-        If no file is currently selected the user is asked to choose one.
-        '''
-        print("SAVE CURRENT FILE")
-        if Settings.file == "":
-            Settings.file = self.getSaveFile()
-        self.save(Settings.file)
-
-    def unsavedChanges(self):
+    def unsaved_changes(self):
         '''
         This function opens a dialog window to asks the user to save the
         gridworld if there are unsaved changes.
         '''
         # Returns False if there are no unsaved changes/if these should be ignored
-        if Settings.changed == True:
-            print("UNSAVED CHANGES")
-            self.b = unsavedChangesDialog(self)
-
-            if self.b.exec():
+        if Settings.changed:
+            print('Unsaved changes.')
+            self.unsaved_changes_dialog = unsavedChangesDialog(self)
+            if self.unsaved_changes_dialog.exec():
                 return False
             else:
                 return True
@@ -1019,78 +792,84 @@ class MainWindow(QMainWindow):
         '''
         This function opens the info dialog
         '''
-        self.b = infoDialog(self)
-        self.b.exec()
+        self.info_dialog = infoDialog(self)
+        self.info_dialog.exec()
 
     def closeEvent(self, event):
         '''
         This function closes the programm.
         '''
-        if not self.unsavedChanges():
+        if not self.unsaved_changes():
             super().closeEvent(event)
         else:
             event.ignore()
 
 class unsavedChangesDialog(QDialog):
+    '''
+    This class implements an unsaved changes dialog.
+
+    | **Args**
+    | parent:                       The parent widget.
+    '''
     def __init__(self, parent=None):
         super(unsavedChangesDialog, self).__init__(parent)
         QDialog.__init__(self)
         self.parent = parent
-
         self.layout = QGridLayout()
         self.setWindowTitle('Unsaved Changes')
-
-        self.label = QLabel()
-        self.label.setText("The file has been modified. Do you want to save the changes?")
-        self.b1 = QPushButton("Yes")
-        self.b2 = QPushButton("No")
-        self.b3 = QPushButton("Cancel")
-
-        self.layout.addWidget(self.label, 0, 0, 1, 3)
-        self.layout.addWidget(self.b1, 1, 0, 1, 1)
-        self.layout.addWidget(self.b2, 1, 1, 1, 1)
-        self.layout.addWidget(self.b3, 1, 2, 1, 1)
-        self.b1.clicked.connect(self.saveCurrentFile)
-        self.b2.clicked.connect(self.accept)
-        self.b3.clicked.connect(self.reject)
+        # prepare elements
+        self.label_dialog = QLabel()
+        self.label_dialog.setText('The file has been modified. Do you want to save the changes?')
+        self.button_yes = QPushButton('Yes')
+        self.button_no = QPushButton('No')
+        self.button_cancel = QPushButton('Cancel')
+        # make layout
+        self.layout.addWidget(self.label_dialog, 0, 0, 1, 3)
+        self.layout.addWidget(self.button_yes, 1, 0, 1, 1)
+        self.layout.addWidget(self.button_no, 1, 1, 1, 1)
+        self.layout.addWidget(self.button_cancel, 1, 2, 1, 1)
+        self.button_yes.clicked.connect(self.save_current_file)
+        self.button_no.clicked.connect(self.accept)
+        self.button_cancel.clicked.connect(self.reject)
         self.setLayout(self.layout)
 
-    def saveCurrentFile(self):
+    def save_current_file(self):
         '''
         This function saves the gridworld in its currently selected file.
         If no file is currently selected the user is asked to choose one.
         '''
         self.hide()
-        self.parent.saveCurrentFile()
+        self.parent.save()
         if Settings.changed == False:
             self.accept()
         else:
             self.reject()
             
 class infoDialog(QDialog):
+    '''
+    This class implements an info dialog.
+
+    | **Args**
+    | parent:                       The parent widget.
+    '''
     def __init__(self, parent=None):
         super(infoDialog, self).__init__(parent)
         QDialog.__init__(self)
         self.parent = parent
-
         self.layout = QGridLayout()
         self.setWindowTitle('Info')
-
-        self.label = QLabel("Developed by : William Forchap, Kilian Kandt, Marius Tenhumberg")
-        self.label2 = QLabel("Supervised by : Nicolas Diekmann")
-        self.b1 = QPushButton("Nice")
-
-        self.layout.addWidget(self.label, 0, 0, 1, 1)
-        self.layout.addWidget(self.label2, 1, 0, 1, 1)
-        self.layout.addWidget(self.b1, 2, 0, 1, 1)
-        self.b1.clicked.connect(self.accept)
+        self.label_dev = QLabel('Developed by : William Forchap, Kilian Kandt, Marius Tenhumberg')
+        self.label_sup = QLabel('Supervised by : Nicolas Diekmann')
+        self.button_ok = QPushButton('Ok')
+        self.layout.addWidget(self.label_dev, 0, 0, 1, 1)
+        self.layout.addWidget(self.label_sup, 1, 0, 1, 1)
+        self.layout.addWidget(self.button_ok, 2, 0, 1, 1)
+        self.button_ok.clicked.connect(self.accept)
         self.setLayout(self.layout)
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-
     a = StartWindow()
     a.show()
-
     app.exec()

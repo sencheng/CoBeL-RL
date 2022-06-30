@@ -39,7 +39,7 @@ def makeGridworld(height, width, terminals=[], rewards=None, goals=[], startingS
     world['startingStates'] = list(set([i for i in range(world['states'])]) - set(terminals))
     if len(startingStates) > 0:
         world['startingStates'] = startingStates
-    world['startingStates'] = np.array(world['startingStates'])
+    world['startingStates'] = np.array(world['startingStates']).astype(int)
     # wind applied at each state as array of size Nx2
     world['wind'] = np.zeros((world['states'], 2))
     if not wind is None:
