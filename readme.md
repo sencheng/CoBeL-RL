@@ -1,5 +1,8 @@
-## **CoBeL-RL** ##
+## **CoBeL-RL v1.0** ##
 #### Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks ####
+
+This is an older version of CoBeL-RL. Several things have changed in newer versions, including RL agent classes and callback handling.
+Only limited support for this version might be available.
 
 ---------------------------
 **Getting started:**  
