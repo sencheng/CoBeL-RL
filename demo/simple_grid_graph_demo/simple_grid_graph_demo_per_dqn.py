@@ -7,7 +7,7 @@ from tensorflow.keras import backend as K
 # framework imports
 from cobel.frontends.frontends_blender import FrontendBlenderInterface
 from cobel.spatial_representations.topology_graphs.manual_topology_graph_no_rotation import ManualTopologyGraphNoRotation
-from cobel.agents.dqn_agents import DQNAgentBaseline
+from cobel.agents.dqn_agents import PERDQNAgentBaseline
 from cobel.observations.image_observations import ImageObservationBaseline
 from cobel.interfaces.oai_gym_interface import OAIGymInterface
 from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor
@@ -35,6 +35,7 @@ def reward_callback(values):
     
     return reward, end_trial
 
+
 def single_run():
     '''
     This method performs a single experimental run, i.e. one experiment. It has to be called by either a parallelization mechanism (without visual output),
@@ -46,8 +47,8 @@ def single_run():
     main_window = None
     # if visual output is required, activate an output window
     if visual_output:
-        main_window = qg.GraphicsWindow(title='Demo: DQN')
-        
+        main_window = qg.GraphicsWindow(title='Demo: DQN Agent using Prioritized Experience Replay')
+    
     # determine demo scene path
     demo_scene = os.path.abspath(__file__).split('cobel')[0] + '/cobel/environments/environments_blender/simple_grid_graph_maze.blend'
     
@@ -59,7 +60,7 @@ def single_run():
     modules['spatial_representation'].set_visual_debugging(visual_output, main_window)
     modules['rl_interface'] = OAIGymInterface(modules, visual_output, reward_callback)
     
-    # amount of trials
+     # amount of trials
     number_of_trials = 100
     # maximum steos per trial
     max_steps = 30
@@ -68,7 +69,7 @@ def single_run():
     reward_monitor = RewardMonitor(number_of_trials, main_window, visual_output, [-30, 10])
     
     # initialize RL agent
-    rl_agent = DQNAgentBaseline(modules['rl_interface'], 1000000, 0.3, None, custom_callbacks={'on_trial_end': [reward_monitor.update]})
+    rl_agent = PERDQNAgentBaseline(modules['rl_interface'], 1000000, 0.3, None, custom_callbacks={'on_trial_end': [reward_monitor.update]})
     
     # eventually, allow the OAI class to access the robotic agent class
     modules['rl_interface'].rl_agent = rl_agent
@@ -89,7 +90,6 @@ def single_run():
     if visual_output:
         main_window.close()
 
+
 if __name__ == '__main__':
     single_run()
-    # clear keras session (for performance)
-    K.clear_session()
