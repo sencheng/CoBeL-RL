@@ -4,6 +4,7 @@ from dqn_agents import DQNAgentBaseline
 from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
 from tensorflow.keras.optimizers import Adam
+from rl.processors import MultiInputProcessor
 
 class DQNMultiModal(DQNAgent) :
     '''
@@ -116,29 +117,9 @@ class DQNMultiModal(DQNAgent) :
 
 class DQNAgentMultiModal(DQNAgentBaseline) : 
     
-        def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={}): 
-            
-            super().__init__(interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={})
-        # build model
-            
-            self.model = model
-            if self.model is None:
-                self.build_model()
-            # prepare the memory for the RL agent
-            self.memory = SequentialMemory(limit=memory_capacity, window_length=1)
-            # define the available policies
-            policy = EpsGreedyQPolicy(epsilon)
-            # define the maximum number of steps
-            self.max_steps = 10**10
-            # keeps track of current trial
-            self.current_trial = 0 # trial count across all sessions (i.e. calls to the train/simulate method)
-            self.session_trial = 0 # trial count in current seesion (i.e. current call to the train/simulate method)
-            # define the maximum number of trials
-            self.max_trials = 0
-            # construct the agent
-            self.agent = DQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
-                                dueling_type='avg', target_model_update=1e-2, policy=policy, batch_size=32)
-            # compile the agent
-            self.agent.compile(Adam(lr=.001,), metrics=['mse'])
-            # set up the visualizer for the RL agent behavior/reward outcome
-            self.engaged_callbacks = self.callbacksDQN(self, custom_callbacks)
+    def compile_agent(self, optimizer=Adam(lr=.001,),metrics=['mse']) : 
+        self.processor = MultiInputProcessor(nb_inputs=2)
+        self.agent = DQNMultiModal(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
+                            dueling_type='avg', target_model_update=1e-2, policy=self.policy, batch_size=32)
+        self.agent.compile(optimizer, metrics=metrics)
+        

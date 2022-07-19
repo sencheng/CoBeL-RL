@@ -116,6 +116,13 @@ class DQNAgentBaseline(AbstractRLAgent):
         self.engaged_callbacks = self.callbacksDQN(self, custom_callbacks)
         
     def compile_agent(self, optimizer=Adam(lr=.001,),metrics=['mse']) : 
+        '''
+        This function is called to compile the agent.
+        
+        | **Args**
+        | optimizer:    The optimizer to use (from tensorflow.keras.optimizers)
+        | metrics  :    metrics to use
+        '''
         #construct the agent
         self.agent = DQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
                             dueling_type='avg', target_model_update=1e-2, policy=self.policy, batch_size=32)
