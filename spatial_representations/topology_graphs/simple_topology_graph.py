@@ -127,6 +127,7 @@ class GridGraph(AbstractTopologyGraph):
         # RL relevant info
         self.current_node = -1
         self.next_node    = -1
+        self.head_direction = 0.0
         # starting and goal nodes
         self.start_nodes = start_nodes
         self.goal_nodes  = goal_nodes
@@ -270,6 +271,7 @@ class GridGraph(AbstractTopologyGraph):
                 if action == 0 : 
                     # MOVE FORWARD
                     angle = 180.0 / np.pi * np.arctan2(heading[1], heading[0])
+                    self.head_direction = angle
                     if len(forward_edge) != 0 :
                         next_node_id = forward_edge[0]
                         self.move_to_node(next_node_id, angle)
@@ -280,6 +282,7 @@ class GridGraph(AbstractTopologyGraph):
                     # TURN LEFT
                     angle = 180.0 / np.pi * np.arctan2(left_edges[0][1][1],
                                                      left_edges[0][1][0])
+                    self.head_direction = angle
                     next_node_id = self.current_node
                     self.move_to_node(next_node_id, angle)
                     
@@ -287,17 +290,20 @@ class GridGraph(AbstractTopologyGraph):
                     #TURN RIGHT
                     angle = 180.0 / np.pi * np.arctan2(right_edges[0][1][1],
                                                      right_edges[0][1][0])
+                    self.head_direction = angle
                     next_node_id = self.current_node
                     self.move_to_node(next_node_id, angle)     
             else :                 
                 node_id = random.choice(self.start_nodes)
                 directions = self.calculate_angles_edges(self.nodes[node_id],[0,1])[0]
                 random_direction = random.choice(directions)
+                self.head_direction = random_direction
                 self.move_to_node(node_id, random_direction[2])
                 
             self.current_node = self.next_node
             callback_value['currentNode'] = self.nodes[self.current_node]
-            
+        
+        print(self.head_direction)    
         return callback_value
                 
     def calculate_angles_edges(self, node, heading, threshold=5):
