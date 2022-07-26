@@ -486,7 +486,7 @@ class GridGraph(AbstractTopologyGraph) :
 
 class HexagonalGraph(GridGraph) : 
    
-    def calculate_angle(node_info, neighbor_info) : 
+    def calculate_angle(self, node_info, neighbor_info) : 
         ref = np.array([node_info.x,node_info.y-1])
         node = np.array([node_info.x,node_info.y])
         neighbor = np.array([neighbor_info.x,neighbor_info.y])
