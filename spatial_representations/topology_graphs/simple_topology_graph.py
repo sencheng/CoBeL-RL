@@ -390,10 +390,34 @@ class GridGraph(AbstractTopologyGraph) :
         --------
         none
         '''
+        symbolBrushes = [qg.mkBrush(color=(128, 128, 128))]*len(self.nodes)
 
+        # set colors of normal and goal nodes
+        for node in self.nodes:
+
+            # start nodes are green
+            if node.startNode:
+                symbolBrushes[node.index] = qg.mkBrush(color=(0, 255, 0))
+
+            # goal node is red
+            if node.goalNode:
+                symbolBrushes[node.index] = qg.mkBrush(color=(255, 0, 0))
+
+        # construct appropriate arrays from the self.nodes and the self.edges information
+        tempNodes = []
+        tempEdges = []
+        for node in self.nodes:
+            tempNodes = tempNodes+[[node.x, node.y]]
+
+        for edge in self.edges:
+            tempEdges = tempEdges+[[edge[0], edge[1]]]
+
+        self.topologyGraph.setData(pos=np.array(tempNodes), adj=np.array(
+            tempEdges), symbolBrush=symbolBrushes)
+            
         if not self.rotation : 
             self.sample_state_space() 
-                
+            
             if self.visual_output:
                 # for all nodes in the topology graph
                 #TODO : sample state space here
@@ -482,7 +506,28 @@ class GridGraph(AbstractTopologyGraph) :
             else:
                 if qt.QtWidgets.QApplication.instance() is not None:
                     qt.QtWidgets.QApplication.instance().processEvents()
+                    
+    def set_goal_nodes(self, goal_nodes) : 
+        #first remove current goal_nodes
+        if self.goal_nodes is not None : 
+            for node_idx in self.goal_nodes :
+                self.nodes[node_idx].goalNode = False
+        #set new goal nodes
+        self.goal_nodes = goal_nodes
+        if self.goal_nodes is not None : 
+            for node_idx in self.goal_nodes :
+                self.nodes[node_idx].goalNode = True
+        print("Goal node(s) set to : ", self.goal_nodes)
+        if self.visual_output:
+            self.update_visual_elements()
         
+    
+    def select_random_nodes(self, n_nodes=3) : 
+        nodes = np.random.choice(self.nodes, size=n_nodes)
+        node_ids = []
+        for n in nodes : 
+            node_ids.append(n.index)
+        return node_ids
 
 class HexagonalGraph(GridGraph) : 
    
