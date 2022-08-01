@@ -6,7 +6,6 @@ class DictionaryObservations():
     modules.
     """
     def __init__(self, obs_modules=None):
-
         self.obs_modules = obs_modules
         self.keys = list(self.obs_modules.keys())
         self.observation_dict = dict.fromkeys(self.keys)
