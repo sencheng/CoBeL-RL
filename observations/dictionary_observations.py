@@ -8,16 +8,17 @@ class DictionaryObservations():
     def __init__(self, obs_modules=None):
         self.obs_modules = obs_modules
         self.keys = list(self.obs_modules.keys())
-        self.observation_dict = dict.fromkeys(self.keys)
+        self.observation = dict.fromkeys(self.keys)
 
     def update(self):
         for key in self.keys:
-            self.obs_modules[key].update
-            self.observation_dict[key] = self.obs_modules[key].observation
+            self.obs_modules[key].update()
+            self.observation[key] = self.obs_modules[key].observation
 
+    
     def getObservationSpace(self):
         observation_space = dict.fromkeys(self.keys)
         for key in self.keys:
-            observation_space[key] = self.obs_modules[key].getObservationSpace
+            observation_space[key] = self.obs_modules[key].getObservationSpace()
 
         return gym.spaces.Dict(observation_space)

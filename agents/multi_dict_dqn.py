@@ -1,6 +1,6 @@
 from rl.agents import DQNAgent
 import numpy as np
-from dqn_agents import DQNAgentBaseline
+from cobel.agents.dqn_agents import DQNAgentBaseline
 from rl.memory import SequentialMemory
 from rl.policy import EpsGreedyQPolicy
 from tensorflow.keras.optimizers import Adam
@@ -119,7 +119,9 @@ class DQNAgentMultiModal(DQNAgentBaseline) :
     
     def compile_agent(self, optimizer=Adam(lr=.001,),metrics=['mse']) : 
         self.processor = MultiInputProcessor(nb_inputs=2)
-        self.agent = DQNMultiModal(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
-                            dueling_type='avg', target_model_update=1e-2, policy=self.policy, batch_size=32)
+        self.agent = DQNMultiModal(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, 
+                                   gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
+                            dueling_type='avg', target_model_update=1e-2, policy=self.policy, batch_size=32,
+                            processor=self.processor)
         self.agent.compile(optimizer, metrics=metrics)
         
