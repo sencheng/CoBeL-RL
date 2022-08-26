@@ -34,7 +34,8 @@ class FrontendBlenderInterface():
         
         
         # start blender subprocess
-        subprocess.Popen([self.BLENDER_EXECUTABLE, scenarioName, '--window-border', '--window-geometry', '1320', '480', '600', '600', '--enable-autoexec'])
+        self.blender = subprocess.Popen([self.BLENDER_EXECUTABLE, scenarioName, '--window-border', 
+                          '--window-geometry', '1320', '480', '600', '600', '--enable-autoexec'])
         # prepare sockets for communication with blender
         self.controlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.videoSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -405,6 +406,8 @@ class FrontendBlenderInterface():
         '''
         try:
             self.controlSocket.send('stopSimulation'.encode('utf-8'))
+            self.blender.kill()
+            print("Killing process...")
         except:
             print(sys.exc_info()[1])
 
