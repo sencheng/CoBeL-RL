@@ -482,7 +482,7 @@ class GridGraph(AbstractTopologyGraph) :
             #return list of state space
             return
         
-    def move_to_node(self, node_id, angle=90.0) :
+    def move_to_node(self, node_id, angle=0.0) :
         
         self.next_node = node_id
         next_node_pos = np.array([self.nodes[self.next_node].x, 

@@ -92,6 +92,7 @@ def single_run():
         main_window.close()
 
 if __name__ == '__main__':
-    single_run()
-    # clear keras session (for performance)
-    K.clear_session()
+    for i in range(10) : 
+        single_run()
+        # clear keras session (for performance)
+        K.clear_session()
