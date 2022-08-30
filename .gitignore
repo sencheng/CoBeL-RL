@@ -13,3 +13,4 @@ CoBeL_RL.egg-info
 build
 dist
 demo/unity_demo/logsfreeze
+cobel_venv

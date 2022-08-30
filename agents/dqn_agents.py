@@ -104,7 +104,7 @@ class DQNAgentBaseline(AbstractRLAgent):
         # prepare the memory for the RL agent
         self.memory = SequentialMemory(limit=memory_capacity, window_length=1)
         # define the available policies
-        policy = EpsGreedyQPolicy(epsilon)
+        self.policy = EpsGreedyQPolicy(epsilon)
         # define the maximum number of steps
         self.max_steps = 10**10
         # keeps track of current trial
@@ -112,13 +112,21 @@ class DQNAgentBaseline(AbstractRLAgent):
         self.session_trial = 0 # trial count in current seesion (i.e. current call to the train/simulate method)
         # define the maximum number of trials
         self.max_trials = 0
-        # construct the agent
-        self.agent = DQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
-                            dueling_type='avg', target_model_update=1e-2, policy=policy, batch_size=32)
-        # compile the agent
-        self.agent.compile(Adam(lr=.001,), metrics=['mse'])
-        # set up the visualizer for the RL agent behavior/reward outcome
+        self.compile_agent()
         self.engaged_callbacks = self.callbacksDQN(self, custom_callbacks)
+        
+    def compile_agent(self, optimizer=Adam(lr=.001,),metrics=['mse']) : 
+        '''
+        This function is called to compile the agent.
+        
+        | **Args**
+        | optimizer:    The optimizer to use (from tensorflow.keras.optimizers)
+        | metrics  :    metrics to use
+        '''
+        #construct the agent
+        self.agent = DQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
+                            dueling_type='avg', target_model_update=1e-2, policy=self.policy, batch_size=32)
+        self.agent.compile(optimizer, metrics=metrics)
         
     def build_model(self):
         '''

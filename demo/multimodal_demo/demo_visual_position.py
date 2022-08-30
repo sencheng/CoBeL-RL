@@ -2,20 +2,31 @@
 import os
 import numpy as np
 import pyqtgraph as qg
+import json
 # tensorflow
 from tensorflow.keras import backend as K
+from tensorflow.keras.models import model_from_json
 # framework imports
+
 from cobel.frontends.frontends_blender import FrontendBlenderInterface
-from cobel.spatial_representations.topology_graphs.simple_topology_graph  import GridGraph
-from cobel.agents.dqn_agents import DQNAgentBaseline
 from cobel.observations.image_observations import ImageObservationBaseline
+from cobel.observations.position_observations import PoseObservation
+from cobel.observations.dictionary_observations import DictionaryObservations
+from cobel.spatial_representations.topology_graphs.simple_topology_graph  import HexagonalGraph
+from cobel.agents.multi_dict_dqn import DQNAgentMultiModal
 from cobel.interfaces.oai_gym_interface import OAIGymInterface
 from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor
 
 # shall the system provide visual output while performing the experiments?
 # NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'! 
 visual_output = True
-
+move_goal_at = 10
+network = "../../networks/multimodal_position_visual.json"
+json_file   = open(network, 'r')
+loaded_model_json = json_file.read()
+json_file.close()  
+model = model_from_json(loaded_model_json)    
+print(model.summary())
 
 def reward_callback(values):
     '''
@@ -23,7 +34,9 @@ def reward_callback(values):
     Note: this function has to be adopted to the current experimental design.
     
     | **Args**
-    | values:                       A dict of values that are transferred from the OAI module to the reward function. This is flexible enough to accommodate for different experimental setups.
+    | values: A dict of values that are transferred from the OAI module to the 
+      reward function. This is flexible enough to accommodate for different 
+      experimental setups.
     '''
     # the standard reward for each step taken is negative, making the agent seek short routes   
     reward = -1.0
@@ -34,6 +47,7 @@ def reward_callback(values):
         end_trial = True
     
     return reward, end_trial
+
 
 def single_run():
     '''
@@ -54,23 +68,34 @@ def single_run():
     # a dictionary that contains all employed modules
     modules = {}
     modules['world'] = FrontendBlenderInterface(demo_scene)
-    modules['observation'] = ImageObservationBaseline(modules['world'], main_window, visual_output)
-    modules['spatial_representation'] = GridGraph(start_nodes=[0], goal_nodes=[24], visual_output=True,
-                                                  world_module=modules['world'], use_world_limits=True,
-                                                  observation_module=modules['observation'], rotation=True)
+    position_observation = PoseObservation(None, main_window)
+    image_observation = ImageObservationBaseline(modules['world'], main_window, visual_output,
+                                                 imageDims=(72, 12))
+    modules['observation'] = DictionaryObservations({'image_input':image_observation,
+                                                     'position_input':position_observation})    
+    modules['spatial_representation'] = HexagonalGraph(n_nodes_x=5, n_nodes_y=5,
+                                                       n_neighbors=6, goal_nodes=[11],
+                                                       visual_output=True, 
+                                                       world_module=modules['world'],
+                                                       use_world_limits=True, 
+                                                       observation_module=modules['observation'], 
+                                                       rotation=True)
+    position_observation.add_topology_graph(modules['spatial_representation'])
     modules['spatial_representation'].set_visual_debugging(main_window)
     modules['rl_interface'] = OAIGymInterface(modules, visual_output, reward_callback)
     
     # amount of trials
-    number_of_trials = 100
-    # maximum steos per trial
-    max_steps = 30
+    number_of_trials = 150
+    # maximum steps per trial
+    max_steps = 100
     
     # initialize reward monitor
-    reward_monitor = RewardMonitor(number_of_trials, main_window, visual_output, [-30, 10])
+    reward_monitor = RewardMonitor(number_of_trials, main_window, visual_output, 
+                                   [-max_steps, 10])
     
     # initialize RL agent
-    rl_agent = DQNAgentBaseline(modules['rl_interface'], 1000000, 0.3, None, custom_callbacks={'on_trial_end': [reward_monitor.update]})
+    rl_agent = DQNAgentMultiModal(modules['rl_interface'], 30000, 0.3, model=model, 
+                                custom_callbacks={'on_trial_end': [reward_monitor.update]})
     
     # eventually, allow the OAI class to access the robotic agent class
     modules['rl_interface'].rl_agent = rl_agent
@@ -92,7 +117,6 @@ def single_run():
         main_window.close()
 
 if __name__ == '__main__':
-    for i in range(10) : 
-        single_run()
-        # clear keras session (for performance)
-        K.clear_session()
+    single_run()
+    # clear keras session (for performance)
+    K.clear_session()

@@ -1,166 +1,130 @@
-# basic imports
 import numpy as np
-import gym
-import random
-from scipy.spatial import Delaunay
+from cobel.spatial_representations.spatial_representation import SpatialRepresentation
+from .misc.topology_node import TopologyNode
+from .misc.cog_arrow import CogArrow
+
 import PyQt5 as qt
 import pyqtgraph as qg
 import pyqtgraph.functions
-# framework imports
-from cobel.spatial_representations.spatial_representation import SpatialRepresentation
-from cobel.spatial_representations.topology_graphs.misc.topology_node import TopologyNode
-from cobel.spatial_representations.topology_graphs.misc.cog_arrow import CogArrow
 
+import gym
+import random
+
+from scipy.spatial import Delaunay
+import math 
+import time
 
 class AbstractTopologyGraph(SpatialRepresentation) : 
-    '''
-    Abstract topology graph class.
     
-    | **Args**
-    | n_nodes_x:                    The number of nodes along the x axis.
-    | n_nodes_y:                    The number of nodes along the y axis.
-    | n_neighbors:                  The number of neighbors of each node.
-    | visual_output:                If true, then the topology graph will be visualized.
-    '''
     def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4, 
                  visual_output=None, **kwargs) : 
-        # node parameters
-        self.n_nodes_x = n_nodes_x
-        self.n_nodes_y = n_nodes_y
+        
+        self.n_nodes_x   = n_nodes_x
+        self.n_nodes_y   = n_nodes_y
         self.n_neighbors = n_neighbors
-        # the nodes
+        
         self.nodes = []
         self.edges = []
-        # RL relevant info
+        
         self.current_node = None
-        self.next_node = None
-        # visualization flag
+        self.next_node    = None
+        
         self.visual_output = None
     
-    def get_nodes(self):
-        '''
-        This function returns a list of nodes
-        '''
+    def get_nodes(self) : 
         return self.nodes
     
-    def get_edges(self):
-        '''
-        This function returns a list of edges.
-        '''
+    def get_edges(self) : 
         return self.edges
     
-    def set_visual_debugging(self):
-        '''
-        Sets visualization flag.
-        '''
+    def set_visual_debugging(self) : 
         pass
     
-    def get_action_space(self):
-        '''
-        Returns the action space.
-        '''
+    def get_action_space(self) : 
         pass
     
-    def generate_behavior_from_action(self, action):
-        '''
-        Moves the agent on the topology graph according the action selected by the agent.
-        
-        | **Args**
-        | action:                       The action that was selected by the agent.
-        '''
+    def generate_behavior_from_action(self, action) : 
         pass
     
-    def sample_state_space(self):
-        '''
-        Samples observations for all nodes from the environment.
-        '''
+    def sample_state_space(self) : 
         pass
     
     
-class GridGraph(AbstractTopologyGraph): 
+class GridGraph(AbstractTopologyGraph) : 
     '''
-    Square/Rectangular grid.
-    
-     **Args**
-    | n_nodes_x:                    The number of nodes along the x axis.
-    | n_nodes_y:                    The number of nodes along the y axis.
-    | n_neighbors:                  The number of neighbors of each node.
-    | x_limits:                     The range of x coordinates.
-    | y_limits:                     The range of y coordinates.
-    | start_nodes:                  The list of starting nodes.
-    | goal_nodes:                   The list of goal nodes.
-    | visual_output:                If true, then the topology graph will be visualized.
-    | rotation:                     If true, the agent can also change its orientation.
-    | world_module:                 The world module.
-    | use_world_limits:             If true, limits on x/y coordinates are taken into account.
-    | observation_module:           The observation module.
+    Square/Rectangular grid
     '''
     def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4,
                  x_limits=[-1,1], y_limits=[-1,1], start_nodes=None,
                  goal_nodes=None, visual_output=None, rotation=False, 
                  world_module=None, use_world_limits=False, 
-                 observation_module=None):
+                 observation_module=None) : 
+        
         super().__init__(n_nodes_x=5, n_nodes_y=5, n_neighbors=4, 
                          visual_output=None)
-        # action space
+        
+        self.n_nodes_x = n_nodes_x
+        self.n_nodes_y = n_nodes_y
+        self.n_neighbors = n_neighbors
+        
         self.rotation = rotation
-        # world info
+        self.visual_output = visual_output
+
+        self.world_module = world_module
         self.x_limits = x_limits
         self.y_limits = y_limits
         self.use_world_limits = use_world_limits
-        # module references
-        self.world_module = world_module
+        
         self.observation_module = observation_module
-        # retrieve info from world module
+        
         if self.world_module is not None : 
             self.world_limits = self.world_module.getLimits()
             self.world_nodes, self.world_edges = world_module.getWallGraph()
-            if self.use_world_limits:
+            if self.use_world_limits : 
                 self.x_limits = [self.world_limits[0,0], self.world_limits[0,1]]
                 self.y_limits = [self.world_limits[1,0], self.world_limits[1,1]]
             #TODO : catch exceptions!
+        
         #Build the graph
+        self.nodes = []
+        self.edges = []
         grid_points = self.find_grid_points(self.n_nodes_x, self.n_nodes_y, 
                                        self.x_limits, self.y_limits)
         self.build_graph(grid_points)
         self.n_nodes = len(self.nodes)    
-        # RL relevant info
+        
         self.current_node = -1
         self.next_node    = -1
-        # starting and goal nodes
+        self.head_direction = 0.0
+        
         self.start_nodes = start_nodes
         self.goal_nodes  = goal_nodes
-        # set starting nodes
-        if self.start_nodes is not None:
-            for node_idx in self.start_nodes:
+        
+        if self.start_nodes is not None : 
+            for node_idx in self.start_nodes : 
                 self.nodes[node_idx].startNode = True
-        # if none were defined consider all nodes as starting nodes
-        else:
+        else : 
+            self.start_nodes = []
             for node in self.nodes : 
                 node.startNode = True
-        # set goal nodes
-        if self.goal_nodes is not None:
-            for node_idx in self.goal_nodes:
+                self.start_nodes.append(node.index)
+        
+        if self.goal_nodes is not None : 
+            for node_idx in self.goal_nodes :
                 self.nodes[node_idx].goalNode = True
     
-    @staticmethod
-    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits):
-        '''
-        This function finds the coordinates for all nodes.
         
-         **Args**
-        | n_nodes_x:                    The number of nodes along the x axis.
-        | n_nodes_y:                    The number of nodes along the y axis.
-        | x_limits:                     The range of x coordinates.
-        | y_limits:                     The range of y coordinates.
-        '''
+    @staticmethod
+    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits) :
+        
         nodes_x = np.linspace(x_limits[0], x_limits[1], n_nodes_x)
         nodes_y = np.linspace(y_limits[0], y_limits[1], n_nodes_y)
+        
         grid_points = [[x, y] for y in nodes_y for x in nodes_x]
         
         return grid_points
 
-    def build_graph(self, grid_points):
+    def build_graph(self, grid_points) : 
         """
         
         Parameters
@@ -179,7 +143,7 @@ class GridGraph(AbstractTopologyGraph):
         None.
 
         """
-        for idx, point in enumerate(grid_points):
+        for idx, point in enumerate(grid_points) : 
             self.nodes.append(TopologyNode(idx, point[0], point[1]))
         
         none_node = TopologyNode(-1,0.0,0.0)
@@ -213,29 +177,18 @@ class GridGraph(AbstractTopologyGraph):
         unique_edges.sort()
         self.edges = unique_edges
 
-    def set_rotation(self, rotation):
-        '''
-        This function enables/disables rotation.
-        '''
+    
+    def set_rotation(self, rotation) : 
         self.rotation = rotation    
 
-    def update_position_marker(self, pose):
-        '''
-        This function updates the position marker.
-        
-         **Args**
-        | pose:                         The agent's current pose.
-        '''
+    
+    def update_position_marker(self, pose) : 
         self.position_marker.setData(pose[0],pose[1],
                                      np.rad2deg(np.arctan2(pose[3], pose[2])))
     
-    def generate_behavior_from_action(self, action):
-        '''
-        Moves the agent on the topology graph according the action selected by the agent.
-        
-        | **Args**
-        | action:                       The action that was selected by the agent.
-        '''
+    
+    def generate_behavior_from_action(self, action) :
+
         next_node_pos  = np.array([0.0,0.0])
         
         callback_value = dict()
@@ -256,6 +209,8 @@ class GridGraph(AbstractTopologyGraph):
                             
             self.current_node = self.next_node
             callback_value['currentNode'] = self.nodes[self.current_node]
+            
+            
         else : #ROTATION IS ENABLED
             
             if action!='reset':    
@@ -270,6 +225,7 @@ class GridGraph(AbstractTopologyGraph):
                 if action == 0 : 
                     # MOVE FORWARD
                     angle = 180.0 / np.pi * np.arctan2(heading[1], heading[0])
+                    self.head_direction = angle
                     if len(forward_edge) != 0 :
                         next_node_id = forward_edge[0]
                         self.move_to_node(next_node_id, angle)
@@ -280,6 +236,7 @@ class GridGraph(AbstractTopologyGraph):
                     # TURN LEFT
                     angle = 180.0 / np.pi * np.arctan2(left_edges[0][1][1],
                                                      left_edges[0][1][0])
+                    self.head_direction = angle
                     next_node_id = self.current_node
                     self.move_to_node(next_node_id, angle)
                     
@@ -287,12 +244,15 @@ class GridGraph(AbstractTopologyGraph):
                     #TURN RIGHT
                     angle = 180.0 / np.pi * np.arctan2(right_edges[0][1][1],
                                                      right_edges[0][1][0])
+                    self.head_direction = angle
                     next_node_id = self.current_node
-                    self.move_to_node(next_node_id, angle)     
+                    self.move_to_node(next_node_id, angle)
+                    
             else :                 
                 node_id = random.choice(self.start_nodes)
                 directions = self.calculate_angles_edges(self.nodes[node_id],[0,1])[0]
                 random_direction = random.choice(directions)
+                self.head_direction = random_direction[2]
                 self.move_to_node(node_id, random_direction[2])
                 
             self.current_node = self.next_node
@@ -300,15 +260,9 @@ class GridGraph(AbstractTopologyGraph):
             
         return callback_value
                 
-    def calculate_angles_edges(self, node, heading, threshold=5):
-        '''
-        This function computes the angles between a given  node and its neighbors.
+    
+    def calculate_angles_edges(self, node, heading, threshold=5) :
         
-        | **Args**
-        | node:                         The node.
-        | heading:                      The heading.
-        | threshold:                    The threshold.
-        '''
         left_edges   = []
         right_edges  = []
         forward_edge = []
@@ -345,28 +299,24 @@ class GridGraph(AbstractTopologyGraph):
         right_edges = sorted(right_edges, key=lambda element: element[2],
                                      reverse=True)
         
+        
         return directions, forward_edge, left_edges, right_edges
             
-    def get_action_space(self): 
-        '''
-        Returns the action space.
-        '''
+    def get_action_space(self) : 
+
         if self.rotation:
             return gym.spaces.Discrete(3)
-        else:
+
+        else :
             return gym.spaces.Discrete(self.n_neighbors)
-         
-    def set_visual_debugging(self, gui_parent):
-        '''
-        Sets visualization.
-        '''
+
+                
+    def set_visual_debugging(self, gui_parent) :
         self.gui_parent = gui_parent
         self.init_visual_elements()
     
-    def init_visual_elements(self):
-        '''
-        Initializes visualization.
-        '''
+    def init_visual_elements(self) :
+
         if self.visual_output:
 
             self.plot = self.gui_parent.addPlot(title='Topology graph')
@@ -428,7 +378,7 @@ class GridGraph(AbstractTopologyGraph):
             # initial position to center, this has to be worked over later!
             self.position_marker.setData(0.0, 0.0, 0.0)
     
-    def update_visual_elements(self):
+    def update_visual_elements(self) :
         '''
         This function is only used for visualization. It generates arrows which points towards the highest q values. 
         
@@ -440,10 +390,34 @@ class GridGraph(AbstractTopologyGraph):
         --------
         none
         '''
+        symbolBrushes = [qg.mkBrush(color=(128, 128, 128))]*len(self.nodes)
 
+        # set colors of normal and goal nodes
+        for node in self.nodes:
+
+            # start nodes are green
+            if node.startNode:
+                symbolBrushes[node.index] = qg.mkBrush(color=(0, 255, 0))
+
+            # goal node is red
+            if node.goalNode:
+                symbolBrushes[node.index] = qg.mkBrush(color=(255, 0, 0))
+
+        # construct appropriate arrays from the self.nodes and the self.edges information
+        tempNodes = []
+        tempEdges = []
+        for node in self.nodes:
+            tempNodes = tempNodes+[[node.x, node.y]]
+
+        for edge in self.edges:
+            tempEdges = tempEdges+[[edge[0], edge[1]]]
+
+        self.topologyGraph.setData(pos=np.array(tempNodes), adj=np.array(
+            tempEdges), symbolBrush=symbolBrushes)
+            
         if not self.rotation : 
             self.sample_state_space() 
-                
+            
             if self.visual_output:
                 # for all nodes in the topology graph
                 #TODO : sample state space here
@@ -508,20 +482,16 @@ class GridGraph(AbstractTopologyGraph):
             #return list of state space
             return
         
-    def move_to_node(self, node_id, angle=90.0):
-        '''
-        This function moves the agent to a specified node.
+    def move_to_node(self, node_id, angle=0.0) :
         
-         **Args**
-        | node_id:                      The ID of the node that the agent will be moved to.
-        | angle:                        The agent's orientation.
-        '''
         self.next_node = node_id
         next_node_pos = np.array([self.nodes[self.next_node].x, 
                           self.nodes[self.next_node].y])
+    
         self.world_module.actuateRobot(np.array([next_node_pos[0],
                                          next_node_pos[1],
                                          angle]))
+    
         self.current_node = self.next_node
         self.observation_module.update()
         
@@ -536,34 +506,32 @@ class GridGraph(AbstractTopologyGraph):
             else:
                 if qt.QtWidgets.QApplication.instance() is not None:
                     qt.QtWidgets.QApplication.instance().processEvents()
+                    
+    def set_goal_nodes(self, goal_nodes) : 
+        #first remove current goal_nodes
+        if self.goal_nodes is not None : 
+            for node_idx in self.goal_nodes :
+                self.nodes[node_idx].goalNode = False
+        #set new goal nodes
+        self.goal_nodes = goal_nodes
+        if self.goal_nodes is not None : 
+            for node_idx in self.goal_nodes :
+                self.nodes[node_idx].goalNode = True
+        print("Goal node(s) set to : ", self.goal_nodes)
+        if self.visual_output:
+            self.update_visual_elements()
         
-class HexagonalGraph(GridGraph):
-    '''
-    Hexagonal grid.
     
-     **Args**
-    | n_nodes_x:                    The number of nodes along the x axis.
-    | n_nodes_y:                    The number of nodes along the y axis.
-    | n_neighbors:                  The number of neighbors of each node.
-    | x_limits:                     The range of x coordinates.
-    | y_limits:                     The range of y coordinates.
-    | start_nodes:                  The list of starting nodes.
-    | goal_nodes:                   The list of goal nodes.
-    | visual_output:                If true, then the topology graph will be visualized.
-    | rotation:                     If true, the agent can also change its orientation.
-    | world_module:                 The world module.
-    | use_world_limits:             If true, limits on x/y coordinates are taken into account.
-    | observation_module:           The observation module.
-    '''
-    
-    def calculate_angle(node_info, neighbor_info) : 
-        '''
-        Calculates angle.
-        
-         **Args**
-        | node_info:                    The node's info.
-        | neighbor_info:                The neighbor's info.
-        '''
+    def select_random_nodes(self, n_nodes=3) : 
+        nodes = np.random.choice(self.nodes, size=n_nodes)
+        node_ids = []
+        for n in nodes : 
+            node_ids.append(n.index)
+        return node_ids
+
+class HexagonalGraph(GridGraph) : 
+   
+    def calculate_angle(self, node_info, neighbor_info) : 
         ref = np.array([node_info.x,node_info.y-1])
         node = np.array([node_info.x,node_info.y])
         neighbor = np.array([neighbor_info.x,neighbor_info.y])
@@ -578,13 +546,7 @@ class HexagonalGraph(GridGraph):
         else : 
             return np.degrees(angle)
         
-    def sort_graph(self, node_info):
-        '''
-        This function sorts the graph.
-        
-         **Args**
-        | node_info:                    The node's info.
-        '''
+    def sort_graph(self, node_info) :
         none_node = TopologyNode(-1,0.0,0.0)
         n_sorted_index = np.full(6,none_node)
         
@@ -606,16 +568,8 @@ class HexagonalGraph(GridGraph):
         node_info.neighbors = n_sorted_index
         
     @staticmethod
-    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits):
-        '''
-        This function finds the coordinates for all nodes.
+    def find_grid_points(n_nodes_x, n_nodes_y, x_limits, y_limits) :
         
-         **Args**
-        | n_nodes_x:                    The number of nodes along the x axis.
-        | n_nodes_y:                    The number of nodes along the y axis.
-        | x_limits:                     The range of x coordinates.
-        | y_limits:                     The range of y coordinates.
-        '''
         nodes_x = np.linspace(x_limits[0], x_limits[1], n_nodes_x)
         nodes_y = np.linspace(y_limits[0], y_limits[1], n_nodes_y)
         
@@ -636,7 +590,8 @@ class HexagonalGraph(GridGraph):
         
         return grid_points
     
-    def build_graph(self, grid_points): 
+    
+    def build_graph(self, grid_points) : 
         """
         
         Parameters
@@ -672,9 +627,12 @@ class HexagonalGraph(GridGraph):
             node=TopologyNode(indexCounter,p[0],p[1])
             self.nodes=self.nodes+[node]
             indexCounter+=1
+        
+        
         # fill in the self.edges list from the edges information
         for e in edges:
             self.edges=self.edges+[[int(e[0]),int(e[1])]]
+                
         # construct the neighborhoods of each node in the graph
         for edge in self.edges:
             # first edge node
@@ -684,5 +642,6 @@ class HexagonalGraph(GridGraph):
             # add node a to the neighborhood of node b, and vice versa
             a.neighbors=a.neighbors+[b]
             b.neighbors=b.neighbors+[a]
+    
         for node in self.nodes:
             self.sort_graph(node)

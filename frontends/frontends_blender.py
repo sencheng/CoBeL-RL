@@ -34,7 +34,8 @@ class FrontendBlenderInterface():
         
         
         # start blender subprocess
-        subprocess.Popen([self.BLENDER_EXECUTABLE, scenarioName, '--window-border', '--window-geometry', '1320', '480', '600', '600', '--enable-autoexec'])
+        self.blender = subprocess.Popen([self.BLENDER_EXECUTABLE, scenarioName, '--window-border', 
+                          '--window-geometry', '1320', '480', '600', '600', '--enable-autoexec'])
         # prepare sockets for communication with blender
         self.controlSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.videoSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -211,19 +212,19 @@ class FrontendBlenderInterface():
        
         # retrieve images from all cameras of the robot (front, left, right, back)
         imgFront = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPFront = np.fromstring(imgFront, dtype=np.uint8)
+        imgNPFront = np.frombuffer(imgFront, dtype=np.uint8)
         imgNPFront = imgNPFront.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgLeft = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPLeft = np.fromstring(imgLeft, dtype=np.uint8)
+        imgNPLeft = np.frombuffer(imgLeft, dtype=np.uint8)
         imgNPLeft = imgNPLeft.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgRight = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPRight = np.fromstring(imgRight, dtype=np.uint8)
+        imgNPRight = np.frombuffer(imgRight, dtype=np.uint8)
         imgNPRight = imgNPRight.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgBack = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPBack = np.fromstring(imgBack, dtype=np.uint8)
+        imgNPBack = np.frombuffer(imgBack, dtype=np.uint8)
         imgNPBack = imgNPBack.reshape((capAreaHeight, capAreaWidth, 4))
         
         # and construct the omnicam image from the single images. Note: the images are just 'stitched' together, no distortion correction takes place (so far).
@@ -272,19 +273,19 @@ class FrontendBlenderInterface():
         
         # retrieve images from all cameras of the robot (front, left, right, back)
         imgFront = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPFront = np.fromstring(imgFront, dtype=np.uint8)
+        imgNPFront = np.frombuffer(imgFront, dtype=np.uint8)
         imgNPFront = imgNPFront.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgLeft = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPLeft = np.fromstring(imgLeft, dtype=np.uint8)
+        imgNPLeft = np.frombuffer(imgLeft, dtype=np.uint8)
         imgNPLeft = imgNPLeft.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgRight = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPRight = np.fromstring(imgRight, dtype=np.uint8)
+        imgNPRight = np.frombuffer(imgRight, dtype=np.uint8)
         imgNPRight = imgNPRight.reshape((capAreaHeight, capAreaWidth, 4))
         
         imgBack = self.recvImage(self.videoSocket, capAreaWidth * capAreaHeight * 4)
-        imgNPBack = np.fromstring(imgBack, dtype=np.uint8)
+        imgNPBack = np.frombuffer(imgBack, dtype=np.uint8)
         imgNPBack = imgNPBack.reshape((capAreaHeight, capAreaWidth, 4))
         
         # and construct the omnicam image from the single images. Note: the images are just 'stitched' together, no distortion correction takes place (so far).
@@ -405,6 +406,8 @@ class FrontendBlenderInterface():
         '''
         try:
             self.controlSocket.send('stopSimulation'.encode('utf-8'))
+            self.blender.kill()
+            print("Killing process...")
         except:
             print(sys.exc_info()[1])
 

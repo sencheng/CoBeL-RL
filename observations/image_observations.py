@@ -72,7 +72,6 @@ class ImageObservationBaseline():
         '''
         This function returns the observation space for the given observation class.
         '''
-        # currently, use a one-line 'image' to save computational resources
         return gym.spaces.Box (low=0.0, high=1.0, shape=(self.imageDims[1], self.imageDims[0], 3))
     
     
