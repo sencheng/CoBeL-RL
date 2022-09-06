@@ -254,7 +254,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
             nextNode = -1
             while True:
                 nrNodes = len(self.nodes)
-                nextNode = np.random.random_integers(0, nrNodes-1)
+                nextNode = np.random.randint(nrNodes-1)
                 if self.nodes[nextNode].startNode:
                     break
             nextNodePos = np.array([self.nodes[nextNode].x, self.nodes[nextNode].y])
