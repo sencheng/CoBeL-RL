@@ -19,7 +19,7 @@ To quickly get started and test the system, you can run one of the demos.
 Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
 * Install required python packages  
 
-`pip install -r requirements.txt`
+`pip3 install -r requirements.txt`
 
 ------------------------------
 
@@ -33,7 +33,23 @@ Run Demo
 
 `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
 
-*  Then, move the cloned project to the `site-packages` of your Python installation and rename the project directory to `cobel`.
+*  Then, install CoBeL-RL through pip.
+
+`pip3 install /path/to/cloned/project/`
+
+* If you intend to use Keras-RL agents install with the option:
+
+`[keras-rl]`
+
+* If you intend to use CoBeL-RL's Deep RL agents install with the option:
+
+`[tensorflow]`
+
+`[torch]`
+
+* If you intend to use Unity environments install with the option:
+
+`[unity]`
 
 * You will need to set up an environment variable for the Blender path to run the demos.
 

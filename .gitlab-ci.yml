@@ -9,6 +9,7 @@ before_script :
   - virtualenv cobel_venv
   - source cobel_venv/bin/activate
   - pip3 install -r requirements.txt
+  - pip3 install .
   - TZ=Europe/Berlin
   - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
   - apt-get install libglib2.0-0 -y
@@ -24,11 +25,11 @@ pylint:
     - pip install pylint
     - pip install pylint-exit 
     - echo "Checking code quality..."
-    - pylint -d C0301 agents/*.py || pylint-exit $?
-    - pylint -d C0301 frontends/*.py || pylint-exit $?
-    - pylint -d C0301 interfaces/*.py || pylint-exit $?
-    - pylint -d C0301 memory_modules/*.py || pylint-exit $?
-    - pylint -d C0301 spatial_representations/*.py || pylint-exit $?
+    - pylint -d C0301 cobel/agents/*.py || pylint-exit $?
+    - pylint -d C0301 cobel/frontends/*.py || pylint-exit $?
+    - pylint -d C0301 cobel/interfaces/*.py || pylint-exit $?
+    - pylint -d C0301 cobel/memory_modules/*.py || pylint-exit $?
+    - pylint -d C0301 cobel/spatial_representations/*.py || pylint-exit $?
 
 demo-job :
   stage : test
