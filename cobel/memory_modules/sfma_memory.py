@@ -136,7 +136,7 @@ class SFMAMemory():
             P = np.clip(self.C, a_min=0, a_max=None)/np.sum(np.clip(self.C, a_min=0, a_max=None))
             exp = np.random.choice(np.arange(0, P.shape[0]), p=P)
             current_state = exp % self.number_of_states
-            action = int(exp/self.numberOfStates)
+            action = int(exp/self.number_of_states)
         next_state = self.states[current_state, action]
         # reset inhibition
         self.I *= 0
