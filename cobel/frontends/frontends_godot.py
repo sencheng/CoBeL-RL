@@ -41,9 +41,9 @@ class FrontendGodotInterface:
         # start blender subprocess
         subprocess.Popen([self.GODOT_EXECUTABLE])
         # define connectors
-        self.data_connector = GodotConnector(5002)
-        self.image_connector = GodotConnector(5001, True)
-        self.control_connector = GodotConnector(5000)
+        self.data_connector = GodotConnector(65320)
+        self.image_connector = GodotConnector(65444, True)
+        self.control_connector = GodotConnector(65433)
         self.control_connector.start()
         print ('Godot control connection has been initiated.')
         self.data_connector.start()
@@ -55,7 +55,7 @@ class FrontendGodotInterface:
         # for save closing use custom signal interrupt handler
         signal.signal(signal.SIGINT, self.on_exit)
         # store env data
-        self.envData = {'imageData': None}
+        self.env_data = {'image': None}
         # load scene
         self.change_scene(scenario_name)
 
@@ -93,7 +93,7 @@ class FrontendGodotInterface:
         None
         '''
         self.control_connector.send('StepSimulationWithoutPhysics', f'{x},{y},{yaw}')
-        self.envData['imageData'] = self.receive_image()
+        self.env_data['image'] = self.receive_image()
 
     def get_illumination(self, light_source: str) -> np.ndarray:
         '''
@@ -127,7 +127,7 @@ class FrontendGodotInterface:
         '''
         hex_color = '#'
         for value in color:
-            hex_color = hex(value)[2:].zfill(2)
+            hex_color += hex(int(value))[2:].zfill(2)
         self.control_connector.send('SetIllumination', f'{light_source},{hex_color}')
 
     def set_move_actor(self, x: float, y: float, omega: float, node_name='Actor') -> None:
@@ -227,7 +227,7 @@ class FrontendGodotInterface:
         self.control_connector.send('ChangeScene', scene)
         time.sleep(1)   # wait for the scene to be loaded
 
-    def close_godot(self):
+    def stop_godot(self):
         '''
         This function closes Godot.
         
@@ -240,6 +240,9 @@ class FrontendGodotInterface:
         None
         '''
         self.control_connector.send('CloseGodot')
+        self.control_connector.close()
+        self.data_connector.close()
+        self.image_connector.close()
         
     def on_exit(self):
         '''
@@ -253,10 +256,7 @@ class FrontendGodotInterface:
         ----------
         None
         '''
-        self.close_godot()
-        self.control_connector.close()
-        self.data_connector.close()
-        self.image_connector.close()
+        self.stop_godot()
         os._exit(-1)
 
 
@@ -524,7 +524,6 @@ class Server:
         data["events"] = []
         for event in events:
             data["events"].append(event.encode())
-        print(json.dumps(data))
         self.conn.sendall(json.dumps(data).encode(encoding="utf-8") + '\u2000'.encode(encoding="utf-8"))
         
         
