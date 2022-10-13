@@ -30,32 +30,29 @@ def single_run():
     modules['world'] = FrontendGodotInterface('room')
     modules['observation'] = ImageObservationBaseline(modules['world'], main_window, visual_output)
     
-    rotations = np.linspace(0, 2 * np.pi, 255)
-    for i in range(255):
-        modules['world'].set_illumination('SpotLight', np.array([255, 255-i, 255-i]))
+    # define pose information
+    rotations = np.arange(255) * 2 * np.pi / 255
+    positions = np.zeros((255, 2))
+    positions[:, 0] = np.sin(rotations)
+    positions[:, 1] = np.cos(rotations)
+    positions *= 0.5
+    rotations = np.tile(rotations, 3)
+    positions = np.tile(positions, (3, 1))
+    # define color information
+    colors = []
+    colors += [[255, 255-i, 255-i] for i in range(255)]
+    colors += [[255-i, i, 0] for i in range(255)]
+    colors += [[0, 255-i, i] for i in range(255)]
+    
+    # drive the virtual agent and environment 
+    for i in range(len(colors)):
+        # change the spotlight's color
+        modules['world'].set_illumination('SpotLight', np.array(colors[i]))
         time.sleep(0.05)
-        modules['world'].step_simulation_without_physics(0, 0, rotations[i])
+        # move the virtual agent
+        modules['world'].step_simulation_without_physics(positions[i, 0], positions[i, 1], rotations[i])
         time.sleep(0.05)
-        modules['observation'].update()
-        if hasattr(qt.QtGui, 'QApplication'):
-            qt.QtGui.QApplication.instance().processEvents()
-        else:
-            qt.QtWidgets.QApplication.instance().processEvents()
-    for i in range(255):
-        modules['world'].set_illumination('SpotLight', np.array([255-i, i, 0]))
-        time.sleep(0.05)
-        modules['world'].step_simulation_without_physics(0, 0, rotations[i])
-        time.sleep(0.05)
-        modules['observation'].update()
-        if hasattr(qt.QtGui, 'QApplication'):
-            qt.QtGui.QApplication.instance().processEvents()
-        else:
-            qt.QtWidgets.QApplication.instance().processEvents()
-    for i in range(255):
-        modules['world'].set_illumination('SpotLight', np.array([0, 255-i, i]))
-        time.sleep(0.05)
-        modules['world'].step_simulation_without_physics(0, 0, rotations[i])
-        time.sleep(0.05)
+        # update observation and visualization 
         modules['observation'].update()
         if hasattr(qt.QtGui, 'QApplication'):
             qt.QtGui.QApplication.instance().processEvents()

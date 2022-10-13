@@ -130,9 +130,31 @@ You got two options to run a demo.
  <details>
 ________________________________________________________________________________________________
 <summary>
-Godot interface (TBD)
+Godot interface
 </summary>
 
-Expected to be available after summer semester 2022.
+If you want to try the Godot demo, you need to perform the following steps:
+
+*  Download the Godot build (builds are available for Linux and Windows).
+
+`https://ruhr-uni-bochum.sciebo.de/s/dSGaGtflsNTqYRW`
+
+* You will need to set up an environment variable for the Godot path to run the demos.
+
+`export GODOT_EXECUTABLE_PATH="/path/to/godot/"`
+
+* Alternatively, you can set the variable manually in Python before running the script.
+
+`import os`
+
+`os.environ['GODOT_EXECUTABLE_PATH'] = '/path/to/godot/'`
+    
+* Go to demo folder.
+`cd ~/cobel/demo/godot/`
+
+*  Start the demo simulation.
+`python godo_demo.py`
+
+*  **Note:** Running the demo with Spyder will crash the program since the interface currently uses asyncio method call.
   
  </details>    
