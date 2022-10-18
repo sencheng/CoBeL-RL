@@ -5,6 +5,8 @@ import pyqtgraph as qg
 from tensorflow.keras import backend as K
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Flatten, Concatenate, Input, Activation
+# keras-rl
+from rl.core import Processor
 # CoBel-RL framework
 from cobel.agents.keras_rl.ddpg import DDPGAgentBaseline
 from cobel.interfaces.move_2d import InterfaceMove2D
@@ -14,8 +16,26 @@ from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor
 # NOTE: do NOT use visualOutput=True in parallel experiments, visualOutput=True should only be used in explicit calls to 'singleRun'! 
 visual_output = True
 
+class ActionProcessor(Processor):
+    '''
+    This action processor is used to rescale the action output.
+    '''
+    def process_action(self, action: np.ndarray) -> np.ndarray:
+        '''
+        This function rescales the action by 0.001.
+        
+        Parameters
+        ----------
+        action :                            The action to be rescaled.
+        
+        Returns
+        ----------
+        action :                            The rescaled action.
+        '''
+        return action * 10**-3
+    
 
-def build_models():
+def build_models() -> (Sequential, Model, Input):
         '''
         This function builds the actor and critic models of the DDPG agent.
         
@@ -27,13 +47,14 @@ def build_models():
         ----------
         model_actor :                       The network actor model to be used by the DDPG agent.
         model_critic :                      The network critic model to be used by the DDPG agent.
+        action_input :                      The action input layer.
         '''
         # actor model
         model_actor = Sequential()
         model_actor.add(Flatten(input_shape=(1,) + (4,)))
         model_actor.add(Dense(units=64, activation='tanh'))
         model_actor.add(Dense(units=64, activation='tanh'))
-        model_actor.add(Dense(units=2, activation='tanh', name='output'))
+        model_actor.add(Dense(units=2, activation='linear', name='output'))
         # critic model
         observation_input = Input(shape=(1,) + (4,), name='observation_input')
         observation_flattened = Flatten()(observation_input)
@@ -69,10 +90,10 @@ def single_run():
     # a dictionary that contains all employed modules
     modules = dict()
     modules['rl_interface'] = InterfaceMove2D(modules, visual_output, main_window)
-    #modules['rl_interface'].static_goal = np.array([.5, .5])
+    modules['rl_interface'].static_goal = np.array([.5, .5])
     
     # amount of train and test trials
-    trials_train, trials_test = 250, 250
+    trials_train, trials_test = 500, 250
     # amount of trials
     number_of_trials = trials_train + trials_test
     # maximum steos per trial
@@ -83,6 +104,8 @@ def single_run():
     
     # initialize RL agent
     rl_agent = DDPGAgentBaseline(modules['rl_interface'], 1000000, model_actor, model_critic, action_input, {'on_trial_end': [reward_monitor.update]})
+    rl_agent.agent.processor = ActionProcessor()
+    rl_agent.agent.target_model_update = 1e-3
     
     # eventually, allow the OAI class to access the robotic agent class
     modules['rl_interface'].rl_agent = rl_agent
@@ -90,7 +113,7 @@ def single_run():
     # let the agent learn
     rl_agent.train(trials_train, max_steps)
     
-    # test the agent learn
+    # test the agent
     rl_agent.test(trials_test, max_steps)
     
     # clear keras session (for performance)
