@@ -3,11 +3,12 @@ import numpy as np
 import gym
 import pyqtgraph as pg
 import PyQt5 as qt
-# CoBel-RL framework
+# framework imports
 from cobel.misc.gridworld_visualization import CogArrow
+from cobel.interfaces.rl_interface import AbstractInterface
 
 
-class InterfaceGridworld(gym.Env):
+class InterfaceGridworld(AbstractInterface):
     
     def __init__(self, modules: dict, world: dict, with_GUI=True, gui_parent=None):
         '''
@@ -24,14 +25,9 @@ class InterfaceGridworld(gym.Env):
         ----------
         None
         '''
-        # store the modules
-        self.modules = modules
-        # store visual output variable
-        self.with_GUI = with_GUI       
+        super().__init__(modules, with_GUI)
         # store gridworld
         self.world = world
-        # a variable that allows the OAI class to access the agent class
-        self.rl_agent = None
         self.gui_parent = gui_parent
         # prepare observation and action spaces
         self.action_space = gym.spaces.Discrete(4)
@@ -259,3 +255,17 @@ class InterfaceGridworld(gym.Env):
                 qt.QtGui.QApplication.instance().processEvents()
             else:
                 qt.QtWidgets.QApplication.instance().processEvents()
+                
+    def get_position(self) -> np.ndarray:
+        '''
+        This function returns the agent's position in the environment.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        position :                          Numpy array containing the agent's position.
+        '''
+        return np.copy(self.world['coordinates'][self.current_state])

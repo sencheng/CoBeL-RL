@@ -1,9 +1,10 @@
 # basic imports
 import numpy as np
-import gym
+# framework imports
+from cobel.interfaces.rl_interface import AbstractInterface
 
 
-class InterfaceBaseline(gym.Env):
+class InterfaceBaseline(AbstractInterface):
     
     def __init__(self, modules: dict, with_GUI=True, reward_callback=None):
         '''
@@ -19,10 +20,7 @@ class InterfaceBaseline(gym.Env):
         ----------
         None
         '''
-        # store the modules
-        self.modules = modules
-        # store visual output variable
-        self.with_GUI = with_GUI
+        super().__init__(modules, with_GUI)
         # memorize the reward callback function
         self.reward_callback = reward_callback
         self.world = self.modules['world']
@@ -36,8 +34,6 @@ class InterfaceBaseline(gym.Env):
         # required for the analysis of the agent's behavior
         self.forbidden_zone_hit = False
         self.final_node = -1
-        # a variable that allows the OAI class to access the robotic agent class
-        self.rl_agent = None
         
     def update_observation(self, observation: np.ndarray):
         '''
@@ -95,3 +91,19 @@ class InterfaceBaseline(gym.Env):
         self.observation = np.copy(self.modules['observation'].observation)
         
         return self.modules['observation'].observation
+    
+    def get_position(self) -> np.ndarray:
+        '''
+        This function returns the agent's position in the environment.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        position :                          Numpy array containing the agent's position.
+        '''
+        current_node = self.modules['spatial_representation'].nodes[self.modules['spatial_representation'].current_node]
+        
+        return np.array([current_node.x, current_node.y])

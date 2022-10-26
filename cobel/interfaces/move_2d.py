@@ -3,9 +3,11 @@ import numpy as np
 import gym
 import pyqtgraph as pg
 import PyQt5 as qt
+# framework imports
+from cobel.interfaces.rl_interface import AbstractInterface
 
 
-class InterfaceMove2D(gym.Env):
+class InterfaceMove2D(AbstractInterface):
     
     def __init__(self, modules: dict, with_GUI=True, gui_parent=None):
         '''
@@ -23,16 +25,11 @@ class InterfaceMove2D(gym.Env):
         ----------
         None
         '''
-        # store the modules
-        self.modules = modules
-        # store visual output variable
-        self.with_GUI = with_GUI      
+        super().__init__(modules, with_GUI)
         # limits of the environments the agent is allowed to move in
         self.limits = np.array([0., 1., 0., 1.])
         # the agent's current state in the environment (current position + goal position)
         self.state = np.random.rand(4)
-        # a variable that allows the OAI class to access the robotic agent class
-        self.rl_agent = None
         self.gui_parent = gui_parent
         # prepare observation and action spaces
         self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(4, ))
@@ -178,3 +175,17 @@ class InterfaceMove2D(gym.Env):
                 qt.QtGui.QApplication.instance().processEvents()
             else:
                 qt.QtWidgets.QApplication.instance().processEvents()
+                
+    def get_position(self) -> np.ndarray:
+        '''
+        This function returns the agent's position in the environment.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        position :                          Numpy array containing the agent's position.
+        '''
+        return np.copy(self.state[:2])
