@@ -48,6 +48,7 @@ class DQNAgentBaseline(AbstractRLAgent):
             None
             '''
             logs['trial'] = self.rl_parent.current_trial - 1
+            logs['trial_session'] = self.rl_parent.session_trial - 1
             super().on_trial_begin(logs)
             
         def on_episode_end(self, epoch: int, logs: dict):
@@ -71,7 +72,7 @@ class DQNAgentBaseline(AbstractRLAgent):
             self.rl_parent.current_trial += 1
             self.rl_parent.session_trial += 1
             logs['trial'] = self.rl_parent.current_trial - 1
-            logs['session_trial'] = self.rl_parent.session_trial - 1
+            logs['trial_session'] = self.rl_parent.session_trial - 1
             logs['trial_reward'] = logs['episode_reward']
             # stop training after the maximum number of trials was reached
             if self.rl_parent.session_trial >= self.rl_parent.max_trials:
@@ -91,6 +92,8 @@ class DQNAgentBaseline(AbstractRLAgent):
             ----------
             None
             '''
+            logs['trial'] = self.rl_parent.current_trial - 1
+            logs['trial_session'] = self.rl_parent.session_trial - 1
             super().on_step_begin(logs)
              
         def on_step_end(self, step: int, logs: dict):
@@ -106,6 +109,8 @@ class DQNAgentBaseline(AbstractRLAgent):
             ----------
             None
             '''
+            logs['trial'] = self.rl_parent.current_trial - 1
+            logs['trial_session'] = self.rl_parent.session_trial - 1
             super().on_step_end(logs)
                 
     def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={}):

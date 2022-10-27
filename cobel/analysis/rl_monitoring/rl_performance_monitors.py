@@ -263,7 +263,7 @@ class TrajectoryMonitor():
         #define the variables that will be monitored
         self.trajectory_trace = []
         # keeps of the current trial
-        self.current_trial = -1
+        self.current_trial = None
         
         if self.visual_output:
             # to be implemented
