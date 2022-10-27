@@ -18,7 +18,7 @@ requirements = [
         'gym>=0.9.2',
         'shapely>=1.7.0',
         'testresources',
-        'pyqtgraph>=0.10.0',
+        'pyqtgraph>=0.10.0,<=0.12.0',
         'PyQt5>=5.12.3',
         'PyQt5-sip>=12.7.1',
         'scipy'
