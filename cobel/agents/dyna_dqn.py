@@ -85,6 +85,7 @@ class DynaDQN(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
@@ -101,6 +102,7 @@ class DynaDQN(AbstractDynaQAgent):
                     self.replay(replay_batch_size)
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
@@ -135,6 +137,7 @@ class DynaDQN(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta, True)
                 # perform action
@@ -143,6 +146,7 @@ class DynaDQN(AbstractDynaQAgent):
                 state = next_state
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
@@ -326,6 +330,7 @@ class DynaDSR(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
@@ -342,6 +347,7 @@ class DynaDSR(AbstractDynaQAgent):
                     self.replay(replay_batch_size)
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
@@ -376,6 +382,7 @@ class DynaDSR(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta, True)
@@ -385,6 +392,7 @@ class DynaDSR(AbstractDynaQAgent):
                 state = next_state
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break

@@ -122,6 +122,7 @@ class SFMAAgent(AbstractDynaQAgent):
                 trial_log['replay'] = self.M.replay(replay_batch_size, state)
                 self.engaged_callbacks.on_replay_end(trial_log)
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
                 # perform action
@@ -134,6 +135,7 @@ class SFMAAgent(AbstractDynaQAgent):
                 self.M.store(experience)
                 # log reward
                 trial_log['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(trial_log)
                 # update current state
                 state = next_state
                 # stop trial when the terminal state is reached
@@ -180,12 +182,14 @@ class SFMAAgent(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta, True)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # log reward
                 trial_log['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(trial_log)
                 # update current state
                 state = next_state
                 # stop trial when the terminal state is reached
@@ -372,6 +376,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
                 # perform action
@@ -382,6 +387,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
                 self.M.store(experience)
                 # log behavior and reward
                 trial_log['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(trial_log)
                 # update current state
                 state = next_state
                 # stop trial when the terminal state is reached
@@ -434,12 +440,14 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
                 # perform action
                 next_state, reward, stop_episode, callback_value = self.interface_OAI.step(action)
                 # log behavior and reward
                 trial_log['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(trial_log)
                 # update current state
                 state = next_state
                 # stop trial when the terminal state is reached

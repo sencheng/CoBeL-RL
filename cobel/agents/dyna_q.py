@@ -247,6 +247,7 @@ class DynaQAgent(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
                 # perform action
@@ -264,6 +265,7 @@ class DynaQAgent(AbstractDynaQAgent):
                     self.replay(replay_batch_size)
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
@@ -296,6 +298,7 @@ class DynaQAgent(AbstractDynaQAgent):
             # reset environment
             state = self.interface_OAI.reset()
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta, True)
                 # perform action
@@ -304,6 +307,7 @@ class DynaQAgent(AbstractDynaQAgent):
                 state = next_state
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
@@ -458,6 +462,7 @@ class PMAAgent(AbstractDynaQAgent):
                 logs['replay_batch'] = self.M.replay(replay_batch_size, state)
                 self.engaged_callbacks.on_replay_end(logs)
             for step in range(max_number_of_steps):
+                self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
                 action = self.select_action(state, self.epsilon, self.beta)
                 # perform action
@@ -472,6 +477,7 @@ class PMAAgent(AbstractDynaQAgent):
                 state = next_state
                 # update cumulative reward
                 logs['trial_reward'] += reward
+                self.engaged_callbacks.on_step_end(logs)
                 # stop trial when the terminal state is reached
                 if end_trial:
                     break
