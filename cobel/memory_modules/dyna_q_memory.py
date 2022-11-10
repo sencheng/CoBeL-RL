@@ -133,7 +133,6 @@ class PMAMemory():
         self.SR = np.linalg.inv(np.eye(self.T.shape[0]) - self.gamma * self.T)
         # determine transitions that should be ignored (i.e. those that lead into the same state)
         self.update_mask = (self.states.flatten(order='F') != np.tile(np.arange(self.number_of_states), self.number_of_actions))
-
         
     def store(self, experience: dict):
         '''
@@ -193,10 +192,12 @@ class PMAMemory():
                     extending_action = np.random.choice(np.arange(self.number_of_actions), p=extending_action)
                     # determine extending step
                     extend += extending_action * self.number_of_states
-                    #updates[extend] = performed_updates[last_seq:] + updates[extend]
-                    updates[extend] = performed_updates[-1:] + updates[extend]
+                    updates[extend] = performed_updates[last_seq:] + updates[extend]
             # compute gain and need
-            gain = self.compute_gain(updates)
+            gain = self.compute_gain_batch() # ! check for consistency
+            if extend != -1:
+                gain[extend] = self.compute_gain([updates[extend]])
+            #gain = self.compute_gain(updates) # (old) iterative version
             if self.equal_gain:
                 gain.fill(1)
             need = self.compute_need(current_state)
@@ -263,6 +264,38 @@ class PMAMemory():
         
         return np.array(gains)
     
+    def compute_gain_batch(self) -> np.ndarray:
+        '''
+        This function computes the gain for each possible 1-step backup.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        gains :                             The gain values for the 1-step updates.
+        '''
+        # prepare updates
+        updates = np.tile(self.rl_parent.Q, (self.rl_parent.Q.shape[1], 1))
+        # bootstrap target values
+        next_states = self.rl_parent.M.states.flatten(order='F')
+        targets = self.rl_parent.Q[next_states]
+        # prepare target mask
+        target_mask = np.zeros(updates.shape)
+        for action in range(self.rl_parent.Q.shape[1]):
+            target_mask[(self.rl_parent.Q.shape[0] * action):(self.rl_parent.Q.shape[0] * (action + 1)), action] = 1.
+        # compute updated Q-values
+        Q_new = np.copy(updates)
+        Q_new += self.rl_parent.learning_rate * target_mask * (np.tile(self.rewards, (self.rl_parent.Q.shape[1], 1)) + self.rl_parent.gamma * np.amax(targets, axis=1).reshape(targets.shape[0], 1) * self.terminals.flatten(order='F').reshape(targets.shape[0], 1) - Q_new)
+        # compute policies pre and post update
+        policy_old = self.action_probs_batch(updates, self.rl_parent.beta, None)
+        policy_new = self.action_probs_batch(Q_new, self.rl_parent.beta, None)
+        # comute gain for all updates
+        gain = np.sum(policy_new * Q_new, axis=1) - np.sum(policy_old * Q_new, axis=1)
+        
+        return np.clip(gain, a_min=self.min_gain, a_max=None)
+    
     def compute_need(self, current_state=None) -> np.ndarray:
         '''
         This function computes the need for each possible n-step backup in updates.
@@ -328,10 +361,8 @@ class PMAMemory():
         '''
         # assume greedy policy per default
         ties = (q == np.amax(q))
-        #p = ties/np.sum(ties)
         p = np.ones(self.number_of_actions) * (self.rl_parent.epsilon/self.number_of_actions)
         p[ties] += (1. - self.rl_parent.epsilon)/np.sum(ties)
-        #p = np.arange(self.numberOfActions) == np.argmax(q)
         # softmax when 'on-policy'
         if self.rl_parent.policy == 'softmax':
             # catch all zero case
@@ -341,3 +372,32 @@ class PMAMemory():
             p /= np.sum(p)
             
         return p
+    
+    def action_probs_batch(self, Q: np.ndarray, beta=0., action_mask=None) -> np.ndarray:
+        '''
+        This function computes the action selection probabilities for a table of Q-values.
+        
+        Parameters
+        ----------
+        Q :                                 The Q-values.
+        beta :                              The inverse temperature parameter used when computing the action selection probabilities under a softmax policy.
+        action_mask :                       The action mask (optional).
+        
+        Returns
+        ----------
+        probs :                             The action selection probabilities.
+        '''
+        # assume random policy by default
+        P = np.ones(Q.shape)
+        if action_mask is None:
+            action_mask = np.ones(P.shape)
+        # compute action selection probabilities
+        if self.rl_parent.policy == 'greedy':
+            ties = (Q == np.amax(Q, axis=1).reshape(Q.shape[0], 1))
+            P.fill(self.rl_parent.epsilon/self.number_of_actions)
+            P += (ties * (1. - self.rl_parent.epsilon))/np.sum(ties, axis=1).reshape(ties.shape[0], 1)
+        elif self.rl_parent.policy == 'softmax':
+            Q_mask = np.exp(Q * beta)
+            P = Q_mask * action_mask
+    
+        return P/np.sum(P, axis=1).reshape(P.shape[0], 1) 

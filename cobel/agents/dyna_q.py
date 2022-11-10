@@ -459,7 +459,7 @@ class PMAAgent(AbstractDynaQAgent):
             self.engaged_callbacks.on_trial_begin(logs)
             # perform experience replay
             if not no_replay:
-                logs['replay_batch'] = self.M.replay(replay_batch_size, state)
+                logs['replay'] = self.M.replay(replay_batch_size, state)
                 self.engaged_callbacks.on_replay_end(logs)
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(logs)
@@ -486,7 +486,7 @@ class PMAAgent(AbstractDynaQAgent):
             # perform experience replay
             if not no_replay:
                 self.M.update_SR()
-                logs['replay_batch'] = self.M.replay(replay_batch_size, next_state)
+                logs['replay'] = self.M.replay(replay_batch_size, next_state)
                 self.engaged_callbacks.on_replay_end(logs)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
