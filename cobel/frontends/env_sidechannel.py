@@ -1,0 +1,73 @@
+# basic imports
+import numpy as np
+import uuid
+# ML-agents
+from mlagents_envs.environment import UnityEnvironment
+from mlagents_envs.side_channel.side_channel import SideChannel, IncomingMessage, OutgoingMessage
+
+
+# Create the StringLogChannel class
+class EnvSideChannel(SideChannel):
+
+    def __init__(self) -> None:
+        '''
+        This channel is specifically used to send and receive strings between Unity and Python.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        None
+        '''
+        self.received_info = []
+        super().__init__(uuid.UUID("621f0a70-4f87-11ea-a6bf-784f4387d1f7"))
+
+    def on_message_received(self, msg: IncomingMessage) -> None:
+        '''
+        Note: We must implement this method of the SideChannel interface to
+        receive messages from Unity
+        
+        Parameters
+        ----------
+        msg :                               The incoming message.
+        
+        Returns
+        ----------
+        None
+        '''
+        # We simply read a string from the message and print it.
+        self.received_info.append(msg.read_string())
+
+    def send_string(self, data: str) -> None:
+        '''
+        Sends message.
+        
+        Parameters
+        ----------
+        data :                              The outgoing message.
+        
+        Returns
+        ----------
+        None
+        '''
+        # Add the string to an OutgoingMessage
+        msg = OutgoingMessage()
+        msg.write_string(data)
+        # We call this method to queue the data we want to send
+        super().queue_message_to_send(msg)
+
+    def clear_received_info(self):
+        '''
+        Clears the information received so far.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        None
+        '''
+        self.received_info = []

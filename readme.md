@@ -19,7 +19,7 @@ To quickly get started and test the system, you can run one of the demos.
 Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
 * Install required python packages  
 
-`pip install -r requirements.txt`
+`pip3 install -r requirements.txt`
 
 ------------------------------
 
@@ -33,7 +33,23 @@ Run Demo
 
 `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
 
-*  Then, move the cloned project to the `site-packages` of your Python installation and rename the project directory to `cobel`.
+*  Then, install CoBeL-RL through pip.
+
+`pip3 install /path/to/cloned/project/`
+
+* If you intend to use Keras-RL agents install with the option:
+
+`[keras-rl]`
+
+* If you intend to use CoBeL-RL's Deep RL agents install with the option:
+
+`[tensorflow]`
+
+`[torch]`
+
+* If you intend to use Unity environments install with the option:
+
+`[unity]`
 
 * You will need to set up an environment variable for the Blender path to run the demos.
 
@@ -114,9 +130,31 @@ You got two options to run a demo.
  <details>
 ________________________________________________________________________________________________
 <summary>
-Godot interface (TBD)
+Godot interface
 </summary>
 
-Expected to be available after summer semester 2022.
+If you want to try the Godot demo, you need to perform the following steps:
+
+*  Download the Godot build (builds are available for Linux and Windows).
+
+`https://ruhr-uni-bochum.sciebo.de/s/dSGaGtflsNTqYRW`
+
+* You will need to set up an environment variable for the Godot path to run the demos.
+
+`export GODOT_EXECUTABLE_PATH="/path/to/godot/"`
+
+* Alternatively, you can set the variable manually in Python before running the script.
+
+`import os`
+
+`os.environ['GODOT_EXECUTABLE_PATH'] = '/path/to/godot/'`
+    
+* Go to demo folder.
+`cd ~/cobel/demo/godot/`
+
+*  Start the demo simulation.
+`python godo_demo.py`
+
+*  **Note:** Running the demo with Spyder will crash the program since the interface currently uses asyncio method call.
   
  </details>    
