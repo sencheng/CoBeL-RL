@@ -132,7 +132,7 @@ class GridGraph(AbstractTopologyGraph):
     
     def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4, x_limits=[-1,1], y_limits=[-1,1], start_nodes=None, goal_nodes=None,
                  visual_output=None, rotation=False, world_module=None, use_world_limits=False, observation_module=None):
-        super().__init__(n_nodes_x=5, n_nodes_y=5, n_neighbors=4, visual_output=None)
+        super().__init__(n_nodes_x=n_nodes_x, n_nodes_y=n_nodes_y, n_neighbors=n_neighbors, visual_output=visual_output)
         '''
         Square/Rectangular grid topology graph class.
         

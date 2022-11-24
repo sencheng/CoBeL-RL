@@ -133,9 +133,9 @@ ________________________________________________________________________________
 Godot interface
 </summary>
 
-If you want to try the Godot demo, you need to perform the following steps:
+If you want to try the Godot demos, you need to perform the following steps:
 
-*  Download the Godot build (builds are available for Linux and Windows).
+*  Download the Godot build (build contains executables for Linux and Windows).
 
 `https://ruhr-uni-bochum.sciebo.de/s/dSGaGtflsNTqYRW`
 
@@ -150,11 +150,15 @@ If you want to try the Godot demo, you need to perform the following steps:
 `os.environ['GODOT_EXECUTABLE_PATH'] = '/path/to/godot/'`
     
 * Go to demo folder.
+
 `cd ~/cobel/demo/godot/`
 
-*  Start the demo simulation.
-`python godo_demo.py`
+*  Start either of the demo simulations.
 
-*  **Note:** Running the demo with Spyder will crash the program since the interface currently uses asyncio method call.
+`python godot_demo.py`
+
+`python godot_demo_grid_graph.py`
+
+**Note: The Godot path can also be passed as a parameter to the Godot frontend module. For your own simulations it is therefore not necessary to set a permanent variable.**
   
  </details>    

@@ -444,13 +444,15 @@ class DynaDSR(AbstractDynaQAgent):
             # compute indices of relevant experiences
             idx = np.arange(len(replay_batch))[idx]
             for i, index in enumerate(idx):
+                # we have to zero the bootstrap value when using the follow-up state
+                terminal = terminals[index] if self.use_follow_up_state else 1
                 # Deep SR
                 if not self.use_Deep_DR:
                     best = np.argmax(np.array([future_values[action][index] for action in future_values]))
-                    targets[action][i] += self.gamma * future_SR[best][index]
+                    targets[action][i] += self.gamma * future_SR[best][index] * terminal
                 # Deep DR
                 else:
-                    targets[action][i] += self.gamma * np.mean(np.array([future_SR[stream][index] for stream in future_SR]), axis=0)
+                    targets[action][i] += self.gamma * np.mean(np.array([future_SR[stream][index] for stream in future_SR]), axis=0) * terminal
         # update online models
         for action in range(self.number_of_actions):
             if inputs[action].shape[0] > 0:
