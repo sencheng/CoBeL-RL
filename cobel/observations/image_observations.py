@@ -49,6 +49,8 @@ class ImageObservationBaseline():
         self.noise_gaussian = 0.
         # probability for a pixel to turn hot/cold
         self.noise_salt_pepper = 0.
+        # the image format
+        self.format = 'bgr'
     
     def update(self):
         '''
@@ -68,7 +70,8 @@ class ImageObservationBaseline():
         if self.with_GUI:
             image_data = observation
             self.camera_image.setOpts(axisOrder='row-major')
-            image_data = image_data[:,:,::-1]
+            if self.format == 'bgr':
+                image_data = image_data[:,:,::-1]
             self.camera_image.setImage(image_data)
             image_scale = 1.0
             self.camera_image.setRect(QRectF(0.0, 0.0, image_scale, image_data.shape[0]/image_data.shape[1]*image_scale))
@@ -90,7 +93,8 @@ class ImageObservationBaseline():
         if self.with_GUI:
             image_data = observation
             self.observation_image.setOpts(axisOrder='row-major')
-            image_data = image_data[:,:,::-1]
+            if self.format == 'bgr':
+                image_data = image_data[:,:,::-1]
             self.observation_image.setImage(image_data)
             image_scale = 1.0
             self.observation_image.setRect(QRectF(0.0, -0.1, image_scale, image_data.shape[0]/image_data.shape[1]*image_scale))

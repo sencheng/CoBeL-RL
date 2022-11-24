@@ -1,19 +1,15 @@
 # basic imports
+import sys
+import socket
 import os
-import time
 import subprocess
 import json
-import signal
 import numpy as np
-import asyncio
-import threading
-from typing import Dict, Callable, Optional
-from socket import socket, AF_INET, SOCK_STREAM, timeout
 
-
-class FrontendGodotInterface:
-
-    def __init__(self, scenario_name: str, godot_executable=None):
+ 
+class FrontendGodotInterface():
+    
+    def __init__(self, scenario_name: str, godot_executable=None, running=False):
         '''
         The Godot interface class.
         This class connects to the Godot environment and controls the flow of commands/data that goes to/comes from the Blender environment.
@@ -21,13 +17,14 @@ class FrontendGodotInterface:
         Parameters
         ----------
         scenario_name :                     The name of the blender scene.
-        blender_executable :                The path to the blender executable.
+        godot_executable :                  The path to the blender executable.
+        running :                           If true the starting of a new process will be skipped.
         
         Returns
         ----------
         None
         '''
-        # determine path to Godot executable
+        # determine path to blender executable
         self.GODOT_EXECUTABLE = ''
         # if none is given check environmental variable
         if godot_executable is None:
@@ -39,80 +36,158 @@ class FrontendGodotInterface:
         else:
             self.GODOT_EXECUTABLE = godot_executable
         # start blender subprocess
-        subprocess.Popen([self.GODOT_EXECUTABLE])
-        # define connectors
-        self.data_connector = GodotConnector(65320)
-        self.image_connector = GodotConnector(65444, True)
-        self.control_connector = GodotConnector(65433)
-        self.control_connector.start()
-        print ('Godot control connection has been initiated.')
-        self.data_connector.start()
-        print ('Godot data connection has been initiated.')
-        self.image_connector.start()
-        print ('Godot video connection has been initiated.')
-        # sometimes events are fired before has finished registering the event-listeners
-        time.sleep(0.5)
-        # for save closing use custom signal interrupt handler
-        signal.signal(signal.SIGINT, self.on_exit)
-        # store env data
-        self.env_data = {'image': None}
+        if not running:
+            subprocess.Popen([self.GODOT_EXECUTABLE])
+        # prepare sockets for communication with blender
+        self.control_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.video_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.data_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # wait for BlenderControl to start, this socket take care of command/data(limited amount) transmission
+        godot_control_available = False
+        while not godot_control_available:
+            try:
+                self.control_socket.connect(('localhost', 5000))
+                self.control_socket.setblocking(1)
+                godot_control_available = True
+            except:
+                pass
+        print('Godot control connection has been initiated.')
+        self.control_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        # wait for BlenderVideo to start, this socket transmits video data from Blender
+        godot_video_available = False
+        while not godot_video_available:
+            try:
+                self.video_socket.connect(('localhost', 5001))
+                self.video_socket.setblocking(1)
+                godot_video_available = True
+            except:
+                pass
+        print('Godot video connection has been initiated.')
+        self.video_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        # wait for BlenderData to start, this socket is currently legacy, can probably be removed in future system versions(?)
+        godot_data_available = False
+        while not godot_data_available:
+            try:
+                self.data_socket.connect(('localhost', 5002))
+                self.data_socket.setblocking(1)
+                godot_data_available = True
+            except:
+                pass
+        print('Godot data connection has been initiated.')
+        self.data_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        # initial robot pose
+        self.robot_pose = np.array([0.0, 0.0, 1.0, 0.0])
+        # stores the actual goal position (coordinates of the goal node)
+        self.goal_position = None
+        # indicator that flags arrival of the agent/robot at the actual goal node (this need NOT be the global goal node!)
+        self.goal_reached = False
+        # a dict that stores environmental information in each time step
+        self.env_data = {'pose': None, 'image': np.zeros((256, 1024, 3))}
         # load scene
         self.change_scene(scenario_name)
-
-    def receive_image(self) -> np.ndarray:
+        # a dict storing information about objects present in the simulation
+        self.get_objects()
+        # retrieve object information and determine ID of the agent
+        self.actor_id = None
+        for object_ID in self.objects:
+            if self.objects[object_ID]['name'] == 'Actor':
+                self.actor_id = object_ID
+        print('Object information has been retrieved.')
+        # retrieve image information
+        self.image_info = self.get_image_info()
+        print('Image information has been retrieved.')
+     
+    def receive(self, socket: socket.socket, data_size: int) -> str:
         '''
-        This function retrieves the current image observation from Godot.
+        This function reads data with a specified size from a socket.
         
         Parameters
         ----------
-        None
+        socket :                            The socket to read the data from.
+        data_size :                         The size of the data to read.
         
         Returns
         ----------
-        image :                             The retrieved image.
+        data :                              The data as a byte string.
         '''
-        self.control_connector.send('RecvImage')
-        data = self.image_connector.receive_image()
-        data = np.frombuffer(data, dtype=np.uint8).reshape((256, 1024, 3))
-        #image = Image.frombuffer('RGB', (1024, 256), data, 'raw')
-
+        # define buffer
+        data = b''
+        # read the data in chunks
+        received_bytes = 0
+        while received_bytes < data_size:
+            data_chunk = socket.recv(data_size - received_bytes)
+            data += data_chunk
+            received_bytes += len(data_chunk)
+        
         return data
     
-    def step_simulation_without_physics(self, x: float, y: float, yaw: float) -> None:
+    def receive_in_chunks(self, socket: socket.socket, chunk_size: int) -> str:
         '''
-        This function propels the simulation. It uses teleportation to guide the agent/robot directly by means of global x, z, yaw values.
+        This function reads data in chunks from a socket.
+        
+        Parameters
+        ----------
+        socket :                            The socket to read the data from.
+        chunk_size :                        The size of the chunk to read.
+        
+        Returns
+        ----------
+        data :                              The data as a byte string.
+        '''
+        # define buffer
+        data = b''
+        # read the data in chunks
+        while True:
+            data_chunk = socket.recv(chunk_size)
+            data += data_chunk
+            if data[-16:] ==  b'!godotservereod!':
+                break
+        
+        return data[:-16]
+       
+    def step_simulation_without_physics(self, x: float, y: float, yaw: float) -> (float, np.ndarray, np.ndarray, np.ndarray):
+        '''
+        This function propels the simulation. It uses teleportation to guide the agent/robot directly by means of global x, y, yaw values.
         
         Parameters
         ----------
         x :                                 The global x position to teleport to.
-        z :                                 The global z position to teleport to.
+        y :                                 The global y position to teleport to.
         yaw :                               The global yaw value to teleport to.
         
         Returns
         ----------
-        None
+        time_data :                         The time observation received from the simulation.
+        pose_data :                         The pose observation received from the simulation.
+        sensor_data :                       The sensor observation received from the simulation.
+        image_data :                        The image observation received from the simulation.
         '''
-        self.control_connector.send('StepSimulationWithoutPhysics', f'{x},{y},{yaw}')
-        self.env_data['image'] = self.receive_image()
-
-    def get_illumination(self, light_source: str) -> np.ndarray:
-        '''
-        This function retrieves the color of a specified light source.
+        # send the actuation command to the virtual robot/agent
+        send_str = json.dumps({'command': 'step_simulation_without_physics', 'param': [x, y, np.deg2rad(yaw)]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        self.control_socket.recv(50)
+        # retrieve image data from the robot
+        self.control_socket.send(json.dumps({'command': 'get_image', 'param': []}).encode('utf-8'))
+        image_data = self.receive_in_chunks(self.video_socket, self.image_info['width'] * self.image_info['height'] * self.image_info['channels'])
+        image_data = np.frombuffer(image_data, dtype=np.uint8)
+        image_data = np.reshape(image_data, (self.image_info['height'], self.image_info['width'], self.image_info['channels']))
+        self.video_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50)
+        # retrieve pose data from the robot
+        send_str = json.dumps({'command': 'get_pose', 'param': [self.actor_id]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        pose_data = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))['pose']
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50)
+        # update robot's/agent's pose
+        self.robot_pose = pose_data
+        # update environmental information
+        self.env_data['pose'] = pose_data
+        self.env_data['image'] = image_data
         
-        Parameters
-        ----------
-        light_source :                      The name of a light source (needs to inherit Light Class).
+        return pose_data, image_data
         
-        Returns
-        ----------
-        color :                             The retrieved color (RGBA).
-        '''
-        self.control_connector.send('GetIllumination', light_source)
-        data = self.data_connector.receive()
-        
-        return np.array([float(value) for value in data.split(',')])
-
-    def set_illumination(self, light_source: str, color: np.ndarray) -> None:
+    def set_illumination(self, light_source: str, color: np.ndarray):
         '''
         This function sets the color of a specified light source.
         
@@ -125,454 +200,241 @@ class FrontendGodotInterface:
         ----------
         None
         '''
+        # send the request for illumination change to Godot
+        send_str = json.dumps({'command': 'set_illumination', 'param': [light_source, self.hex_color(color)]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        self.control_socket.recv(50)
+        
+    def get_illumination(self, light_source: str):
+        '''
+        This function gets the color of a specified light source.
+        
+        Parameters
+        ----------
+        light_source :                      The name of the light source to change.
+        
+        Returns
+        ----------
+        color :                             The RGB values of the light source (as [red, green, blue])
+        '''
+        # send the request for illumination information to Godot
+        send_str = json.dumps({'command': 'get_illumination', 'param': [light_source]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        color = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))['color']
+        color = (np.array(color) * 255 + 0.1).astype(int)
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50)
+        
+        return color
+        
+    def get_objects(self):
+        '''
+        This function retrieves information about all object present in the simulation.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        None
+        '''
+        # clear dictionary
+        self.objects = {}
+        # send the request for object information to Godot
+        self.control_socket.send(json.dumps({'command': 'get_objects', 'param': []}).encode('utf-8'))
+        self.objects = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50)
+        
+    def get_image_info(self) -> dict:
+        '''
+        This function retrieves image information from the simulation.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        image_info :                        A dictionary containing information about the images rendered by Godot (i.e. dimensions, channels, format).
+        '''
+        # send the request for image information change to Godot
+        self.control_socket.send(json.dumps({'command': 'get_image_info', 'param': []}).encode('utf-8'))
+        # retrieve image information
+        image_info = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50)
+        
+        return image_info
+        
+    def change_scene(self, scene_name: str):
+        '''
+        This function changes the current scene.
+        
+        Parameters
+        ----------
+        scene_name :                        The name of the scene to be loaded.
+        
+        Returns
+        ----------
+        None
+        '''
+        # send the request for scene change to Godot
+        send_str = json.dumps({'command': 'change_scene', 'param': [scene_name]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        self.control_socket.recv(50)
+        
+    def echo(self, message: str):
+        '''
+        This function sends a message to the godot simulation.
+        
+        Parameters
+        ----------
+        message :                           The message.
+        
+        Returns
+        ----------
+        None
+        '''
+        # send the request for message echo to Godot
+        send_str = json.dumps({'command': 'echo', 'param': [message]})
+        self.control_socket.send(send_str.encode('utf-8'))
+        self.control_socket.recv(50)
+    
+    def stop_godot(self):
+        '''
+        This function shuts down Blender.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        None
+        '''
+        try:
+            self.control_socket.send(json.dumps({'command': 'stop', 'param': []}).encode('utf-8'))
+        except:
+            print(sys.exc_info()[1])
+            
+    def hex_color(self, color: np.ndarray) -> str:
+        '''
+        This function converts RGB to hex.
+        
+        Parameters
+        ----------
+        color_rgb :                         The color in RGB.
+        
+        Returns
+        ----------
+        color_hex :                         The color in hex.
+        '''
         hex_color = '#'
         for value in color:
             hex_color += hex(int(value))[2:].zfill(2)
-        self.control_connector.send('SetIllumination', f'{light_source},{hex_color}')
-
-    def set_move_actor(self, x: float, y: float, omega: float, node_name='Actor') -> None:
-        '''
-        This function moves the Actor Node given x, y and rotational velocity.
         
-        Parameters
-        ----------
-        x :                                 The velocity in x-axis direction in m/s.
-        y :                                 The velocity in y-axis direction in m/s.
-        omega :                             The rotational velocity in radians/s.
-        node_name :                         The name of the node that gets moved.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.control_connector.send('SetMoveActor', f'{node_name}, {x}, {y}, {omega}')
-
-    def get_pose(self, object_id: int) -> np.ndarray:
-        '''
-        This function retrieves the pose of a specified object.
-        
-        Parameters
-        ----------
-        object_ID :                         The name of the object.
-        
-        Returns
-        ----------
-        pose :                              The retrieved pose (x, y, z, pitch, roll, yaw).
-        '''
-        self.control_connector.send('GetPose', object_id)
-        data = self.data_connector.receive()
-        pos, rot = data.split(' ')
-        # parse all values to floats
-        return np.array([float(i) for i in pos.split(',')] + [float(i) for i in rot.split(',')])
-
-    def set_pose(self, object_id: int, x: float, y: float, z: float, pitch: float, roll: float, yaw: float) -> None:
-        '''
-        This function sets the pose of a specified object.
-        
-        Parameters
-        ----------
-        object_ID :                         The name of the object.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.control_connector.send('SetPose', f'{object_id} {x},{y},{z},{pitch},{roll},{yaw}')
-
-    def set_material(self, object_id: int, object_material: str) -> None:
-        '''
-        This function sets the material of a GeometryInstance.
-        
-        Parameters
-        ----------
-        object_ID :                         The name of the object.
-        object_material :                   The file name of a material (e.g. "wall_01.material").
-        
-        Returns
-        ----------
-        None
-        '''
-        self.control_connector.send('SetMaterial', f'{object_id} {object_material}')
-        
-    def get_object_ids(self):
-        '''
-        This function retrieves the IDs of all scene objects.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        object_IDs :                        The object IDs.
-        '''
-        self.control_connector.send('GetObjectIds')
-        data = self.data_connector.receive()
-        parsed = json.loads(str(data))
-        
-        return parsed
-
-    def change_scene(self, scene: str) -> None:
-        '''
-        This function loads a given scene.
-        
-        Parameters
-        ----------
-        scene :                             The name of the scene (not the path nor the file name, e.g. 'room').
-        
-        Returns
-        ----------
-        None
-        '''
-        self.control_connector.send('ChangeScene', scene)
-        time.sleep(1)   # wait for the scene to be loaded
-
-    def stop_godot(self):
-        '''
-        This function closes Godot.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        self.control_connector.send('CloseGodot')
-        self.control_connector.close()
-        self.data_connector.close()
-        self.image_connector.close()
-        
-    def on_exit(self):
-        '''
-        This function closes all connections properly.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        self.stop_godot()
-        os._exit(-1)
+        return hex_color
 
 
-class GodotConnector:
-
-    def __init__(self, port: int, image: bool = False):
-        '''
-        Connector object managing the communication of specific data between CoBeL-RL and Godot.
-        
-        Parameters
-        ----------
-        port :                              The port that will be used.
-        image :                             If true, then the connector can handle image data.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.server: Server = Server('localhost', port, image)
-        self.events: Dict[str, Callable[[str, Event], None]] = dict()
-
-    def close(self):
-        '''
-        This function closes the connection.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        self.server.close()
-
-    def start(self):
-        '''
-        This function starts the connection.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        asyncio.run(self.server.start())
-
-    def register(self, name: str, callback) -> None:
-        '''
-        Register an event.
-        
-        Parameters
-        ----------
-        name :                              The event name.
-        callback :                          A callback method that is called once the event is triggered.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.events[name] = callback
-
-    def receive_image(self) -> bytes:
-        '''
-        Receives an image from the image socket. This method is blocking.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        image_data :                        The image data as bytes.
-        '''
-        return asyncio.run(self.server.poll_image_async())
-
-    def receive(self) -> Optional[str]:
-        '''
-        Receives a string from the socket.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        data :                              The data as a string.
-        '''
-        return asyncio.run(self.server.receive_data())
-
-    def send(self, name: str, data=None) -> None:
-        '''
-        Sends an event with given data to godot.
-        
-        Parameters
-        ----------
-        name :                              The event name.
-        data :                              The data to be send.
-        
-        Returns
-        ----------
-        None
-        '''
-        event = Event(name, data)
-        asyncio.run(self.server.send_data([event]))
-        
-
-class Server:
-
-    def __init__(self, host: str, port: int, raw: bool = False) -> None:
-        '''
-        Wrapper class to sum up all the networking.
-        Create socket and binds it to host and port.
-        
-        Parameters
-        ----------
-        host :                              The hostname.
-        port :                              The port that will be used.
-        image :                             If true, data will be received as bytes instead of events.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.conn: Optional[socket] = None
-        self.raw = raw
-        self.socket = socket(AF_INET, SOCK_STREAM)
-        self.socket.bind((host, port))
-        self.lastImage: Optional[bytes] = None
-        self.stop = False
-        if raw:
-            self.poll_thread = threading.Thread(target=self.poll_image)
-            self.poll_thread.start()
-        else:
-            self.poll_thread = None
-
-    def close(self) -> None:
-        '''
-        Closes the connection.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        if self.poll_thread:
-            self.stop = True
-        if self.conn:
-            self.conn.close()
-        self.socket.close()
-
-    async def start(self):
-        '''
-        Blocks thread until a connection could be established.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        self.socket.listen()
-        self.conn, address = self.socket.accept()
-        print(f"connected to {address}")
-
-    def poll_image(self) -> None:
-        '''
-        Continuously reads new image data from the image socket and stores completed images as a member variable.
-        This method should always run in separate thread.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        None
-        '''
-        while not self.conn:
-            continue
-        magic = bytes([0x00, 0x00, 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00])
-        buffer = b""
-        while True:
-            if not self.conn or self.stop:
-                break
-            buffer += self.conn.recv(1024)
-            if not buffer.endswith(magic) or self.stop:
-                continue
-            data = _remove_buffer_suffix(buffer, magic)
-            self.lastImage = data
-            buffer = b""
-
-    async def poll_image_async(self) -> bytes:
-        '''
-        Continuously waits until a full image was received from the image socket.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        image :                             Image data as bytes if there is one.
-        '''
-        while self.lastImage is None:
-            await asyncio.sleep(0.01)
-            continue
-        data = self.lastImage
-        self.lastImage = None
-
-        return data
-
-    async def receive_data(self) -> Optional[str]:
-        '''
-        Continuously waits until data was received from the socket.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        data :                              String containing data or empty string in the case of failure. When not connected None is returned.
-        '''
-        if not self.conn:
-            return None
-        self.conn.settimeout(0.2)
-        data = ""
-        while True:
-            try:
-                buffer = self.conn.recv(1024)
-            except timeout:
-                break
-            data += buffer.decode("utf-8")
-        index = data.find(":") + 1
-
-        return data[index::]
-
-    async def send_data(self, events) -> None:
-        '''
-        Sends an arbitrary amount of events.
-        Since it is blocking code it was declared as async.
-        
-        Parameters
-        ----------
-        events :                            A collection of events.
-        
-        Returns
-        ----------
-        None
-        '''
-        '''
-            sends an arbitrary amount of events
-            this is blocking code therefore (as stated previously) it's declared async
-            :param events:
-        '''
-        data = dict()
-        data["events"] = []
-        for event in events:
-            data["events"].append(event.encode())
-        self.conn.sendall(json.dumps(data).encode(encoding="utf-8") + '\u2000'.encode(encoding="utf-8"))
-        
-        
-class Event:
-
-    def __init__(self, name: str, data='') -> None:
-        '''
-        Wrapper class for events.
-        
-        Parameters
-        ----------
-        name :                              The event name.
-        data :                              The event data.
-        
-        Returns
-        ----------
-        None
-        '''
-        self.name = name
-        self.data = data
-
-    def encode(self) -> Dict:
-        '''
-        Converts the event to a dictionary.
-        
-        Parameters
-        ----------
-        None
-        
-        Returns
-        ----------
-        data :                              The encoded event data.
-        '''
-        return {'name': self.name, 'data': self.data}
-
-
-def _remove_buffer_suffix(input_string: bytes, suffix: bytes) -> bytes:
-    '''
-    Removes the string of magic bytes specified in the suffix from the input_string.
+class FrontendGodotTopology(FrontendGodotInterface):
     
-    Parameters
-    ----------
-    input_string :                      The input data.
-    suffix :                            The suffix to be removed.
-    
-    Returns
-    ----------
-    input_string :                      The input data with its suffix removed.
-    '''
-    if suffix and input_string.endswith(suffix):
-        return input_string[:-len(suffix)]
-    return input_string
+    def __init__(self, scenario_name: str, godot_executable=None, running=False):
+        '''
+        The Godot interface class for use with the baseline interface.
+        
+        Parameters
+        ----------
+        scenario_name :                     The name of the blender scene.
+        godot_executable :                  The path to the blender executable.
+        running :                           If true the starting of a new process will be skipped.
+        
+        Returns
+        ----------
+        None
+        '''
+        super().__init__(scenario_name, godot_executable, running)
+        # initialize world limits
+        self.min_x, self.max_x = .0, 1.
+        self.min_y, self.max_y = .0, 1.
+        # initialize safe zone info
+        self.safe_zone_vertices, self.safe_zone_segments = [], []
+        # initial robot pose
+        self.robot_pose = np.array([0.0, 0.0, 1.0, 0.0])
+        # stores the actual goal position (coordinates of the goal node)
+        self.goal_position = None
+        # indicator that flags arrival of the agent/robot at the actual goal node (this need NOT be the global goal node!)
+        self.goal_reached = False
+        # a dict that stores environmental information in each time step
+        self.env_data = {'time': None, 'pose': None, 'sensor': None, 'image': np.zeros((256, 1024, 3))}
+        
+    def actuate_robot(self, actuator_command: list) -> (float, np.ndarray, np.ndarray, np.ndarray):
+        '''
+        This function actually actuates the agent/robot in the virtual environment.
+        
+        Parameters
+        ----------
+        actuator_command :                  The command that is used in the actuation process.
+        
+        Returns
+        ----------
+        time_data :                         The time observation received from the simulation.
+        pose_data :                         The pose observation received from the simulation.
+        sensor_data :                       The sensor observation received from the simulation.
+        image_data :                        The image observation received from the simulation.
+        '''
+        time_data, pose_data, sensor_data, image_data = None, None, None, np.zeros((256, 1024, 3))
+        # if the actuator command has more than 2 array entries, this is a teleport command, and will cause a teleport jump of the agent/robot (no physics support)
+        if actuator_command.shape[0] > 2:
+            # call the teleportation routine
+            pose_data, image_data = self.step_simulation_without_physics(actuator_command[0], actuator_command[1], actuator_command[2])
+            # flag if the robot reached the goal (should always be the case after a teleportation)
+            if self.goal_position is not None:
+                if np.linalg.norm(pose_data[:2] - self.goal_position) < 0.01:
+                    self.goal_reached = True
+        
+        return time_data, pose_data, sensor_data, image_data
+        
+    def set_topology(self, topology_module):
+        '''
+        This function supplies the interface with a valid topology module.
+        
+        Parameters
+        ----------
+        topology_module :                   The topologyModule to be supplied.
+        
+        Returns
+        ----------
+        None
+        '''
+        self.topology_module = topology_module
+     
+    def get_limits(self) -> np.ndarray:
+        '''
+        This function returns the limits of the environmental perimeter.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        limits :                            The limits of the environmental perimeter.
+        '''
+        return np.array([[self.min_x, self.max_x], [self.min_y, self.max_y]])
+     
+    def get_wall_graph(self) -> (list, list):
+        '''
+        This function returns the environmental perimeter by means of wall vertices/segments.
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        ----------
+        walls_limits :                      The wall limits.
+        perimeter_nodes :                   The perimeter nodes.
+        '''
+        return self.safe_zone_vertices, self.safe_zone_segments
