@@ -224,7 +224,7 @@ class DQNAgentBaseline(AbstractRLAgent):
         ----------
         predictions :                       The batch of predicted Q-values.
         '''
-        return self.agent.model.predict_on_batch(batch)
+        return self.agent.model.predict_on_batch(np.reshape(batch, (batch.shape[0], 1) + batch.shape[1:]))
 
 
 class DQNAgentSTR(DQNAgentBaseline):

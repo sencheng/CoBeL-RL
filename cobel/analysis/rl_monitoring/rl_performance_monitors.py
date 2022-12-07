@@ -9,7 +9,7 @@ import cobel.analysis.spatial as sp
 
 class RewardMonitor():
     
-    def __init__(self, trials: int, gui_parent: pg.GraphicsWindow, visual_output: bool, reward_range=[0, 1]):
+    def __init__(self, trials: int, gui_parent: pg.GraphicsWindow, visual_output: bool, reward_range: list = [0, 1]):
         '''
         Reward monitor. Used for tracking learning progress.
         
@@ -297,8 +297,8 @@ class TrajectoryMonitor():
             
 class RepresentationMonitor():
     
-    def __init__(self, observations: np.ndarray, dimensions: tuple, model=None, layer=-2, units=np.zeros(1).astype(int),
-                 update_interval=1, gui_parent=None, visual_output=None):
+    def __init__(self, observations: np.ndarray, dimensions: tuple, model=None, layer=-2, units: np.ndarray = np.zeros(1).astype(int),
+                 update_interval: int = 1, gui_parent=None, visual_output: bool = False):
         '''
         Representation monitor. Used to record and display the agent's internal representation.
         
