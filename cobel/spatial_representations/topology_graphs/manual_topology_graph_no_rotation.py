@@ -188,7 +188,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
                 # only for valid nodes!
                 if node.index != -1:
                     observation = self.state_space[node.index]
-                    data = np.array([[observation]])
+                    data = np.array([observation])
                     # get the q-values at the queried node's position
                     q_values = self.rl_agent.predict_on_batch(data)[0]
                     # find all neighbors that are actually valid (index != -1)
@@ -224,7 +224,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         None
         '''
         if self.visual_output:
-            self.pos_marker.set_data(pose[0],pose[1],np.rad2deg(np.arctan2(pose[3],pose[2])))
+            self.pos_marker.set_data(pose[0],pose[1],np.rad2deg(np.arctan2(pose[3], pose[2])))
 
     def sample_state_space(self):
         '''

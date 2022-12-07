@@ -211,7 +211,7 @@ class OptimalityMonitor():
         
         return np.amax(gain), int(np.sum(gain == np.amax(gain))) == gain.shape[0]
     
-    def compute_action_probs_single(self, q_values: np.ndarray, beta=0, action_mask=None) -> np.ndarray:
+    def compute_action_probs_single(self, q_values: np.ndarray, beta: float = 0, action_mask: np.ndarray = None) -> np.ndarray:
         '''
         This function computes the action selection probabilities for a single set of Q-values.
         
@@ -242,7 +242,7 @@ class OptimalityMonitor():
         
         return probs/np.sum(probs)
     
-    def compute_action_probs(self, Q: np.ndarray, beta=0., action_mask=None) -> np.ndarray:
+    def compute_action_probs(self, Q: np.ndarray, beta: float = 0., action_mask: np.ndarray = None) -> np.ndarray:
         '''
         This function computes the action selection probabilities for all updated Q-values.
         

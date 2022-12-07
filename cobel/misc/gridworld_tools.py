@@ -2,7 +2,8 @@
 import numpy as np
 
 
-def make_gridworld(height: int, width: int, terminals=[], rewards=None, goals=[], starting_states=[], invalid_states=[], invalid_transitions=[], wind=None, deterministic=True) -> dict:
+def make_gridworld(height: int, width: int, terminals: list = [], rewards: np.ndarray = None, goals: list = [], starting_states: list = [],
+                   invalid_states: list = [], invalid_transitions: list = [], wind: np.ndarray = None, deterministic: bool = True) -> dict:
     '''
     This function builds a gridworld according to the given parameters.
     
@@ -92,7 +93,7 @@ def make_gridworld(height: int, width: int, terminals=[], rewards=None, goals=[]
     
     return world
     
-def make_open_field(height: int, width: int, goal_state=0, reward=1) -> dict:
+def make_open_field(height: int, width: int, goal_state: int = 0, reward: float = 1) -> dict:
     '''
     This function builds an open field gridworld with one terminal goal state.
     
@@ -124,7 +125,7 @@ def make_empty_field(height: int, width: int) -> dict:
     '''
     return make_gridworld(height, width)
 
-def make_windy_gridworld(height: int, width: int, columns: np.ndarray, goal_state=0, reward=1, direction='up') -> dict:
+def make_windy_gridworld(height: int, width: int, columns: np.ndarray, goal_state: int = 0, reward: float = 1, direction: str = 'up') -> dict:
     '''
     This function builds a windy gridworld with one terminal goal state.
     

@@ -504,7 +504,7 @@ class GridGraph(AbstractTopologyGraph):
                     # only for valid nodes!
                     if node.index != -1:
                         observation_module = self.state_space[node.index]
-                        data = np.array([[observation_module]])
+                        data = np.array([observation_module])
                         # get the q-values at the queried node's position# 
                         #TODO remove dependency from rlAgent
                         q_values = self.rl_agent.predict_on_batch(data)[0]                    

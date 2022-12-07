@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QDialog, QAction, QWidget
 from PyQt5 import QtWidgets
 
 
-def update_probability(world: dict, index: int, probabilities=[]):
+def update_probability(world: dict, index: int, probabilities: list = []):
     '''
     Updates the world dictionary according to the applied changes in the GUI advanced settings table.
     Takes the index to determine at what position in the directory the changes have to be made.
@@ -32,7 +32,7 @@ def update_probability(world: dict, index: int, probabilities=[]):
         for action in range(4):
             world['sas'][index][action][state] = probabilities[action][state]
 
-def update_transitions(world: dict, invalid_states=[], invalid_transitions=[]):
+def update_transitions(world: dict, invalid_states: list = [], invalid_transitions: list = []):
     '''
     Updates the world dictionary according to the applied changes, through double clicking the state borders.
     
@@ -247,7 +247,7 @@ class StartWindow(QMainWindow):
 
 class Line(QtWidgets.QGraphicsLineItem):
     
-    def __init__(self, x1, y1, x2, y2, pen):
+    def __init__(self, x1: int, y1: int, x2: int, y2: int, pen: QPen):
         '''
         An extended version of the standard QGraphicsLineItem which toggles the line color between gray and red on double click.
         
@@ -364,7 +364,8 @@ class Grid(QGraphicsScene):
                 y = row * Settings.HEIGHT
                 line = Line(x, y, x, y + Settings.HEIGHT, pen_lines)
                 if line.transition in Settings.WORLD['invalid_transitions']:
-                    line.highlight()
+                    line.highlighted = True
+                    line.setPen(QPen(Qt.red, Settings.BORDER_WIDTH))
                 self.lines.append(self.addItem(line))
         # lines parallel to GUI y-axis (horizontal)
         for row in range(1, Settings.WORLD['height']):
@@ -373,7 +374,8 @@ class Grid(QGraphicsScene):
                 x = column * Settings.WIDTH
                 line = Line(x, y, x + Settings.WIDTH, y, pen_lines)
                 if line.transition in Settings.WORLD['invalid_transitions']:
-                    line.highlight()
+                    line.highlighted = True
+                    line.setPen(QPen(Qt.red, Settings.BORDER_WIDTH))
                 self.lines.append(self.addItem(line))
         # Outer border
         self.lines.append(self.addLine(0, 0, self.width, 0, pen_border))
@@ -381,7 +383,7 @@ class Grid(QGraphicsScene):
         self.lines.append(self.addLine(0, self.height, self.width, self.height, pen_border))
         self.lines.append(self.addLine(self.width, 0, self.width, self.height, pen_border))
 
-    def set_visible(self, visible=True):
+    def set_visible(self, visible: bool = True):
         '''
         This function sets the visibility of the grid.
         
@@ -676,7 +678,7 @@ class StateInformation(QWidget):
         self.label_coordinates.setText('Coordinates: ' + text_coordinates)
         self.field_reward.setText(str(float(Settings.WORLD['rewards'][int(index)])))
         if Settings.WORLD['terminals'][int(index)]:
-            self.radio_button_start.click()
+            self.radio_button_terminal.click()
         elif index in Settings.WORLD['starting_states']:
             self.radio_button_start.click()
         else:
