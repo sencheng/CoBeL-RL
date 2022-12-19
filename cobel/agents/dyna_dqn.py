@@ -7,7 +7,7 @@ from cobel.memory_modules.dyna_q_memory import DynaQMemory
 
 class DynaDQN(AbstractDynaQAgent):
 
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, gamma=0.99, observations=None, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, epsilon: float = 0.3, beta: float = 5, gamma: float = 0.99, observations=None, model=None, custom_callbacks={}):
         '''
         Implementation of a DQN agent using the Dyna-Q model.
         This agent uses the Dyna-Q agent's memory module and then maps gridworld states to predefined observations.
@@ -62,7 +62,7 @@ class DynaDQN(AbstractDynaQAgent):
         # prepare online model by cloning the target model
         self.model_online = self.model_target.clone_model()
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This functions is called to train the agent.
         
@@ -116,7 +116,7 @@ class DynaDQN(AbstractDynaQAgent):
             # callback
             self.engaged_callbacks.on_trial_end(logs)
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This functions is called to test the agent.
         
@@ -157,7 +157,7 @@ class DynaDQN(AbstractDynaQAgent):
             # callback
             self.engaged_callbacks.on_trial_end(logs)
         
-    def replay(self, replay_batch_size=200):
+    def replay(self, replay_batch_size: int = 200):
         '''
         This functions replays experiences to update the Q-function.
         
@@ -196,7 +196,7 @@ class DynaDQN(AbstractDynaQAgent):
             self.model_target.set_weights(self.model_online.get_weights())
             self.steps_since_last_update = 0
         
-    def update_Q(self, experience):
+    def update_Q(self, experience: dict):
         '''
         This function is a dummy function and does nothing (implementation required by parent class).
         
@@ -241,7 +241,7 @@ class DynaDQN(AbstractDynaQAgent):
     
 class DynaDSR(AbstractDynaQAgent):
            
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, gamma=0.99, observations=None, model_SR=None, model_reward=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, epsilon: float = 0.3, beta: float = 5, gamma: float = 0.99, observations=None, model_SR=None, model_reward=None, custom_callbacks={}):
         '''
         Implementation of a Deep Successor Representation agent using the Dyna-Q model.
         This agent uses the Dyna-Q agent's memory module and then maps gridworld states to predefined observations.
@@ -286,6 +286,8 @@ class DynaDSR(AbstractDynaQAgent):
         self.use_Deep_DR = False
         # computes SR based on the follow-up state (i.e. each action stream represents the SR of the follow-up state)
         self.use_follow_up_state = False
+        # ignores the terminality of states when computing the target values
+        self.ignore_terminality = True
         
     def prepare_models(self, model_SR):
         '''
@@ -307,7 +309,7 @@ class DynaDSR(AbstractDynaQAgent):
             # prepare online model
             self.models_online[action] = model_SR.clone_model()
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This functions is called to train the agent.
         
@@ -361,7 +363,7 @@ class DynaDSR(AbstractDynaQAgent):
             # callback
             self.engaged_callbacks.on_trial_end(logs)
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This functions is called to test the agent.
         
@@ -403,7 +405,7 @@ class DynaDSR(AbstractDynaQAgent):
             # callback
             self.engaged_callbacks.on_trial_end(logs)
         
-    def replay(self, replay_batch_size=200):
+    def replay(self, replay_batch_size: int = 200):
         '''
         This function replays experiences to update the DSR and reward function.
         
@@ -445,14 +447,14 @@ class DynaDSR(AbstractDynaQAgent):
             idx = np.arange(len(replay_batch))[idx]
             for i, index in enumerate(idx):
                 # prepare bootstrap target
-                bootstrap = next_states[index] * (1 - self.use_follow_up_state)
+                bootstrap = next_states[index] * (1 - self.use_follow_up_state) * (1 - terminals[index]) * (1 - self.ignore_terminality)
                 # Deep SR
                 if not self.use_Deep_DR:
                     best = np.argmax(np.array([future_values[action][index] for action in future_values]))
-                    bootstrap += future_SR[best][index] * terminals[index]
+                    bootstrap += future_SR[best][index] * min(terminals[index] + self.ignore_terminality, 1)
                 # Deep DR
                 else:
-                    bootstrap += np.mean(np.array([future_SR[stream][index] for stream in future_SR]), axis=0) * terminals[index]
+                    bootstrap += np.mean(np.array([future_SR[stream][index] for stream in future_SR]), axis=0) * min(terminals[index] + self.ignore_terminality, 1)
                 targets[action][i] += self.gamma * bootstrap
         # update online models
         for action in range(self.number_of_actions):
@@ -474,7 +476,7 @@ class DynaDSR(AbstractDynaQAgent):
             # reset update timer
             self.steps_since_last_update = 0
     
-    def update_Q(self, experience):
+    def update_Q(self, experience: dict):
         '''
         This function is a dummy function and does nothing (implementation required by parent class).
         
