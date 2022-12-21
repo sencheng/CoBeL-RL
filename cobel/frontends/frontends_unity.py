@@ -306,13 +306,13 @@ class FrontendUnityInterface():
 
 class FrontendUnityOfflineInterface(FrontendUnityInterface):
     
-    def __init__(self, scenario_name=None):
+    def __init__(self, scenario_path=None):
         '''
         The Unity interface class. This is tailored for offline simulation.
         
         Parameters
         ----------
-        scenario_name :                     The name of the scenario that should be processed.
+        scenario_path :                     The path to the offline scenario that should be processed.
         
         Returns
         ----------
@@ -321,10 +321,10 @@ class FrontendUnityOfflineInterface(FrontendUnityInterface):
         # load the saved images for the environment
         data = None
         try:
-            with open(scenario_name, 'rb') as handle:
+            with open(scenario_path, 'rb') as handle:
                 data = pickle.load(handle)
         except FileNotFoundError:
-            raise Exception('Offline environment for %s, step_size=%s does not exist, please use script environments/generate_off_unity.py to generate it.' % scenario_name)
+            raise Exception('Offline environment does not exist, please use script environments/generate_off_unity.py to generate it.')
         # Here env is a dict containing the topology idx as keys and corresponding images as values
         self.env = data
         self.world_limits = data['world_limits']
@@ -334,7 +334,6 @@ class FrontendUnityOfflineInterface(FrontendUnityInterface):
         self.env_data = {'pose': None, 'image': None}
         # flag to tell other modules that it is now offline mode
         self.offline = True
-        self.scenario_name = scenario_name
 
     def step_simulation_without_physics(self, node: int, yaw: float):
         '''

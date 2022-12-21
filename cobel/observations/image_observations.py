@@ -147,15 +147,16 @@ class ImageObservationUnity():
         self.use_gray_scale = use_gray_scale
         # generate a visual display of the observation
         if self.with_GUI:
-            self.layout = self.gui_parent.centralWidget
-            self.observation_plot_viewbox = qg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
+            # add the graph plot to the GUI widget
+            self.plot = self.gui_parent.addPlot(title='Camera Image Observation')
+            # set extension of the plot, lock aspect ratio
+            self.plot.setAspectLocked()
+            # add the camera image plot item
             self.camera_image = qg.ImageItem()
-            # the observation plots will be initialized on receiving the
-            self.layout.addItem(self.observation_plot_viewbox,
-                                colspan=2, rowspan=1, row=1, col=0)
-
-            self.observation_plot_viewbox.setAspectLocked(lock=True)
-            self.observation_plot_viewbox.addItem(self.camera_image)
+            self.plot.addItem(self.camera_image)
+            # add the observation plot item
+            self.observation_image = qg.ImageItem()
+            self.plot.addItem(self.observation_image)
 
         self.image_dims = image_dims
         if self.use_gray_scale:

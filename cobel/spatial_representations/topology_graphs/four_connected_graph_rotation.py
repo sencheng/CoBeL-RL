@@ -39,7 +39,6 @@ class FourConnectedGraphRotation(SpatialRepresentation):
         self.modules = modules
         # the world module is required here
         world_module = modules['world']
-        self.scenario_name = world_module.scenario_name
         self.offline = world_module.offline
         # get the limits of the given environment
         self.world_limits = world_module.get_limits()
@@ -123,8 +122,6 @@ class FourConnectedGraphRotation(SpatialRepresentation):
         '''
         self.gui_parent = gui_parent
         self.visual_output = visual_output
-        if self.visual_output:
-            self.layout = gui_parent.centralWidget
         self.init_visual_elements()
 
     def sample_state_space(self):
@@ -158,14 +155,12 @@ class FourConnectedGraphRotation(SpatialRepresentation):
         # iff visualOutput is set to True!
         if self.visual_output:
             # add the graph plot to the GUI widget
-            self.topology_plot_viewbox = pg.ViewBox(parent=self.layout, enableMouse=False, enableMenu=False)
+            self.topology_plot_viewbox = self.gui_parent.addPlot(title='Topology graph')
             # set extension of the plot, lock aspect ratio
             self.topology_plot_viewbox.setXRange( self.world_limits[0,0], self.world_limits[0,1] )
             self.topology_plot_viewbox.setYRange( self.world_limits[1,0], self.world_limits[1,1] )
             self.topology_plot_viewbox.setAspectLocked(lock=True)
-            # add the viewbox to the window layout
-            self.layout.addItem(self.topology_plot_viewbox, colspan=2, rowspan=1, row=2, col=0)
-            # overlay the world's perimeter
+          	# overlay the world's perimeter
             self.perimeter_graph=pg.GraphItem()
             self.topology_plot_viewbox.addItem(self.perimeter_graph)
             self.perimeter_graph.setData(pos=np.array(self.world_nodes),adj=np.array(self.world_edges),brush=(128,128,128))
