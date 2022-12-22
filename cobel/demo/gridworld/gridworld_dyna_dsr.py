@@ -11,7 +11,7 @@ from tensorflow.keras.layers import Dense
 from cobel.agents.dyna_dqn import DynaDSR
 from cobel.networks.network_tensorflow import SequentialKerasNetwork
 from cobel.interfaces.gridworld import InterfaceGridworld
-from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor
+from cobel.analysis.rl_monitoring.rl_performance_monitors import RewardMonitor, EscapeLatencyMonitor
 from cobel.misc.gridworld_tools import make_gridworld
 
 # shall the system provide visual output while performing the experiments?
@@ -71,8 +71,10 @@ def single_run():
     # maximum steps per trial
     max_steps = 50
     
-    # initialize reward monitor
+    # initialize monitors
     reward_monitor = RewardMonitor(number_of_trials, main_window, visual_output, [0, 10])
+    el_monitor = EscapeLatencyMonitor(number_of_trials, max_steps, main_window, visual_output)
+    main_window.setGeometry(50, 50, 1600, 450)
     
     # build models
     model_SR = SequentialKerasNetwork(build_model((25,), 25))
@@ -80,8 +82,9 @@ def single_run():
         
     # initialize RL agent
     rl_agent = DynaDSR(interface_OAI=modules['rl_interface'], epsilon=0.3, beta=5, gamma=0.9,
-                       model_SR=model_SR, model_reward=model_reward, custom_callbacks={'on_trial_end': [reward_monitor.update]})
-    rl_agent.mask_actions = True
+                       model_SR=model_SR, model_reward=model_reward, custom_callbacks={'on_trial_end': [reward_monitor.update, el_monitor.update]})
+    #rl_agent.mask_actions = True
+    #rl_agent.ignore_terminality = False
     #rl_agent.policy = 'softmax'
     #rl_agent.use_Deep_DR = True
     
