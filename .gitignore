@@ -1,0 +1,15 @@
+*.pyc
+*.csv
+*.mp4
+*.h5
+*.npy
+*.png
+*.pdf
+!**/worldInfo/*.npy
+!**/environments/environments_blender/*.png
+venv
+*.json
+CoBeL_RL.egg-info
+build
+dist
+demo/unity_demo/logsfreeze
