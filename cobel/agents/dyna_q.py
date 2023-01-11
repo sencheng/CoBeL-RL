@@ -534,7 +534,7 @@ class PMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        update :                            A list of n-step updates.
+        update :                            A list containing experiences for an n-step update.
         
         Returns
         ----------
@@ -545,8 +545,16 @@ class PMAAgent(AbstractDynaQAgent):
         for s, step in enumerate(update):
             # sum rewards over remaining trajectory
             R = 0.
+            intermediate_terminal = 1
             for following_steps in range(len(update) - s):
+                # check for intermediate terminal transitions
+                if update[s + following_steps]['terminal'] == 0 and s != len(update) - 1:
+                    intermediate_terminal = 0
+                    break
                 R += update[s + following_steps]['reward'] * (self.gamma ** following_steps)
+            # abort in case a terminal transition occurs within the n-step sequence
+            if intermediate_terminal == 0:
+                break
             # compute TD-error
             td = R + future_value * (self.gamma ** (following_steps + 1))
             td -= self.retrieve_Q(step['state'])[step['action']]
