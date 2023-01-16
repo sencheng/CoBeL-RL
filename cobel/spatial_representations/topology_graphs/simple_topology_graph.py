@@ -189,8 +189,11 @@ class GridGraph(AbstractTopologyGraph):
                 self.nodes[node_idx].start_node = True
         # if none were defined consider all nodes as starting nodes
         else:
+            self.start_nodes = []
             for node in self.nodes: 
                 node.start_node = True
+                self.start_nodes.append(node.index)
+                
         # set goal nodes
         if self.goal_nodes is not None:
             for node_idx in self.goal_nodes:
@@ -603,7 +606,7 @@ class HexagonalGraph(GridGraph):
     None
     '''
     
-    def calculate_angle(node_info: TopologyNode, neighbor_info: TopologyNode) -> float:
+    def calculate_angle(self, node_info: TopologyNode, neighbor_info: TopologyNode) -> float:
         '''
         Calculates angle between two nodes.
         
