@@ -10,13 +10,14 @@ def get_dist(pkgname):
     except DistributionNotFound:
         return None
 
-with open("readme.md", "r") as fh:
+with open('readme.md', 'r') as fh:
     long_description = fh.read()
     
 # define requirements
 requirements = [
         'gym>=0.9.2',
         'shapely>=1.7.0',
+        'scikit-learn>=1.0.2',
         'testresources',
         'pyqtgraph>=0.10.0,<=0.12.0',
         'PyQt5>=5.12.3',
