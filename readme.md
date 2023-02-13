@@ -2,36 +2,20 @@
 #### Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks ####
 
 This is a new version of CoBeL-RL. For the older version, please use the tagged commit v1.0.
----------------------------
+
 **Getting started:**  
 
-To quickly get started and test the system, you can run one of the demos. 
+To quickly get started and test the system, you can run one of the demos in `cobel/demo/`
 
 ----------------------------
 
-**Install requirements**
+**Installation and running a demo file**
 
-    
-* Many simulations depend on Blender2.79b. If you wish to use the Unity editor, skip this step. Download and install Blender2.79b at:  
-
-     `https://download.blender.org/release/Blender2.79/`  
-
-Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
-* Install required python packages  
-
-`pip3 install -r requirements.txt`
-
-------------------------------
-
-<details></summary>
-<summary>
-Run Demo
-</summary>
-
+The following steps take you through the installation process and running a demo.
 
 *  First, clone the project.
 
-`git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
+`git clone https://github.com/sencheng/CoBeL-RL.git`  
 
 *  Then, install CoBeL-RL through pip.
 
@@ -51,11 +35,21 @@ Run Demo
 
 `[unity]`
 
+* Alternatively, install all required python packages from the requirements.txt file after installing CoBeL-RL through pip
+
+`pip3 install -r requirements.txt`
+
+* Many simulations depend on Blender2.79b. If you wish to use the Unity editor, skip this step. Download and install Blender2.79b at:  
+
+     `https://download.blender.org/release/Blender2.79/`  
+
+Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
+
 * You will need to set up an environment variable for the Blender path to run the demos.
 
 `export BLENDER_EXECUTABLE_PATH="/path/to/blender2.79b/"`
 
-* Alternatively, you can set the variable manually in Python before running the script.
+* Alternatively, you can set the variable manually in Python before running the script :
 
 `import os`
 
@@ -70,8 +64,6 @@ If you plan to use the framework more than once, it is useful to set this variab
 `python simple_grid_graph_demo.py`
 
 **Note: The Blender path can also be passed as a parameter to the Blender frontend module. For your own simulations it is therefore not necessary to set a permanent variable.**
-
-</details>
 
 ------------------------------
 
