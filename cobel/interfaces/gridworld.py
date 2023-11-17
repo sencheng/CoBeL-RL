@@ -1,6 +1,6 @@
 # basic imports
 import numpy as np
-import gym
+import gymnasium as gym
 import pyqtgraph as pg
 import PyQt5 as qt
 # framework imports
@@ -10,7 +10,7 @@ from cobel.interfaces.rl_interface import AbstractInterface
 
 class InterfaceGridworld(AbstractInterface):
     
-    def __init__(self, modules: dict, world: dict, with_GUI=True, gui_parent=None):
+    def __init__(self, modules: dict, world: dict, with_GUI: bool = True, gui_parent: None | pg.GraphicsLayoutWidget = None):
         '''
         This function builds a gridworld according to the given parameters.
         

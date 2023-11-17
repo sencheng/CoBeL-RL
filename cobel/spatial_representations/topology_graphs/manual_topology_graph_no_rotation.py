@@ -5,7 +5,7 @@ import PyQt5 as qt
 import pyqtgraph as qg
 import pyqtgraph.functions
 # OpenAI Gym
-import gym
+import gymnasium as gym
 # framework imports
 from .misc.topology_node import TopologyNode
 from .misc.cog_arrow import CogArrow
@@ -94,7 +94,7 @@ class ManualTopologyGraphNoRotation(SpatialRepresentation):
         #TODO : Test : Remove from class definition if it is only being used for visualization
         self.sample_state_space()
     
-    def set_visual_debugging(self, visual_output: bool, gui_parent):
+    def set_visual_debugging(self, visual_output: bool, gui_parent: qg.GraphicsLayoutWidget):
         '''
         This function sets visualization flags.
         

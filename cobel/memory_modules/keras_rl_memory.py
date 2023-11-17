@@ -10,7 +10,7 @@ Experience = namedtuple('Experience', 'state0, action, reward, state1, terminal1
 
 class SumTree:
     
-    def __init__(self, limit=4096, reorder_interval=1_000_000):
+    def __init__(self, limit: int = 4096, reorder_interval: int = 1_000_000):
         '''
         This class implements a sum tree to be used by the prioritized experience replay memory module.
         
@@ -105,7 +105,7 @@ class SumTree:
         '''
         np.random.shuffle(self.experiences)
 
-    def put_experience(self, state0, action, reward, state1, terminal1):
+    def put_experience(self, state0: np.ndarray, action: int, reward: float, state1: np.ndarray, terminal1: bool):
         '''
         Store an experience in memory
 
@@ -210,7 +210,7 @@ class SumTree:
 
 class PERMemory(Memory):
     
-    def __init__(self, limit, reorder_interval=1_000_000, alpha=0.6, beta=0.4, output_layer_name='output', **kwargs):
+    def __init__(self, limit: int, reorder_interval: int = 1_000_000, alpha: float = 0.6, beta: float = 0.4, output_layer_name: str = 'output', **kwargs):
         '''
         This class implements the prioritized experience replay memory module to be used with the PER DQN agent.
         
@@ -242,7 +242,7 @@ class PERMemory(Memory):
         self.prevReward = None
         self.prevTerminal = None
 
-    def append(self, observation: np.ndarray, action: int, reward: float, terminal1: bool, training=True):
+    def append(self, observation: np.ndarray, action: int, reward: float, terminal1: bool, training: bool = True):
         '''
         Stores an experience in memory.
         
@@ -277,7 +277,7 @@ class PERMemory(Memory):
             self.prevReward = reward
             self.prevTerminal = terminal1
 
-    def sample(self, batch_size: int, batch_idxs=None) -> list:
+    def sample(self, batch_size: int, batch_idxs: None | np.ndarray = None) -> list:
         '''
         Return a random sample of the memory using prioritized experience replay.
         

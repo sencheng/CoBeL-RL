@@ -3,7 +3,7 @@ import PyQt5 as qt
 import pyqtgraph as pg
 import pyqtgraph.functions
 import numpy as np
-import gym
+import gymnasium as gym
 # framework imports
 from .misc.topology_node import TopologyNode
 from .misc.cog_arrow import CogArrow
@@ -13,7 +13,7 @@ from cobel.spatial_representations.spatial_representation import SpatialRepresen
 
 class FourConnectedGraphRotation(SpatialRepresentation):
 
-    def __init__(self, modules: dict, graph_info: dict, step_size=1.):
+    def __init__(self, modules: dict, graph_info: dict, step_size: float = 1.):
         '''
         Manually defined topology graph module without rotation.
         
@@ -107,7 +107,7 @@ class FourConnectedGraphRotation(SpatialRepresentation):
             self.nodes[node_index].goal_node = True
 
 
-    def set_visual_debugging(self, visual_output: bool, gui_parent):
+    def set_visual_debugging(self, visual_output: bool, gui_parent: pg.GraphicsLayoutWidget):
         '''
         This function sets visualization flags.
         
@@ -206,7 +206,7 @@ class FourConnectedGraphRotation(SpatialRepresentation):
         if self.visual_output:
             self.pos_marker.set_data(pose[0], pose[1], np.rad2deg(np.arctan2(pose[3], pose[2])))
 
-    def reset_start_nodes(self, start_nodes, ori):
+    def reset_start_nodes(self, start_nodes: TopologyNode, ori: float):
         '''
         This function resets the starting nodes.
         
@@ -241,7 +241,7 @@ class FourConnectedGraphRotation(SpatialRepresentation):
         '''
         return len(self.nodes)
 
-    def generate_topology_from_worldInfo(self, step_size=1.0) -> (np.ndarray, np.ndarray):
+    def generate_topology_from_worldInfo(self, step_size: float = 1.0) -> (np.ndarray, np.ndarray):
         '''
         This function generates a topolgy graph from the world information.
         

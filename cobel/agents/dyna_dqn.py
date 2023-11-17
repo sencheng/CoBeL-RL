@@ -2,31 +2,35 @@
 import numpy as np
 # framework imports
 from cobel.agents.dyna_q import AbstractDynaQAgent
+from cobel.policy.policy import AbstractPolicy
+from cobel.interfaces.rl_interface import AbstractInterface
+from cobel.networks.network import AbstractNetwork
 from cobel.memory_modules.dyna_q_memory import DynaQMemory
 
 
 class DynaDQN(AbstractDynaQAgent):
 
-    def __init__(self, interface_OAI, epsilon: float = 0.3, beta: float = 5, gamma: float = 0.99, observations=None, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None, gamma: float = 0.99,
+                 observations: None | np.ndarray = None, model: None | AbstractNetwork = None, custom_callbacks: None | dict = None):
         '''
         Implementation of a DQN agent using the Dyna-Q model.
         This agent uses the Dyna-Q agent's memory module and then maps gridworld states to predefined observations.
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        gamma :                             The discount factor used for computing the target values.
-        observations :                      The set of observations that will be mapped to the gridworld states.
-        model :                             The network model to be used by the agent.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        observations :                      The set of observations that will be mapped to the gridworld states.\n
+        model :                             The network model to be used by the agent.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=1., gamma=gamma, custom_callbacks=custom_callbacks)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=1., gamma=gamma, custom_callbacks=custom_callbacks)
         # prepare observations
         if observations is None or observations.shape[0] != self.number_of_states:
             # one-hot encoding of states
@@ -34,33 +38,18 @@ class DynaDQN(AbstractDynaQAgent):
         else:
             self.observations = observations
         # prepare target and online models
-        self.prepare_models(model)
+        self.model_target = model
+        self.model_online = self.model_target.clone_model()
         self.current_predictions = self.model_online.predict_on_batch(self.observations)
         # memory module
         self.M = DynaQMemory(self.number_of_states, self.number_of_actions)
         # perform replay at the end of an episode instead of each step
         self.episodic_replay = False
         # the rate at which the target model is updated (for values < 1 the target model is blended with the online model)
-        self.target_model_update = 10**-2
+        self.target_model_update = 10 ** -2
         # count the steps since the last update of the target model
         self.steps_since_last_update = 0
-        
-    def prepare_models(self, model=None):
-        '''
-        This functions prepares target and online models. 
-        
-        Parameters
-        ----------
-        model :                             The network model to be used by the agent.
-        
-        Returns
-        ----------
-        None
-        '''
-        # prepare target model
-        self.model_target = model
-        # prepare online model by cloning the target model
-        self.model_online = self.model_target.clone_model()
+        self.stop = False
         
     def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
@@ -68,10 +57,10 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of random that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of random that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -88,7 +77,7 @@ class DynaDQN(AbstractDynaQAgent):
                 self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -115,6 +104,8 @@ class DynaDQN(AbstractDynaQAgent):
                 self.replay(replay_batch_size)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
             
     def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
@@ -122,8 +113,8 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is tested.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Dyna-Q agent is tested.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -139,7 +130,7 @@ class DynaDQN(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta, True)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # update current state
@@ -156,6 +147,8 @@ class DynaDQN(AbstractDynaQAgent):
             self.current_predictions = self.model_online.predict_on_batch(self.observations)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
         
     def replay(self, replay_batch_size: int = 200):
         '''
@@ -163,7 +156,7 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        replay_batch_size :                 The number of random experiences that will be replayed.
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
         
         Returns
         ----------
@@ -202,7 +195,7 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        experience :                        The number of random experiences that will be replayed.
+        experience :                        The number of random experiences that will be replayed.\n
         
         Returns
         ----------
@@ -216,11 +209,11 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's predicted Q-values.
+        q_values :                          The state's predicted Q-values.\n
         '''
         return self.model_online.predict_on_batch(np.array([self.observations[state]]))[0]
     
@@ -230,38 +223,40 @@ class DynaDQN(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of predicted Q-values.
+        predictions :                       The batch of predicted Q-values.\n
         '''
         return self.current_predictions[batch]
     
     
 class DynaDSR(AbstractDynaQAgent):
            
-    def __init__(self, interface_OAI, epsilon: float = 0.3, beta: float = 5, gamma: float = 0.99, observations=None, model_SR=None, model_reward=None, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 gamma: float = 0.99, observations: None | np.ndarray = None, model_SR: None | AbstractNetwork = None,
+                 model_reward: None | AbstractNetwork = None, custom_callbacks: None | dict = None):
         '''
         Implementation of a Deep Successor Representation agent using the Dyna-Q model.
         This agent uses the Dyna-Q agent's memory module and then maps gridworld states to predefined observations.
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        gamma :                             The discount factor used for computing the target values.
-        observations :                      The set of observations that will be mapped to the gridworld states.
-        model_SR :                          The network model to be used by the agent for the successor representation.
-        model_reward :                      The network model to be used by the agent for the reward model.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        observations :                      The set of observations that will be mapped to the gridworld states.\n
+        model_SR :                          The network model to be used by the agent for the successor representation.\n
+        model_reward :                      The network model to be used by the agent for the reward model.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=1., gamma=gamma, custom_callbacks=custom_callbacks)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=1., gamma=gamma, custom_callbacks=custom_callbacks)
         # prepare observations
         if observations is None or observations.shape[0] != self.number_of_states:
             # one-hot encoding of states
@@ -269,7 +264,8 @@ class DynaDSR(AbstractDynaQAgent):
         else:
             self.observations = observations
         # prepare target and online models
-        self.prepare_models(model_SR)
+        self.models_target = {a: model_SR.clone_model() for a in range(self.number_of_actions)}
+        self.models_online = {a: model_SR.clone_model() for a in range(self.number_of_actions)}
         # reward model
         self.model_reward = model_reward
         # used for visualization (currently all-zeros array)        
@@ -279,7 +275,7 @@ class DynaDSR(AbstractDynaQAgent):
         # perform replay at the end of an episode instead of each step
         self.episodic_replay = False
         # the rate at which the target model is updated (for values < 1 the target model is blended with the online model)
-        self.target_model_update = 10**-2
+        self.target_model_update = 10 ** -2
         # count the steps since the last update of the target model
         self.steps_since_last_update = 0   
         # compute DR instead of SR
@@ -288,26 +284,7 @@ class DynaDSR(AbstractDynaQAgent):
         self.use_follow_up_state = False
         # ignores the terminality of states when computing the target values
         self.ignore_terminality = True
-        
-    def prepare_models(self, model_SR):
-        '''
-        This function prepares the Dyna-DSR's target and online models.
-        
-        Parameters
-        ----------
-        model_SR :                          The DNN model to be used for the SR.
-        
-        Returns
-        ----------
-        None
-        '''
-        # prepare target and online models for all actions
-        self.models_target, self.models_online = {}, {}
-        for action in range(self.number_of_actions):
-            # prepare target model
-            self.models_target[action] = model_SR.clone_model()
-            # prepare online model
-            self.models_online[action] = model_SR.clone_model()
+        self.stop = False
         
     def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
@@ -315,10 +292,10 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of random that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of random that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -335,7 +312,7 @@ class DynaDSR(AbstractDynaQAgent):
                 self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -362,6 +339,8 @@ class DynaDSR(AbstractDynaQAgent):
                 self.replay(replay_batch_size)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
             
     def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
@@ -369,8 +348,8 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is tested.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Dyna-Q agent is tested.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -387,7 +366,7 @@ class DynaDSR(AbstractDynaQAgent):
                 self.engaged_callbacks.on_step_begin(logs)
                 self.steps_since_last_update += 1
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta, True)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # update current state
@@ -404,6 +383,8 @@ class DynaDSR(AbstractDynaQAgent):
             #self.current_predictions = self.model_online.predict_on_batch(self.observations)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
         
     def replay(self, replay_batch_size: int = 200):
         '''
@@ -411,7 +392,7 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        replay_batch_size :                 The number of random experiences that will be replayed.
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
         
         Returns
         ----------
@@ -482,7 +463,7 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        experience :                        The number of random experiences that will be replayed.
+        experience :                        The number of random experiences that will be replayed.\n
         
         Returns
         ----------
@@ -496,11 +477,11 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's predicted Q-values.
+        q_values :                          The state's predicted Q-values.\n
         '''
         Q = []
         for action in range(self.number_of_actions):
@@ -517,11 +498,11 @@ class DynaDSR(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of predicted Q-values.
+        predictions :                       The batch of predicted Q-values.\n
         '''
         Q = []
         for action in range(self.number_of_actions):

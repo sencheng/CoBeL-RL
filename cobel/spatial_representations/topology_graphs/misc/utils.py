@@ -1,7 +1,7 @@
 import numpy as np
 
 
-def lineseg_dists(p, a, b):
+def lineseg_dists(p: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
     """Cartesian distance from point to line segment
 
     Edited to support arguments as series, from:
@@ -14,17 +14,13 @@ def lineseg_dists(p, a, b):
     """
     # normalized tangent vectors
     d_ba = b - a
-    d = np.divide(d_ba, (np.hypot(d_ba[:, 0], d_ba[:, 1])
-                           .reshape(-1, 1)))
-
+    d = np.divide(d_ba, (np.hypot(d_ba[:, 0], d_ba[:, 1]).reshape(-1, 1)))
     # signed parallel distance components
     # rowwise dot products of 2D vectors
     s = np.multiply(a - p, d).sum(axis=1)
     t = np.multiply(p - b, d).sum(axis=1)
-
     # clamped parallel distance
     h = np.maximum.reduce([s, t, np.zeros(len(s))])
-
     # perpendicular distance component
     # rowwise cross products of 2D vectors
     d_pa = p - a
@@ -33,7 +29,7 @@ def lineseg_dists(p, a, b):
     return np.hypot(h, c)
 
 
-def point_in_polygon(polygon, point):
+def point_in_polygon(polygon: np.ndarray, point: np.ndarray) -> bool:
     """
     Raycasting Algorithm to find out whether a point is in a given polygon.
     Performs the even-odd-rule Algorithm to find out whether a point is in a given polygon.
@@ -44,7 +40,6 @@ def point_in_polygon(polygon, point):
     :param point:   an array representation of the point where point[0] is its x Value and point[1] is its y Value
     :return: whether the point is in the polygon (not on the edge, just turn < into <= and > into >= for that)
     """
-
     # A point is in a polygon if a line from the point to infinity crosses the polygon an odd number of times
     odd = False
     # For each edge (In this case for each point of the polygon and the previous one)
@@ -55,7 +50,6 @@ def point_in_polygon(polygon, point):
         # If a line from the point into infinity crosses this edge
         # One point needs to be above, one below our y coordinate
         # ...and the edge doesn't cross our Y corrdinate before our x coordinate (but between our x coordinate and infinity)
-
         if (((polygon[i][1] > point[1]) != (polygon[j][1] > point[1])) and (point[0] < (
                 (polygon[j][0] - polygon[i][0]) * (point[1] - polygon[i][1]) / (polygon[j][1] - polygon[i][1])) +
                                                                             polygon[i][0])):

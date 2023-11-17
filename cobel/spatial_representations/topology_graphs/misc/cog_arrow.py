@@ -12,9 +12,9 @@ class CogArrow(qg.ArrowItem):
         
         Parameters
         ----------
-        x :                                 The arrow center's x position.
-        y :                                 The arrow center's y position.
-        angle :                             The arrow's orientation in degrees.
+        x :                                 The arrow center's x position.\n
+        y :                                 The arrow center's y position.\n
+        angle :                             The arrow's orientation in degrees.\n
         
         Returns
         ----------

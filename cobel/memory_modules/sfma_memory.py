@@ -2,11 +2,12 @@
 import numpy as np
 # framework imports
 from cobel.memory_modules.memory_utils.metrics import DR
+from cobel.interfaces.rl_interface import AbstractInterface
   
     
 class SFMAMemory():
     
-    def __init__(self, interface_OAI, number_of_actions: int, gamma=0.99, decay_inhibition=0.9, decay_strength=1., learning_rate=0.9):
+    def __init__(self, interface_OAI: AbstractInterface, number_of_actions: int, gamma: float = 0.99, decay_inhibition: float = 0.9, decay_strength: float = 1., learning_rate: float = 0.9):
         '''
         Memory module to be used with the SFMA agent.
         Experiences are stored as a static table.
@@ -112,7 +113,7 @@ class SFMAMemory():
         if self.state_mod:
             self.C[[state + self.number_of_states * a for a in range(self.number_of_actions)]] += 1.
     
-    def replay(self, replay_length: int, current_state=None, current_action=None) -> list:
+    def replay(self, replay_length: int, current_state: None | int = None, current_action: None | int = None) -> list:
         '''
         This function replays experiences.
         
@@ -161,6 +162,8 @@ class SFMAMemory():
                 D += self.blend * D[self.states.flatten(order='F')]
             elif self.mode == 'interpolate':
                 D = self.interpolation_fwd * np.tile(self.metric.D[next_state], self.number_of_actions) + self.interpolation_rev * D[self.states.flatten(order='F')]
+            elif self.mode == 'sweeping':
+                D = np.tile(self.metric.D[next_state], self.number_of_actions)[self.states.flatten(order='F')]
             # retrieve inhibition
             I = np.tile(self.I, self.number_of_actions)
             # compute priority ratings
@@ -198,7 +201,7 @@ class SFMAMemory():
             
         return experiences
     
-    def softmax(self, data: np.ndarray, offset=0, beta=5) -> np.ndarray:
+    def softmax(self, data: np.ndarray, offset: float = 0, beta: float = 5) -> np.ndarray:
         '''
         This function computes the custom softmax over the input.
         

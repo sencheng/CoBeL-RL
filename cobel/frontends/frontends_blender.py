@@ -2,16 +2,18 @@
 import sys
 import socket
 import os
+import json
 import subprocess
 import numpy as np
-from scipy.spatial.transform import Rotation as R
 # shapely
 from shapely.geometry import Polygon
+# framework imports
+from cobel.spatial_representations.spatial_representation import SpatialRepresentation
 
  
 class FrontendBlenderInterface():
     
-    def __init__(self, scenario_name: str, blender_executable=None):
+    def __init__(self, scenario_name: str, blender_executable: None | str = None):
         '''
         The Blender interface class.
         This class connects to the Blender environment and controls the flow of commands/data that goes to/comes from the Blender environment.
@@ -75,35 +77,21 @@ class FrontendBlenderInterface():
                 pass
         print('Blender data connection has been initiated.')
         self.data_socket.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        # get the maximum safe zone dimensions for the robot to move in
-        self.control_socket.send('getSafeZoneDimensions'.encode('utf-8'))
-        value = self.control_socket.recv(1000).decode('utf-8')
-        min_x, min_y, min_z, max_x, max_y, max_z = value.split(',')
-        # store the environment limits
-        self.min_x, self.min_y, self.min_z = float(min_x), float(min_y), float(min_z)
-        self.max_x, self.max_y, self.max_z = float(max_x), float(max_y), float(max_z)
-        # get the safe zone layout for the robot to move in
-        self.control_socket.send('getSafeZoneLayout'.encode('utf-8'))
-        value = self.control_socket.recv(1000).decode('utf-8')
-        self.control_socket.send('AKN'.encode('utf-8'))
-        number_of_vertices = int(value)
-        # temporary variables for extraction of the environment's perimeter
-        vertices, segments = [], []
-        for i in range(number_of_vertices):
-            value = self.control_socket.recv(1000).decode('utf-8')
-            self.control_socket.send('AKN'.encode('utf-8'))
-            # update the vertex list
-            vertices.append([float(value) for value in value.split(',')])
-            j = i + 1
-            if i == number_of_vertices - 1:
-                j = 0
-            # update the segment list
-            segments += [[i, j]]
+        # retrieve safe zone dimensions
+        self.send_command('get_safe_zone_dimensions')
+        self.min_x, self.min_y, self.min_z, self.max_x, self.max_y, self.max_z = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50).decode('utf-8')
+        # retrieve safe zone layout
+        self.send_command('get_safe_zone_layout')
+        vertices, segments = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        self.data_socket.send('AKN'.encode('utf-8'))
+        self.control_socket.recv(50).decode('utf-8')
         # convert the above lists to numpy arrays
         self.safe_zone_vertices, self.safe_zone_segments = np.array(vertices), np.array(segments)
         # construct the safe polygon from the above lists
         self.safe_zone_polygon = Polygon(vertices)
-        self.control_socket.recv(100).decode('utf-8')
+        #self.control_socket.recv(100).decode('utf-8')
         # initial robot pose
         self.robot_pose = np.array([0.0, 0.0, 1.0, 0.0])
         # stores the actual goal position (coordinates of the goal node)
@@ -112,9 +100,49 @@ class FrontendBlenderInterface():
         self.goal_reached = False
         # a dict that stores environmental information in each time step
         self.env_data = {'time': None, 'pose': None, 'sensor': None, 'image': None}
-        # propel the simulation for 10 timesteps to finish initialization of the simulation framework
-        for i in range(10):
-            self.step_simulation_without_physics(0.0, 0.0, 0.0)
+        # retrieve image information
+        self.image_info = self.get_image_info()
+        print('Image information has been retrieved.')
+    
+    def receive_in_chunks(self, socket: socket.socket, chunk_size: int) -> str:
+        '''
+        This function reads data in chunks from a socket.
+        
+        Parameters
+        ----------
+        socket :                            The socket to read the data from.
+        chunk_size :                        The size of the chunk to read.
+        
+        Returns
+        ----------
+        data :                              The data as a byte string.
+        '''
+        # define buffer
+        data = b''
+        # read the data in chunks
+        while True:
+            data_chunk = socket.recv(chunk_size)
+            data += data_chunk
+            if data[-18:] ==  b'!blenderservereod!':
+                break
+        
+        return data[:-18]
+    
+    def send_command(self, command: str, param : None | list = None):
+        '''
+        This function sends a command to Blender.
+        
+        Parameters
+        ----------
+        command :                           The command name.
+        param :                             The list of command parameters.
+        
+        Returns
+        ----------
+        None
+        '''
+        # send command
+        self.control_socket.send(json.dumps({'command': command, 'param': [] if param is None else param}).encode('utf-8') + b'!cobelclienteod!')
     
     def get_manually_defined_topology_nodes(self) -> list:
         '''
@@ -128,20 +156,14 @@ class FrontendBlenderInterface():
         ----------
         topology_nodes :                    The list of manually defined topology nodes.
         '''
-        # retrieve the number of nodes
-        self.control_socket.send('getManuallyDefinedTopologyNodes'.encode('utf-8'))
-        number_of_nodes = self.control_socket.recv(1000).decode('utf-8')
-        number_of_nodes = int(number_of_nodes)
-        self.control_socket.send('AKN'.encode('utf-8'))
-        # retrieve the nodes
-        manually_defined_topology_nodes = []
-        for n in range(number_of_nodes):
-            node_info = self.control_socket.recv(1000).decode('utf-8')
-            node_name, node_x, node_y, node_type = node_info.split(',')
-            self.control_socket.send('AKN'.encode('utf-8'))
-            manually_defined_topology_nodes.append([node_name, float(node_x), float(node_y), node_type])
+        # send command
+        self.send_command('get_manually_defined_topology_nodes')
+        # retrieve data
+        manually_defined_topology_nodes = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
         # wait for AKN
-        self.control_socket.recv(1000).decode('utf-8')
+        self.control_socket.recv(50).decode('utf-8')
         
         return manually_defined_topology_nodes
     
@@ -157,53 +179,64 @@ class FrontendBlenderInterface():
         ----------
         topology_edges :                    The list of manually defined topology edges.
         '''
-        # retrieve the number of edges
-        self.control_socket.send('getManuallyDefinedTopologyEdges'.encode('utf-8'))
-        number_of_edges = self.control_socket.recv(1000).decode('utf-8')
-        number_of_edges = int(number_of_edges)        
-        self.control_socket.send('AKN'.encode('utf-8'))
-        # retrieve the edges
-        manually_defined_topology_edges = []        
-        for n in range(number_of_edges):
-            edge_info = self.control_socket.recv(1000).decode('utf-8')
-            edge_name, first, second = edge_info.split(',')
-            self.control_socket.send('AKN'.encode('utf-8'))
-            manually_defined_topology_edges.append([edge_name, int(first), int(second)])
+        # send command
+        self.send_command('get_manually_defined_topology_edges')
+        # retrieve data
+        manually_defined_topology_edges = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
         # wait for AKN
-        self.control_socket.recv(1000).decode('utf-8')
-        
+        self.control_socket.recv(50).decode('utf-8')
+
         return manually_defined_topology_edges
-     
-    def receive_image(self, video_socket: socket.socket, image_size: int) -> str:
+    
+    def get_image_info(self) -> dict:
         '''
-        This function reads an image chunk from a socket.
+        This function retrieves image information from the simulation.
         
         Parameters
         ----------
-        video_socket :                      The socket to read the image from.
-        image_size :                        The size of the image to read.
+        None
         
         Returns
         ----------
-        image_data :                        The image data as a byte string.
+        image_info :                        A dictionary containing information about the images rendered by Blender (i.e. dimensions, channels, format).
         '''
-        # define buffer
-        image_data = b''
-        # define byte 'counter'
-        received_bytes = 0
-        # read the image in chunks
-        while received_bytes < image_size:
-            data_chunk = video_socket.recv(image_size - received_bytes)
-            if data_chunk == '':
-                break
-            received_bytes += len(data_chunk)
-            image_data += data_chunk
+        # send command
+        self.send_command('get_image_info')
+        # retrieve data
+        image_info = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50).decode('utf-8')
+
+        return image_info
+    
+    def set_camera_resolution(self, camera_width: int, camera_height: int):
+        '''
+        This function updates the camera resolution.
         
-        return image_data
+        Parameters
+        ----------
+        camera_width :                      The new camera width.
+        camera_height :                     The new camera height.
+        
+        Returns
+        ----------
+        None
+        '''
+        # send command
+        self.send_command('set_camera_resolution', [camera_width, camera_height])
+        # wait for acknowledge from Blender
+        self.control_socket.recv(50)
+        # update image information
+        self.image_info['width'] = 4 * camera_width
+        self.image_info['height'] = camera_height
 
     def step_simulation(self, velocity_linear: float, omega: float) -> (float, np.ndarray, np.ndarray, np.ndarray):
         '''
-        This function propels the simulation. It uses physics to guide the agent/robot with linear and angular velocities.
+        This function propels the simulation. It uses physics to guide the agent/robot with linear and angular velocities (currently not working!).
         
         Parameters
         ----------
@@ -217,51 +250,35 @@ class FrontendBlenderInterface():
         sensor_data :                       The sensor observation received from the simulation.
         image_data :                        The image observation received from the simulation.
         '''
-        # the basic capture image size for the images taken by the robot's omnicam, the width of the omnicam image is actually 4*capAreaWidth 
-        cap_area_width, cap_area_height = 64, 64
         # from the linear/angular velocities, compute the left and right wheel velocities
-        velocity_left, velocity_right = self.set_robot_velocities(velocity_linear, omega)
-        # send the actuation command to the virtual robot/agent
-        send_str = 'stepSimulation,%f,%f' % (velocity_left, velocity_right)
-        self.control_socket.send(send_str.encode('utf-8'))
-        # retrieve images from all cameras of the robot
-        # fron
-        img_front = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_front = np.fromstring(img_front, dtype=np.uint8)
-        img_front = img_front.reshape((cap_area_height, cap_area_width, 4))
-        # left
-        img_left = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_left = np.fromstring(img_left, dtype=np.uint8)
-        img_left = img_left.reshape((cap_area_height, cap_area_width, 4))
-        # right
-        img_right = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_right = np.fromstring(img_right, dtype=np.uint8)
-        img_right = img_right.reshape((cap_area_height, cap_area_width, 4))
-        # back
-        img_back = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_back = np.fromstring(img_back, dtype=np.uint8)
-        img_back = img_back.reshape((cap_area_height, cap_area_width, 4))
-        # and construct the omnicam image from the single images. Note: the images are just 'stitched' together, no distortion correction takes place (so far).
-        image_data = np.hstack((img_front, img_right, img_back, img_left))
-        # center(?) the omnicam image
-        image_data = np.roll(image_data, 96, axis=1)
-        # extract RGB information channels
-        image_data = image_data[:, :, :3]
-        # retrieve telemetry data from the virtual agent/robot
-        telemetry_data_string = self.control_socket.recv(2000).decode('utf-8')
-        time_data, pose_data, sensor_data = telemetry_data_string.split(':')
-        # extract time data from telemetry
-        time_data = float(time_data)
-        # extract pose data from telemetry
-        pose_data = np.array([float(value) for value in pose_data.split(',')])
-        # extract sensor data from telemetry
-        sensor_data = np.array([float(value) for value in sensor_data.split(',')], dtype='float')
+        velocity_left, velocity_right = 0., 0.#self.set_robot_velocities(velocity_linear, omega)
+        # send command
+        self.send_command('step_simulation', [velocity_left, velocity_right])
+        # retrieve video data
+        image_data = self.receive_in_chunks(self.video_socket, 1024)
+        image_data = np.frombuffer(image_data, dtype=np.uint8)
+        image_data = np.reshape(image_data, (self.image_info['height'], self.image_info['width'], self.image_info['channels']))
+        # send AKN
+        self.video_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50)
+        # center (?) image
+        image_data = np.roll(image_data, int(self.image_info['width'] * 3/8), axis=1)
+        # send command
+        self.send_command('get_telemetry_data')
+        # retrieve data
+        telemetry_data = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50)
+        time_data, pose_data, sensor_data = telemetry_data['time'], telemetry_data['pose'], telemetry_data['sensor']
         # update robot's/agent's pose
-        self.robot_pose = pose_data
+        self.robot_pose = np.array(pose_data)
         # update environmental information
         self.env_data['time'] = time_data
-        self.env_data['pose'] = pose_data
-        self.env_data['sensor'] = sensor_data
+        self.env_data['pose'] = np.array(pose_data)
+        self.env_data['sensor'] = np.array(sensor_data)
         self.env_data['image'] = image_data
         
         return time_data, pose_data, sensor_data, image_data
@@ -283,49 +300,33 @@ class FrontendBlenderInterface():
         sensor_data :                       The sensor observation received from the simulation.
         image_data :                        The image observation received from the simulation.
         '''
-        # the basic capture image size for the images taken by the robot's omnicam, the width of the omnicam image is actually 4*capAreaWidth 
-        cap_area_width, cap_area_height = 64, 64
-        # send the actuation command to the virtual robot/agent
-        send_str = 'stepSimNoPhysics,%f,%f,%f' % (x, y, yaw)
-        self.control_socket.send(send_str.encode('utf-8'))
-        # retrieve images from all cameras of the robot
-        # fron
-        img_front = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_front = np.fromstring(img_front, dtype=np.uint8)
-        img_front = img_front.reshape((cap_area_height, cap_area_width, 4))
-        # left
-        img_left = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_left = np.fromstring(img_left, dtype=np.uint8)
-        img_left = img_left.reshape((cap_area_height, cap_area_width, 4))
-        # right
-        img_right = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_right = np.fromstring(img_right, dtype=np.uint8)
-        img_right = img_right.reshape((cap_area_height, cap_area_width, 4))
-        # back
-        img_back = self.receive_image(self.video_socket, cap_area_width * cap_area_height * 4)
-        img_back = np.fromstring(img_back, dtype=np.uint8)
-        img_back = img_back.reshape((cap_area_height, cap_area_width, 4))
-        # and construct the omnicam image from the single images. Note: the images are just 'stitched' together, no distortion correction takes place (so far).
-        image_data = np.hstack((img_front, img_right, img_back, img_left))
-        # center(?) the omnicam image
-        image_data = np.roll(image_data, 96, axis=1)
-        # extract RGB information channels
-        image_data = image_data[:, :, :3]
-        # retrieve telemetry data from the virtual agent/robot
-        telemetry_data_string = self.control_socket.recv(2000).decode('utf-8')
-        time_data, pose_data, sensor_data = telemetry_data_string.split(':')
-        # extract time data from telemetry
-        time_data = float(time_data)
-        # extract pose data from telemetry
-        pose_data = np.array([float(value) for value in pose_data.split(',')])
-        # extract sensor data from telemetry
-        sensor_data = np.array([float(value) for value in sensor_data.split(',')], dtype='float')
+        # send command
+        self.send_command('step_simulation_without_physics', [x, y, yaw])
+        # retrieve video data
+        image_data = self.receive_in_chunks(self.video_socket, 1024)
+        image_data = np.frombuffer(image_data, dtype=np.uint8)
+        image_data = np.reshape(image_data, (self.image_info['height'], self.image_info['width'], self.image_info['channels']))
+        # send AKN
+        self.video_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50)
+        # center (?) image
+        image_data = np.roll(image_data, int(self.image_info['width'] * 3/8), axis=1)
+        # send command
+        self.send_command('get_telemetry_data')
+        # retrieve data
+        telemetry_data = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50)
+        time_data, pose_data, sensor_data = telemetry_data['time'], telemetry_data['pose'], telemetry_data['sensor']
         # update robot's/agent's pose
-        self.robot_pose = pose_data
+        self.robot_pose = np.array(pose_data)
         # update environmental information
         self.env_data['time'] = time_data
-        self.env_data['pose'] = pose_data
-        self.env_data['sensor'] = sensor_data
+        self.env_data['pose'] = np.array(pose_data)
+        self.env_data['sensor'] = np.array(sensor_data)
         self.env_data['image'] = image_data
         
         return time_data, pose_data, sensor_data, image_data
@@ -376,10 +377,8 @@ class FrontendBlenderInterface():
         ----------
         None
         '''
-        # send the request for teleportation to Blender
-        pose_str = '%f,%f,%f' % (pose[0] ,pose[1], pose[2])
-        send_str = 'setXYYaw,robotSupport,%s' % pose_str
-        self.control_socket.send(send_str.encode('utf-8'))
+        # send command
+        self.send_command('set_XYYaw', [object_name, pose])
         # wait for acknowledge from Blender
         self.control_socket.recv(50)
         
@@ -396,14 +395,12 @@ class FrontendBlenderInterface():
         ----------
         None
         '''
-        # send the request for illumination change to Blender
-        illumination_str = '%s,%f,%f,%f' % (light_source, color[0], color[1], color[2])
-        send_str = 'setIllumination,%s' % illumination_str
-        self.control_socket.send(send_str.encode('utf-8'))
+        # send command
+        self.send_command('set_illumination', [light_source, color])
         # wait for acknowledge from Blender
         self.control_socket.recv(50)
         
-    def set_topology(self, topology_module):
+    def set_topology(self, topology_module: SpatialRepresentation):
         '''
         This function supplies the interface with a valid topology module.
         
@@ -459,14 +456,14 @@ class FrontendBlenderInterface():
         None
         '''
         try:
-            self.control_socket.send('stopSimulation'.encode('utf-8'))
+            self.send_command('stop_simulation')
         except:
             print(sys.exc_info()[1])
 
 
 class FrontendBlenderDynamic(FrontendBlenderInterface):
     
-    def __init__(self, scenario_name: str, blender_executable=None):
+    def __init__(self, scenario_name: str, blender_executable: None | str = None):
         '''
         The Blender interface class for use with the dynamic barrier environment.
         
@@ -494,10 +491,9 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         None
         '''
-        content_str = '%s,%r' % (barrier_ID, render_state)
-        send_str = 'set_render_state,%s' % content_str
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Waiting for acknowledgement from Blender
+        # send command
+        self.send_command('set_render_state', [barrier_ID, render_state])
+        # wait for acknowledge from Blender
         self.control_socket.recv(50)
 
     def set_rotation(self, barrier_ID: str, rotation: float):
@@ -513,10 +509,9 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         None
         '''
-        content_str = '%s,%f' % (barrier_ID, rotation)
-        send_str = 'set_rotation,%s' % content_str
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Waiting for acknowledgement from Blender
+        # send command
+        self.send_command('set_rotation', [barrier_ID, rotation])
+        # wait for acknowledge from Blender
         self.control_socket.recv(50)
 
     def set_texture(self, barrier_ID: str, texture: str):
@@ -532,10 +527,9 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         None
         '''
-        content_str = '%s,%s' % (barrier_ID, texture)
-        send_str = 'set_texture,%s' % content_str
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Waiting for acknowledgement from Blender
+        # send command
+        self.send_command('set_texture', [barrier_ID, texture])
+        # wait for acknowledge from Blender
         self.control_socket.recv(50)
 
     def set_barrier(self, barrier_ID: str, render_state: bool, rotation: float, texture: str):
@@ -569,23 +563,16 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         barrier_info :                      The barrier information.
         '''
-        # Sending command
-        send_str = 'get_barrier_info,%s' % barrier_ID
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Receiving data
-        response_str = self.control_socket.recv(3000).decode('utf-8')
-        response_list = response_str.split(',')
-        # Decoding string to rotation matrix
-        response_list = response_list[1]
-        rotation_array = response_list.split('|')
-        rotation_matrix = [i.split(';') for i in rotation_array]
-        # Converting rotation matrix to Euler angles
-        r = R.from_matrix(rotation_matrix)
-        rotation = r.as_euler('xyz', degrees=True)
-        # Saving results in dictionary
-        barrier_info = { 'render_state': response_list[0], 'rotation': rotation[2], 'texture': response_list[2]}
+        # send command
+        self.send_command('get_barrier_info', [barrier_ID])
+        # retrieve data
+        render_state, rotation, texture = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50).decode('utf-8')
         
-        return barrier_info
+        return {'render_state': render_state, 'rotation': rotation, 'texture': texture}
 
     def get_barrier_IDs(self) -> list:
         '''
@@ -601,10 +588,14 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         barrier_IDs :                       The list of barrier IDs.
         '''
-        send_str = 'get_barrier_IDs'
-        self.control_socket.send(send_str.encode('utf-8'))
-        barrier_str = self.control_socket.recv(1000).decode('utf-8')
-        barrier_IDs = barrier_str.split(',')
+        # send command
+        self.send_command('get_barrier_IDs')
+        # retrieve data
+        barrier_IDs = json.loads(self.receive_in_chunks(self.data_socket, 1024).decode('utf-8'))
+        # send AKN
+        self.data_socket.send('AKN'.encode('utf-8'))
+        # wait for AKN
+        self.control_socket.recv(50).decode('utf-8')
         
         return barrier_IDs
 
@@ -622,16 +613,15 @@ class FrontendBlenderDynamic(FrontendBlenderInterface):
         ----------
         None
         '''
-        content_str = '%s,%r' % (spotlight_ID, render_state)
-        send_str = 'set_spotlight,%s' % content_str
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Waiting for acknowledgement from Blender
+        # send command
+        self.send_command('set_spotlight', [spotlight_ID, render_state])
+        # wait for acknowledge from Blender
         self.control_socket.recv(50)
 
 
 class FrontendBlenderMultipleContexts(FrontendBlenderInterface):
     
-    def __init__(self, scenario_name, blender_executable=None):
+    def __init__(self, scenario_name: str, blender_executable: None | str = None):
         '''
         The Blender interface class for use with the multiple contexts environment.
         
@@ -661,10 +651,9 @@ class FrontendBlenderMultipleContexts(FrontendBlenderInterface):
         ----------
         None
         '''
-        content_str = '%s,%s,%s,%s' % (left_wall_texture, front_wall_texture, right_wall_texture, back_wall_texture)
-        send_str = 'set_wall_textures,%s' % content_str
-        self.control_socket.send(send_str.encode('utf-8'))
-        # Waiting for acknowledgement from Blender
+        # send command
+        self.send_command('set_wall_textures', [left_wall_texture, front_wall_texture, right_wall_texture, back_wall_texture])
+        # wait for acknowledge from Blender
         self.control_socket.recv(50)
 
 
@@ -707,7 +696,7 @@ class ImageInterface():
         # this interface class requires a topologyModule
         self.topology_module = None
      
-    def set_topology(self, topology_module):
+    def set_topology(self, topology_module: SpatialRepresentation):
         '''
         This function supplies the interface with a valid topology module.
         
@@ -776,7 +765,7 @@ class ImageInterface():
         # there will be no need for sensor data in this interface class
         self.env_data['sensor'] = np.zeros(8)
         # the image data is read from the 'worldInfo' directory
-        self.env_data['image'] = self.images[self.topology_module.nextNode]
+        self.env_data['image'] = self.images[self.topology_module.next_node]
         
         return self.env_data['time'], self.env_data['pose'], self.env_data['sensor'], self.env_data['image']
         

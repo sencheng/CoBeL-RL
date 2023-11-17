@@ -10,9 +10,9 @@ class TopologyNode():
         
         Parameters
         ----------
-        index :                             The node's global index.
-        x :                                 The node's x position.
-        y :                                 The node's y position.
+        index :                             The node's global index.\n
+        x :                                 The node's x position.\n
+        y :                                 The node's y position.\n
         
         Returns
         ----------
@@ -29,6 +29,6 @@ class TopologyNode():
         # an indicator arrow that points in the direction of the most probable next neighbor (as planned by the RL system)
         self.q_indicator = CogArrow()
         # if not otherwise defined or inhibited, each node is also a starting node
-        self.start_node=False
+        self.start_node = False
         # this reward bias is assigned to the node as standard (0.0)
         self.node_reward_bias = 0.

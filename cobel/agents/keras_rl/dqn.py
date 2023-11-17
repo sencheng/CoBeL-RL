@@ -1,10 +1,14 @@
 # basic imports
 import numpy as np
 # keras imports
+import tensorflow as tf
 from tensorflow.keras import callbacks as callback_keras
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Flatten
-from tensorflow.keras.optimizers import Adam
+if int(tf.__version__.split('.')[1]) >= 11:
+    from tensorflow.keras.optimizers.legacy import Adam
+else:
+    from tensorflow.keras.optimizers import Adam
 # keras-rl imports
 from rl.agents import DQNAgent
 from rl.policy import EpsGreedyQPolicy
@@ -18,7 +22,7 @@ class DQNAgentBaseline(AbstractRLAgent):
     
     class callbacksDQN(callbacks, callback_keras.Callback):
         
-        def __init__(self, rl_parent, custom_callbacks={}):
+        def __init__(self, rl_parent, custom_callbacks: None | dict = None):
             '''
             Callback class. Used for visualization and scenario control.
             Inherits from CoBeL-RL callback and Keras callback.
@@ -113,7 +117,7 @@ class DQNAgentBaseline(AbstractRLAgent):
             logs['trial_session'] = self.rl_parent.session_trial - 1
             super().on_step_end(logs)
                 
-    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks=None):
         '''
         This class implements a DQN agent.
         The original step-based training behavior of the keras-rl2 DQN agent is overwritten to be trial-based.
@@ -150,7 +154,7 @@ class DQNAgentBaseline(AbstractRLAgent):
         self.agent = DQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, gamma=0.8, nb_steps_warmup=100, enable_dueling_network=False,
                             dueling_type='avg', target_model_update=1e-2, policy=policy, batch_size=32)
         # compile the agent
-        self.agent.compile(Adam(lr=.001,), metrics=['mse'])
+        self.agent.compile(optimizer=Adam(learning_rate=.001), metrics=['mse'])
         # set up the visualizer for the RL agent behavior/reward outcome
         self.engaged_callbacks = self.callbacksDQN(self, custom_callbacks)
         
@@ -231,7 +235,7 @@ class DQNAgentSTR(DQNAgentBaseline):
     
     class callbacksSTR(DQNAgentBaseline.callbacksDQN):
         
-        def __init__(self, rl_parent, custom_callbacks={}):
+        def __init__(self, rl_parent, custom_callbacks=None):
             '''
             Callback class. Used for visualization and scenario control.
             Provides the RL agent's internal model with experiences.
@@ -443,7 +447,7 @@ class DQNAgentSTR(DQNAgentBaseline):
             
             return self.observation[0]
                 
-    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks=None):
         '''
         This class implements a DQN agent.
         The DQN agent implemented by this class learns state-action transition and reward models which it can utilize to simulate experiences.
@@ -607,7 +611,7 @@ class PERDQNAgent(DQNAgent):
 
 class PERDQNAgentBaseline(DQNAgentBaseline):
     
-    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, memory_capacity=1000000, epsilon=0.3, model=None, custom_callbacks=None):
         '''
         This class implements a baseline agent which uses prioritized experience replay.
         
@@ -646,7 +650,7 @@ class PERDQNAgentBaseline(DQNAgentBaseline):
         self.agent = PERDQNAgent(model=self.model, nb_actions=self.number_of_actions, memory=self.memory, nb_steps_warmup=35, enable_dueling_network=False,
                             dueling_type='avg', target_model_update=1e-2, policy=policy, batch_size=32)
         # compile the agent
-        self.agent.compile(Adam(lr=.001,), metrics=['mse'])
+        self.agent.compile(optimizer=Adam(learning_rate=.001), metrics=['mse'])
         # set up the visualizer for the RL agent behavior/reward outcome
         self.engaged_callbacks = self.callbacksDQN(self, custom_callbacks)
         

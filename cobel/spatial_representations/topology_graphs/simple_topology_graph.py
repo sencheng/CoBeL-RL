@@ -1,6 +1,6 @@
 # basic imports
 import numpy as np
-import gym
+import gymnasium as gym
 from scipy.spatial import Delaunay
 # Qt
 import PyQt5 as qt
@@ -14,8 +14,7 @@ from cobel.spatial_representations.topology_graphs.misc.cog_arrow import CogArro
 
 class AbstractTopologyGraph(SpatialRepresentation) : 
     
-    def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4, 
-                 visual_output=None, **kwargs) : 
+    def __init__(self, n_nodes_x: int = 5, n_nodes_y: int = 5, n_neighbors: int = 4, visual_output: bool = False, **kwargs) : 
         '''
         Abstract topology graph class.
         
@@ -130,8 +129,9 @@ class AbstractTopologyGraph(SpatialRepresentation) :
     
 class GridGraph(AbstractTopologyGraph): 
     
-    def __init__(self, n_nodes_x=5, n_nodes_y=5, n_neighbors=4, x_limits=[-1,1], y_limits=[-1,1], start_nodes=None, goal_nodes=None,
-                 visual_output=None, rotation=False, world_module=None, use_world_limits=False, observation_module=None):
+    def __init__(self, n_nodes_x: int = 5, n_nodes_y: int = 5, n_neighbors: int = 4, x_limits: tuple | list = (-1, 1), y_limits: tuple | list = (-1, 1),
+                 start_nodes: None | list = None, goal_nodes: None | list = None, visual_output: bool = False, rotation: bool = False, world_module=None,
+                 use_world_limits: bool = False, observation_module=None):
         super().__init__(n_nodes_x=n_nodes_x, n_nodes_y=n_nodes_y, n_neighbors=n_neighbors, visual_output=visual_output)
         '''
         Square/Rectangular grid topology graph class.
@@ -357,7 +357,7 @@ class GridGraph(AbstractTopologyGraph):
             
         return callback_value
                 
-    def calculate_angles_edges(self, node: TopologyNode, heading: np.ndarray, threshold=5) -> (list, list, list, list):
+    def calculate_angles_edges(self, node: TopologyNode, heading: np.ndarray, threshold: float = 5) -> (list, list, list, list):
         '''
         This function computes the angles between a given  node and its neighbors.
         
@@ -416,7 +416,7 @@ class GridGraph(AbstractTopologyGraph):
         else:
             return gym.spaces.Discrete(self.n_neighbors)
          
-    def set_visual_debugging(self, gui_parent):
+    def set_visual_debugging(self, gui_parent: qg.GraphicsLayoutWidget):
         '''
         This function sets visualization flag.
         
@@ -554,7 +554,7 @@ class GridGraph(AbstractTopologyGraph):
                 #create a list of imageData for each node
                 self.state_space.append(observation)
         
-    def move_to_node(self, node_id: int, angle=90.0):
+    def move_to_node(self, node_id: int, angle: float = 90.0):
         '''
         This function moves the agent to a specified node.
         

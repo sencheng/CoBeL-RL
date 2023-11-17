@@ -5,7 +5,7 @@ import PyQt5 as qt
 import pyqtgraph as qg
 import pyqtgraph.functions
 # OpenAI Gym
-import gym
+import gymnasium as gym
 # framework imports
 from .misc.topology_node import TopologyNode
 from .misc.cog_arrow import CogArrow
@@ -93,7 +93,7 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         #TODO : Test : Remove from class definition if it is only being used for visualization
         self.sample_state_space()
         
-    def set_visual_debugging(self, visual_output: bool, gui_parent):
+    def set_visual_debugging(self, visual_output: bool, gui_parent: qg.GraphicsLayoutWidget):
         '''
         This function sets visualization flags.
         
@@ -298,20 +298,20 @@ class ManualTopologyGraphWithRotation(SpatialRepresentation):
         else:
             # a random node is chosen to place the agent at (this node MUST NOT be the global goal node!)
             nodes = self.nodes
-            nodes_selection = [n for n in nodes if n.start_node == True]
+            nodes_selection = [n.index for n in nodes if n.start_node == True]
             # store the current node as previous node
             previous_node = self.current_node
             self.next_node = np.random.choice(nodes_selection)
-            next_node_pos = np.array([self.nodes[self.next_node.index].x, self.nodes[self.next_node.index].y])
+            next_node_pos = np.array([self.nodes[self.next_node].x, self.nodes[self.next_node].y])
             # from all heading directions available at the chosen node, select one randomly
-            self.current_node = self.next_node.index
-            neighbors = self.next_node.neighbors
+            self.current_node = self.next_node
+            neighbors = self.nodes[self.next_node].neighbors
             # list for available neighbor directions
             directions = []
             for n in neighbors:
                 if n.index != -1:
                     # only parse valid neighbors
-                    next_node_position = np.array([self.next_node.x, self.next_node.y])
+                    next_node_position = np.array([self.nodes[self.next_node].x, self.nodes[self.next_node].y])
                     neighbor_position = np.array([n.x, n.y])
                     vec_edge = neighbor_position - next_node_position
                     vec_edge = vec_edge/np.linalg.norm(vec_edge)
