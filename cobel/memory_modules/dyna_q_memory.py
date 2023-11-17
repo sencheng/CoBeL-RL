@@ -1,11 +1,14 @@
 # basic imports
 import numpy as np
 from scipy import linalg
+# framework imports
+from cobel.agents.rl_agent import AbstractRLAgent
+from cobel.interfaces.rl_interface import AbstractInterface
 
 
 class DynaQMemory():
     
-    def __init__(self, number_of_states: int, number_of_actions: int, learning_rate=0.9):
+    def __init__(self, number_of_states: int, number_of_actions: int, learning_rate: float = 0.9):
         '''
         Memory module to be used with the Dyna-Q agent.
         Experiences are stored as a static table.
@@ -61,7 +64,7 @@ class DynaQMemory():
         return {'state': state, 'action': action, 'reward': self.rewards[state][action],
                 'next_state': self.states[state][action], 'terminal': self.terminals[state][action]}
         
-    def retrieve_batch(self, number_of_experiences=1) -> list:
+    def retrieve_batch(self, number_of_experiences: int = 1) -> list:
         '''
         This function retrieves a number of random experiences.
         
@@ -89,7 +92,7 @@ class DynaQMemory():
     
 class PMAMemory():
     
-    def __init__(self, interface_OAI, rl_parent, number_of_states: int, number_of_actions: int, learning_rate=0.9, gamma=0.9):
+    def __init__(self, interface_OAI: AbstractInterface, rl_parent: AbstractRLAgent, number_of_states: int, number_of_actions: int, learning_rate: float = 0.9, gamma: float = 0.9):
         '''
         Memory module to be used with the PMA agent.
         Experiences are stored as a static table.
@@ -153,7 +156,7 @@ class PMAMemory():
         # update T
         self.T[experience['state']] += self.learning_rate_T * ((np.arange(self.number_of_states) == experience['next_state']) - self.T[experience['state']])
         
-    def replay(self, replay_length, current_state, force_first=None) -> list:
+    def replay(self, replay_length: int, current_state: None | int, force_first: None | int = None) -> list:
         '''
         This function replays experiences.
         
@@ -188,8 +191,8 @@ class PMAMemory():
                 # extend update
                 if not loop or self.allow_loops:
                     # determine extending action which yields max future value
-                    extending_action = self.action_probs(self.rl_parent.Q[extend])
-                    extending_action = np.random.choice(np.arange(self.number_of_actions), p=extending_action)
+                    mask = self.rl_parent.action_mask[extend] if self.rl_parent.mask_actions else None
+                    extending_action = self.rl_parent.policy.select_action(self.rl_parent.Q[extend], mask)
                     # determine extending step
                     extend += extending_action * self.number_of_states
                     updates[extend] = performed_updates[last_seq:] + updates[extend]
@@ -242,7 +245,8 @@ class PMAMemory():
             # gain is accumulated over the whole trajectory
             for s, step in enumerate(update):
                 # policy before update
-                policy_before = self.action_probs(self.rl_parent.Q[step['state']])
+                mask = self.rl_parent.action_mask[step['state']] if self.rl_parent.mask_actions else None
+                policy_before = self.rl_parent.policy.get_action_probs(self.rl_parent.Q[step['state']], mask)
                 # sum rewards over subsequent n-steps
                 R = 0.
                 for following_steps in range(len(update) - s):
@@ -252,7 +256,7 @@ class PMAMemory():
                 q_target[step['action']] = R + future_value * (self.rl_parent.gamma ** (following_steps + 1))
                 q_new = self.rl_parent.Q[step['state']] + self.rl_parent.learning_rate * (q_target - self.rl_parent.Q[step['state']])
                 # policy after update
-                policy_after = self.action_probs(q_new)
+                policy_after = self.rl_parent.policy.get_action_probs(q_new, mask)
                 # compute gain
                 step_gain = np.sum(q_new * policy_after) - np.sum(q_new * policy_before)
                 if self.min_gain_mode == 'original':
@@ -289,14 +293,14 @@ class PMAMemory():
         Q_new = np.copy(updates)
         Q_new += self.rl_parent.learning_rate * target_mask * (np.tile(self.rewards, (self.rl_parent.Q.shape[1], 1)) + self.rl_parent.gamma * np.amax(targets, axis=1).reshape(targets.shape[0], 1) * self.terminals.flatten(order='F').reshape(targets.shape[0], 1) - Q_new)
         # compute policies pre and post update
-        policy_old = self.action_probs_batch(updates, self.rl_parent.beta, None)
-        policy_new = self.action_probs_batch(Q_new, self.rl_parent.beta, None)
+        policy_old = self.action_probs_batch(updates)
+        policy_new = self.action_probs_batch(Q_new)
         # comute gain for all updates
         gain = np.sum(policy_new * Q_new, axis=1) - np.sum(policy_old * Q_new, axis=1)
         
         return np.clip(gain, a_min=self.min_gain, a_max=None)
     
-    def compute_need(self, current_state=None) -> np.ndarray:
+    def compute_need(self, current_state: None | int = None) -> np.ndarray:
         '''
         This function computes the need for each possible n-step backup in updates.
         
@@ -347,57 +351,18 @@ class PMAMemory():
         '''
         self.update_mask = (self.states.flatten(order='F') != np.tile(np.arange(self.number_of_states), self.number_of_actions))
     
-    def action_probs(self, q: np.ndarray) -> np.ndarray:
-        '''
-        This function computes the action selection probabilities given a set of Q-values.
-        
-        Parameters
-        ----------
-        q :                                 The Q-values for which action selection probabilities will be computed.
-        
-        Returns
-        ----------
-        p :                                 The action selection probabilities.
-        '''
-        # assume greedy policy per default
-        ties = (q == np.amax(q))
-        p = np.ones(self.number_of_actions) * (self.rl_parent.epsilon/self.number_of_actions)
-        p[ties] += (1. - self.rl_parent.epsilon)/np.sum(ties)
-        # softmax when 'on-policy'
-        if self.rl_parent.policy == 'softmax':
-            # catch all zero case
-            if np.all(q == q[0]):
-                q.fill(1)
-            p = np.exp(q * self.rl_parent.beta)
-            p /= np.sum(p)
-            
-        return p
-    
-    def action_probs_batch(self, Q: np.ndarray, beta=0., action_mask=None) -> np.ndarray:
+    def action_probs_batch(self, Q: np.ndarray) -> np.ndarray:
         '''
         This function computes the action selection probabilities for a table of Q-values.
         
         Parameters
         ----------
         Q :                                 The Q-values.
-        beta :                              The inverse temperature parameter used when computing the action selection probabilities under a softmax policy.
-        action_mask :                       The action mask (optional).
         
         Returns
         ----------
         probs :                             The action selection probabilities.
         '''
-        # assume random policy by default
-        P = np.ones(Q.shape)
-        if action_mask is None:
-            action_mask = np.ones(P.shape)
-        # compute action selection probabilities
-        if self.rl_parent.policy == 'greedy':
-            ties = (Q == np.amax(Q, axis=1).reshape(Q.shape[0], 1))
-            P.fill(self.rl_parent.epsilon/self.number_of_actions)
-            P += (ties * (1. - self.rl_parent.epsilon))/np.sum(ties, axis=1).reshape(ties.shape[0], 1)
-        elif self.rl_parent.policy == 'softmax':
-            Q_mask = np.exp(Q * beta)
-            P = Q_mask * action_mask
+        P = np.array([self.rl_parent.policy.get_action_probs(q_vals, self.rl_parent.action_mask[s] if self.rl_parent.mask_actions else None) for s, q_vals in enumerate(Q)])
     
         return P/np.sum(P, axis=1).reshape(P.shape[0], 1) 

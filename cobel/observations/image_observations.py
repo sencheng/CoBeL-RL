@@ -5,12 +5,12 @@ from PyQt5.QtCore import QRectF
 # open-cv
 import cv2
 # OpenAI Gym
-import gym
+import gymnasium as gym
 
  
 class ImageObservationBaseline():
     
-    def __init__(self, world, gui_parent=None, with_GUI=True, image_dims=(30, 1)):
+    def __init__(self, world, gui_parent: None | qg.GraphicsLayoutWidget = None, with_GUI: bool = True, image_dims: tuple = (30, 1)):
         '''
         This module computes an observation based on the current camera image acquired by the robot/agent.
         Raw image data is processed to line image observations.
@@ -121,7 +121,8 @@ class ImageObservationBaseline():
     
 class ImageObservationUnity():
     
-    def __init__(self, world, gui_parent, with_GUI=True, use_gray_scale=False, image_dims=(84, 84, 3)):
+    def __init__(self, world, gui_parent: None | qg.GraphicsLayoutWidget = None, with_GUI: bool = True,
+                 use_gray_scale: bool = False, image_dims: tuple = (84, 84, 3)):
         '''
         This module computes an observation based on the current camera image acquired by the robot/agent.
         Raw image data is processed to line image observations.

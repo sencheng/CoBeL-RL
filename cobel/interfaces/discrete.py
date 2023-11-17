@@ -1,6 +1,6 @@
 # basic imports
 import numpy as np
-import gym
+import gymnasium as gym
 import pyqtgraph as pg
 import PyQt5 as qt
 # framework imports
@@ -9,9 +9,8 @@ from cobel.interfaces.rl_interface import AbstractInterface
 
 class InterfaceDiscrete(AbstractInterface):
     
-    def __init__(self, modules: dict, transitions: np.ndarray, observations: np.ndarray,
-                 rewards: np.ndarray, terminals: np.ndarray, starting_states: list,
-                 coordinates=None, goals=[], with_GUI=True, gui_parent=None):
+    def __init__(self, modules: dict, transitions: np.ndarray, observations: np.ndarray, rewards: np.ndarray, terminals: np.ndarray, starting_states: list,
+                 coordinates: None | np.ndarray = None, goals: None | list = None, with_GUI: bool = True, gui_parent: None | pg.GraphicsLayoutWidget = None):
         '''
         Open AI interface for use with gridworld environments.
         
@@ -41,7 +40,7 @@ class InterfaceDiscrete(AbstractInterface):
         self.starting_states = starting_states # list of starting states
         self.deterministic = True # always transition to state with highest probability
         self.coordinates = coordinates # array containing the coordinates of each state
-        self.goals = goals # list of goal nodes
+        self.goals = [] if goals is None else goals # list of goal nodes
         self.noise = 0. # noise to be added to the observations
         self.range = None # value range
         self.gui_parent = gui_parent

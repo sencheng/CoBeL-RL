@@ -1,10 +1,14 @@
 # basic imports
 import numpy as np
 # keras imports
+import tensorflow as tf
 from tensorflow.keras import callbacks as callback_keras
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense, Flatten, Concatenate, Input, Activation
-from tensorflow.keras.optimizers import Adam
+if int(tf.__version__.split('.')[1]) >= 11:
+    from tensorflow.keras.optimizers.legacy import Adam
+else:
+    from tensorflow.keras.optimizers import Adam
 # keras-rl imports
 from rl.agents import DDPGAgent
 from rl.random import OrnsteinUhlenbeckProcess
@@ -17,7 +21,7 @@ class DDPGAgentBaseline(AbstractRLAgent):
     
     class callbacksDDPG(callbacks, callback_keras.Callback):
         
-        def __init__(self, rl_parent, custom_callbacks={}):
+        def __init__(self, rl_parent, custom_callbacks: None | dict = None):
             '''
             Callback class. Used for visualization and scenario control.
             Inherits from CoBeL-RL callback and Keras callback.
@@ -112,7 +116,7 @@ class DDPGAgentBaseline(AbstractRLAgent):
             logs['trial_session'] = self.rl_parent.session_trial - 1
             super().on_step_end(logs)
                 
-    def __init__(self, interface_OAI, memory_capacity=1000000, model_actor=None, model_critic=None, action_input=None, custom_callbacks={}):
+    def __init__(self, interface_OAI, memory_capacity=1000000, model_actor=None, model_critic=None, action_input=None, custom_callbacks=None):
         '''
         This class implements a DDPG agent.
         The original step-based training behavior of the keras-rl2 DDPG agent is overwritten to be trial-based.

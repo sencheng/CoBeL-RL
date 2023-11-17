@@ -11,6 +11,7 @@ from mlagents_envs.side_channel.float_properties_channel import FloatPropertiesC
 from mlagents_envs.base_env import ActionTuple
 # framework imports
 from cobel.frontends.env_sidechannel import EnvSideChannel
+from cobel.spatial_representations.spatial_representation import SpatialRepresentation
 
 
 def get_env_path() -> str:
@@ -34,7 +35,7 @@ def get_env_path() -> str:
 
 class FrontendUnityInterface():
     
-    def __init__(self, scenario_name=None, side_channels=None, seed=42, timeout_wait=60, time_scale=3., worker_id=0):
+    def __init__(self, scenario_name: None | str = None, side_channels: None | list = None, seed: int = 42, timeout_wait: int = 60, time_scale: float = 3., worker_id: int = 0):
         '''
         The Unity interface class. This class connects to the Unity environment and controls the flow of commands/data that goes to/comes from the Unity environment.
         
@@ -246,7 +247,7 @@ class FrontendUnityInterface():
         # forward the simulation by a tick (and execute action)
         self.env.step()
         
-    def set_topology(self, topology_module):
+    def set_topology(self, topology_module: SpatialRepresentation):
         '''
         This function supplies the interface with a valid topology module.
         
@@ -306,7 +307,7 @@ class FrontendUnityInterface():
 
 class FrontendUnityOfflineInterface(FrontendUnityInterface):
     
-    def __init__(self, scenario_path=None):
+    def __init__(self, scenario_path: None | str = None):
         '''
         The Unity interface class. This is tailored for offline simulation.
         
@@ -359,7 +360,7 @@ class FrontendUnityOfflineInterface(FrontendUnityInterface):
         
         return image_data, pose_data
 
-    def actuate_robot(self, actuator_command):
+    def actuate_robot(self, actuator_command: list):
         '''
         This function actually actuates the agent/robot in the offline virtual environment.
         

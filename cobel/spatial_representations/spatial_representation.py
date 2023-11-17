@@ -1,15 +1,17 @@
 import abc
-from abc import ABC
+import gymnasium as gym
 
-class SpatialRepresentation(ABC):
-    '''
-    This class has abstract function definitions
-    '''
+
+class SpatialRepresentation(abc.ABC):
+    
     def __init__(self):
+        '''
+        This class has abstract function definitions
+        '''
         pass
         
     @abc.abstractmethod
-    def set_visual_debugging(self,visual_output):
+    def set_visual_debugging(self, visual_output: bool):
         return
         
     @abc.abstractmethod
@@ -17,10 +19,9 @@ class SpatialRepresentation(ABC):
         return
 
     @abc.abstractmethod
-    def generate_behavior_from_action(self,action):
+    def generate_behavior_from_action(self, action: int) -> dict:
         return
 
     @abc.abstractmethod
-    def get_action_space(self):
-        return
-    
+    def get_action_space(self) -> gym.spaces.Discrete:
+        return    

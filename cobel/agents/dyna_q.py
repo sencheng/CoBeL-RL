@@ -2,24 +2,27 @@
 import numpy as np
 # memory module
 from cobel.agents.rl_agent import AbstractRLAgent, callbacks
+from cobel.policy.policy import AbstractPolicy
+from cobel.interfaces.rl_interface import AbstractInterface
 from cobel.memory_modules.dyna_q_memory import DynaQMemory, PMAMemory
 
 
-class AbstractDynaQAgent(AbstractRLAgent):                
+class AbstractDynaQAgent(AbstractRLAgent):
             
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, learning_rate=0.9, gamma=0.99, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 learning_rate: float = 0.9, gamma: float = 0.99, custom_callbacks: None | dict = None):
         '''
         Implementation of an abstract Dyna-Q agent class.
         The Q-function is represented as a static table.
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        learning_rate :                     The learning rate with which the Q-function is updated.
-        gamma :                             The discount factor used for computing the target values.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        learning_rate :                     The learning rate with which the Q-function is updated.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
@@ -29,25 +32,25 @@ class AbstractDynaQAgent(AbstractRLAgent):
         # the number of discrete states, retrieved from the Open AI Gym interface
         self.number_of_states = self.interface_OAI.world['states']
         # Q-learning parameters
-        self.epsilon = epsilon
-        self.beta = beta
         self.gamma = gamma
         self.learning_rate = learning_rate
         # action selection policy
-        self.policy = 'greedy'
+        self.policy = policy
+        self.policy_test = policy if policy_test is None else policy_test
         # keeps track of current trial
         self.current_trial = 0 # trial count across all sessions (i.e. calls to the train/simulate method)
         # mask invalid actions?
         self.mask_actions = False
         self.compute_action_mask()
+        self.stop = False
         
-    def replay(self, replay_batch_size=200):
+    def replay(self, replay_batch_size: int = 200):
         '''
         This function replays experiences to update the Q-function.
         
         Parameters
         ----------
-        replay_batch_size :                 The number of random experiences that will be replayed.
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
         
         Returns
         ----------
@@ -58,48 +61,6 @@ class AbstractDynaQAgent(AbstractRLAgent):
         # update the Q-function with each experience
         for experience in replay_batch:
             self.update_Q(experience)
-        
-    def select_action(self, state: int, epsilon=0.3, beta=5, test_mode=False) -> int:
-        '''
-        This function selects an action according to the Q-values of the current state.
-        
-        Parameters
-        ----------
-        state :                             The current state.
-        epsilon :                           The epsilon parameter used under epsilon-greedy action selection.
-        beta :                              The temperature parameter used when applying the softmax function to the Q-values.
-        test_mode :                         If true, then the action with the maximum Q-value is selected irrespective of the policy.
-        
-        Returns
-        ----------
-        action :                            The selected action.
-        '''
-        # revert to 'greedy' in case that the method name is not valid
-        if not self.policy in ['greedy', 'softmax']:
-            self.policy = 'greedy'
-        # retrieve Q-values
-        qVals = self.retrieve_Q(state)
-        actions = np.arange(qVals.shape[0])
-        # remove masked actions
-        if self.mask_actions:
-            qVals = qVals[self.action_mask[state]]
-            actions = actions[self.action_mask[state]]
-        # select action with highest value
-        if self.policy == 'greedy' or test_mode:
-            # act greedily and break ties
-            action = np.argmax(qVals)
-            ties = np.arange(qVals.shape[0])[(qVals == qVals[action])]
-            action = ties[np.random.randint(ties.shape[0])]
-            # in case that Q-values are equal select a random action
-            if np.random.rand() < epsilon and not test_mode:
-                action = np.random.randint(qVals.shape[0])
-            return actions[action]
-        # select action probabilistically
-        elif self.policy == 'softmax':
-            qVals -= np.amax(qVals)
-            probs = np.exp(beta * qVals)/np.sum(np.exp(beta * qVals))
-            action = np.random.choice(qVals.shape[0], p=probs)
-            return actions[action]
         
     def compute_action_mask(self):
         '''
@@ -121,16 +82,16 @@ class AbstractDynaQAgent(AbstractRLAgent):
         # make action mask
         self.action_mask = (self.action_mask !=  np.tile(np.arange(s), a)).reshape((s, a), order='F')
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of random experiences that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -138,14 +99,14 @@ class AbstractDynaQAgent(AbstractRLAgent):
         '''
         raise NotImplementedError('.train() function not implemented!')
         
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This function is called to test the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -159,7 +120,7 @@ class AbstractDynaQAgent(AbstractRLAgent):
         
         Parameters
         ----------
-        experience :                        The experience with which the Q-function will be updated.
+        experience :                        The experience with which the Q-function will be updated.\n
         
         Returns
         ----------
@@ -173,11 +134,11 @@ class AbstractDynaQAgent(AbstractRLAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's Q-values.
+        q_values :                          The state's Q-values.\n
         '''
         raise NotImplementedError('.retrieve_Q() function not implemented!')
     
@@ -187,36 +148,37 @@ class AbstractDynaQAgent(AbstractRLAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of Q-value predictions.
+        predictions :                       The batch of Q-value predictions.\n
         '''
         raise NotImplementedError('.predict_on_batch() function not implemented!')
         
 
-class DynaQAgent(AbstractDynaQAgent):             
+class DynaQAgent(AbstractDynaQAgent):
             
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, learning_rate=0.9, gamma=0.99, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 learning_rate: float = 0.9, gamma: float = 0.99, custom_callbacks: None | dict = None):
         '''
         Implementation of a Dyna-Q agent.
         The Q-function is represented as a static table.
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        learning_rate :                     The learning rate with which the Q-function is updated.
-        gamma :                             The discount factor used for computing the target values.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        learning_rate :                     The learning rate with which the Q-function is updated.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=learning_rate, gamma=gamma, custom_callbacks=custom_callbacks)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=learning_rate, gamma=gamma, custom_callbacks=custom_callbacks)
         # Q-table
         self.Q = np.zeros((self.number_of_states, self.number_of_actions))
         # memory module
@@ -224,16 +186,16 @@ class DynaQAgent(AbstractDynaQAgent):
         # perform replay at the end of an episode instead of each step
         self.episodic_replay = False
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of random experiences that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -249,7 +211,7 @@ class DynaQAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -276,15 +238,17 @@ class DynaQAgent(AbstractDynaQAgent):
                 self.replay(replay_batch_size)
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This function is called to test the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -300,7 +264,7 @@ class DynaQAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta, True)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # update current state
@@ -315,6 +279,8 @@ class DynaQAgent(AbstractDynaQAgent):
             logs['steps'] = step
             # callback
             self.engaged_callbacks.on_trial_end(logs)
+            if self.stop:
+                break
     
     def update_Q(self, experience: dict):
         '''
@@ -322,7 +288,7 @@ class DynaQAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        experience :                        The experience with which the Q-function will be updated.
+        experience :                        The experience with which the Q-function will be updated.\n
         
         Returns
         ----------
@@ -341,13 +307,12 @@ class DynaQAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's Q-values.
+        q_values :                          The state's Q-values.\n
         '''
-        # retrieve Q-values, if entry exists
         return self.Q[state]
     
     def predict_on_batch(self, batch: np.ndarray) -> np.ndarray:
@@ -356,31 +321,27 @@ class DynaQAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of Q-value predictions.
+        predictions :                       The batch of Q-value predictions.\n
         '''
-        predictions = []
-        for state in batch:
-            predictions += [self.retrieve_Q(state)]
-            
-        return np.array(predictions)
+        return self.Q[batch]
     
     
-class PMAAgent(AbstractDynaQAgent):                
+class PMAAgent(AbstractDynaQAgent):
     
     class callbacksPMA(callbacks):
         
-        def __init__(self, rl_parent, custom_callbacks={}):
+        def __init__(self, rl_parent: AbstractDynaQAgent, custom_callbacks: None | dict = None):
             '''
             Callback class of the PMA agent. Used for visualization and scenario control.
             
             Parameters
             ----------
-            rl_parent :                         Reference to the RL agent.
-            custom_callbacks :                  The custom callbacks defined by the user.
+            rl_parent :                         Reference to the RL agent.\n
+            custom_callbacks :                  The custom callbacks defined by the user.\n
             
             Returns
             ----------
@@ -389,7 +350,7 @@ class PMAAgent(AbstractDynaQAgent):
             # store the hosting class
             self.rl_parent = rl_parent
             # store the trial end callback function
-            self.custom_callbacks = custom_callbacks
+            self.custom_callbacks = {} if custom_callbacks is None else custom_callbacks
                     
         def on_replay_end(self, logs: dict):
             '''
@@ -397,7 +358,7 @@ class PMAAgent(AbstractDynaQAgent):
             
             Parameters
             ----------
-            logs :                              The trial log.
+            logs :                              The trial log.\n
             
             Returns
             ----------
@@ -408,26 +369,27 @@ class PMAAgent(AbstractDynaQAgent):
                 for custom_callback in self.custom_callbacks['on_replay_end']:
                     custom_callback(logs)
     
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, learning_rate=0.9, gamma=0.99, gamma_SR=0.99, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 learning_rate: float = 0.9, gamma: float = 0.99, gamma_SR: float = 0.99, custom_callbacks: None | dict = None):
         '''
         Implementation of a Dyna-Q agent using the Prioritized Memory Access (PMA) method described by Mattar & Daw (2018):
         https://doi.org/10.1038/s41593-018-0232-z
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        learning_rate :                     The learning rate with which the Q-function is updated.
-        gamma :                             The discount factor used for computing the target values.
-        gamma_SR :                          The discount factor used for computing the successor representation.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        learning_rate :                     The learning rate with which the Q-function is updated.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        gamma_SR :                          The discount factor used for computing the successor representation.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=learning_rate, gamma=gamma, custom_callbacks=custom_callbacks)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=learning_rate, gamma=gamma, custom_callbacks=custom_callbacks)
         # Q-table
         self.Q = np.zeros((self.number_of_states, self.number_of_actions))
         # memory module
@@ -435,16 +397,16 @@ class PMAAgent(AbstractDynaQAgent):
         # initialze callbacks class with customized callbacks
         self.engaged_callbacks = self.callbacksPMA(self, custom_callbacks)
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of random experiences that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of random experiences that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -464,7 +426,7 @@ class PMAAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(logs)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -491,14 +453,14 @@ class PMAAgent(AbstractDynaQAgent):
             # callback
             self.engaged_callbacks.on_trial_end(logs)
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Dyna-Q agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Dyna-Q agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -513,7 +475,7 @@ class PMAAgent(AbstractDynaQAgent):
             self.engaged_callbacks.on_trial_begin(logs)
             for step in range(max_number_of_steps):
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta, True)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # update current state
@@ -534,7 +496,7 @@ class PMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        update :                            A list containing experiences for an n-step update.
+        update :                            A list containing experiences for an n-step update.\n
         
         Returns
         ----------
@@ -567,13 +529,12 @@ class PMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's Q-values.
+        q_values :                          The state's Q-values.\n
         '''
-        # retrieve Q-values, if entry exists
         return self.Q[state]
     
     def predict_on_batch(self, batch: np.ndarray) -> np.ndarray:
@@ -582,14 +543,10 @@ class PMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of Q-value predictions.
+        predictions :                       The batch of Q-value predictions.\n
         '''
-        predictions = []
-        for state in batch:
-            predictions += [self.retrieve_Q(state)]
-            
-        return np.array(predictions)
+        return self.Q[batch]

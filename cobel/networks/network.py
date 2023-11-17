@@ -89,6 +89,36 @@ class AbstractNetwork():
         '''
         raise NotImplementedError('.clone_model() function not implemented!')
         
+    def set_optimizer(self, optimizer: str, parameters: None | dict = None):
+        '''
+        This function sets the optimizer of the network model.
+        
+        Parameters
+        ----------
+        optimizer :                         The name of the optimizer.
+        parameters :                        The parameters of the optimizer (e.g., learning rate).
+        
+        Returns
+        ----------
+        None
+        '''
+        raise NotImplementedError('.set_optimizer() function not implemented!')
+        
+    def set_loss(self, loss: str, parameters: None | dict = None):
+        '''
+        This function sets the loss of the network model.
+        
+        Parameters
+        ----------
+        loss :                              The name of the loss.
+        parameters :                        The parameters of the loss.
+        
+        Returns
+        ----------
+        None
+        '''
+        raise NotImplementedError('.set_loss() function not implemented!')
+        
     def get_layer_activity(self, batch: np.ndarray, layer_index: int) -> np.ndarray:
         '''
         This function returns the activity of a specified layer for a batch of input samples.

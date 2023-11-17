@@ -1,12 +1,13 @@
 # basic imports
 import numpy as np
+from typing import Callable
 # framework imports
 from cobel.interfaces.rl_interface import AbstractInterface
 
 
 class InterfaceBaseline(AbstractInterface):
     
-    def __init__(self, modules: dict, with_GUI=True, reward_callback=None):
+    def __init__(self, modules: dict, with_GUI: bool = True, reward_callback: None | Callable = None):
         '''
         This is the Open AI gym interface class. The interface wraps the control path and ensures communication between the agent and the environment.
         The class descends from gym.Env, and is designed to be minimalistic (currently!).
@@ -66,10 +67,10 @@ class InterfaceBaseline(AbstractInterface):
         logs :                              The (empty) logs dictionary.
         '''
         callback_value = self.modules['spatial_representation'].generate_behavior_from_action(action)
-        callback_value['rlAgent'] = self.rl_agent
-        callback_value['modules'] = self.modules
-        
-        reward, end_trial = self.reward_callback(callback_value)
+        callback_value['rl_agent'], callback_value['modules'] = self.rl_agent, self.modules
+        reward, end_trial = callback_value['current_node'].node_reward_bias, callback_value['current_node'].goal_node
+        if self.reward_callback:
+            reward, end_trial = self.reward_callback(callback_value)
         self.observation = np.copy(self.modules['observation'].observation)
         
         return self.modules['observation'].observation, reward, end_trial, {}

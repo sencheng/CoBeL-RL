@@ -1,8 +1,10 @@
 # basic imports
 import numpy as np
+# framework imports
+from cobel.networks.network import AbstractNetwork
 
 
-def get_activity_maps(observations, model, layer=-2, units=np.array([0])) -> np.ndarray:
+def get_activity_maps(observations: np.ndarray | list | dict, model: AbstractNetwork, layer: int | str, units: None | np.ndarray = None) -> np.ndarray:
     '''
     This function returns the unit activation of a specified layer for a set of observations.
     
@@ -10,20 +12,18 @@ def get_activity_maps(observations, model, layer=-2, units=np.array([0])) -> np.
     ----------
     observations :                      A dictionary containing observations for different input streams.
     model :                             The keras model.
-    layer :                             The layer index for which activity maps will be computed.
+    layer :                             The layer index or name for which activity maps will be computed.
     units :                             The indices of units whose activity will be returned.
     
     Returns
     ----------
     activity_maps :                     The layer activities of the specified layer for the batch of input samples.
     '''
-    activity_maps = np.zeros((units.shape[0], observations[0].shape[0]))
-    if model is not None:
-        activity_maps = model.get_layer_activity(observations, layer)[units, :]
+    assert model is not None, 'No model was provided!'
         
-    return np.copy(activity_maps)
+    return np.copy(model.get_layer_activity(observations, layer)[np.array([0]) if units is None else units, :])
 
-def process_activity_maps(activity_maps: np.ndarray, threshold=0.15) -> np.ndarray:
+def process_activity_maps(activity_maps: np.ndarray, threshold: float = 0.15) -> np.ndarray:
     '''
     This function normalizes activity maps and removes values below a specified threshold.
     

@@ -1,41 +1,27 @@
 ## **CoBeL-RL** ##
 #### Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks ####
 
-This is a new version of CoBeL-RL. For the older version, please use the tagged commit v1.0.
----------------------------
-**Getting started:**  
-
-To quickly get started and test the system, you can run one of the demos. 
+This is a new version of CoBeL-RL.
+If you require an older version, download the appropriately tagged commit/branch.
 
 ----------------------------
 
-**Install requirements**
-
-    
-* Many simulations depend on Blender2.79b. If you wish to use the Unity editor, skip this step. Download and install Blender2.79b at:  
-
-     `https://download.blender.org/release/Blender2.79/`  
-
-Note : Only v2.79b is supported. Newer versions of Blender will not work with the system.  
-* Install required python packages  
+**Installation Guide**
 
 `pip3 install -r requirements.txt`
 
-------------------------------
-
-<details></summary>
-<summary>
-Run Demo
-</summary>
-
-
-*  First, clone the project.
+* Clone the project.
 
 `git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git`  
 
 *  Then, install CoBeL-RL through pip.
 
 `pip3 install /path/to/cloned/project/`
+
+<details></summary>
+<summary>
+Install Options
+</summary>
 
 * If you intend to use Keras-RL agents install with the option:
 
@@ -51,6 +37,40 @@ Run Demo
 
 `[unity]`
 
+</details>
+
+------------------------------
+
+**Run the Dyna-Q Demo**
+
+* Go to demo folder
+
+`cd ~/demo/gridworld/`
+
+*  Start the demo simulation:
+
+`python gridworld_dyna_q_demo.py`
+
+------------------------------
+
+**Run the DQN Demo**
+
+*  Install PyTorch either as an optional requirement or directly from the official website:
+
+`https://pytorch.org/`
+
+*  Choose one of the 3D simulators below and follow the listed instructions:
+
+<details></summary>
+<summary>
+Blender
+</summary>
+
+
+* Download and install Blender2.79b from:  
+
+`https://download.blender.org/release/Blender2.79/`
+
 * You will need to set up an environment variable for the Blender path to run the demos.
 
 `export BLENDER_EXECUTABLE_PATH="/path/to/blender2.79b/"`
@@ -64,26 +84,24 @@ Run Demo
 If you plan to use the framework more than once, it is useful to set this variable permanently. On Linux distributions, you can do this by editing the .bashrc file. 
 
 * Go to demo folder
-`cd ~/cobel/demo/simple_grid_graph_demo/`
+
+`cd ~/demo/simple_grid_graph_demo/`
 
 *  Start the demo simulation:
+
 `python simple_grid_graph_demo.py`
 
 **Note: The Blender path can also be passed as a parameter to the Blender frontend module. For your own simulations it is therefore not necessary to set a permanent variable.**
 
 </details>
 
-------------------------------
 
 <details>
-________________________________________________________________________________________________
+
 <summary>
-Unity interface (Skip if you plan to work with Blender)
+Unity
 </summary>
 
-If you want to try the unity interface demo, you need to perform the the steps described above first.
-
-Please report all bugs you find :)
 
 You got two options to run a demo.
 
@@ -122,18 +140,15 @@ You got two options to run a demo.
     
     **Note: the demo tries to do option 1) automatically when 'UNITY_ENVIRONMENT_EXECUTABLE' variable is set.**
     
-     
  </details> 
- 
- ------------------------------
+
  
  <details>
-________________________________________________________________________________________________
+
 <summary>
-Godot interface
+Godot
 </summary>
 
-If you want to try the Godot demos, you need to perform the following steps:
 
 *  Download the Godot build (build contains executables for Linux and Windows).
 
@@ -151,11 +166,9 @@ If you want to try the Godot demos, you need to perform the following steps:
     
 * Go to demo folder.
 
-`cd ~/cobel/demo/godot/`
+`cd ~/demo/godot/`
 
-*  Start either of the demo simulations.
-
-`python godot_demo.py`
+* Start the demo simulation:
 
 `python godot_demo_grid_graph.py`
 

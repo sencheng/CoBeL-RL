@@ -3,22 +3,24 @@ import numpy as np
 # framework imports
 from cobel.agents.rl_agent import callbacks
 from cobel.agents.dyna_q import AbstractDynaQAgent
-# custom imports
+from cobel.policy.policy import AbstractPolicy
+from cobel.interfaces.rl_interface import AbstractInterface
 from cobel.memory_modules.sfma_memory import SFMAMemory
+from cobel.networks.network import AbstractNetwork
 
     
 class SFMAAgent(AbstractDynaQAgent):
     
     class callbacksSFMA(callbacks):
         
-        def __init__(self, rl_parent, custom_callbacks={}):
+        def __init__(self, rl_parent: AbstractDynaQAgent, custom_callbacks: None | dict = None):
             '''
             Callback class. Used for visualization and scenario control.
             
             Parameters
             ----------
-            rl_parent :                         Reference to the RL agent.
-            custom_callbacks :                  The custom callbacks defined by the user.
+            rl_parent :                         Reference to the RL agent.\n
+            custom_callbacks :                  The custom callbacks defined by the user.\n
             
             Returns
             ----------
@@ -32,7 +34,7 @@ class SFMAAgent(AbstractDynaQAgent):
             
             Parameters
             ----------
-            logs :                              The trial log.
+            logs :                              The trial log.\n
             
             Returns
             ----------
@@ -49,7 +51,7 @@ class SFMAAgent(AbstractDynaQAgent):
             
             Parameters
             ----------
-            logs :                              The trial log.
+            logs :                              The trial log.\n
             
             Returns
             ----------
@@ -61,26 +63,27 @@ class SFMAAgent(AbstractDynaQAgent):
                     custom_callback(logs)
                 
             
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, learning_rate=0.9, gamma=0.99, gamma_SR=0.99, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 learning_rate: float = 0.9, gamma: float = 0.99, gamma_SR: float = 0.99, custom_callbacks: None | dict = None):
         '''
-        Implementation of a Dyna-Q agent using the Spatial Structure and Frequency-weighted Memory Access (SMA) memory module.
+        Implementation of a Dyna-Q agent using the Spatial Structure and Frequency-weighted Memory Access (SFMA) memory module.
         Q-function is represented as a static table.
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        learning_rate :                     The learning rate with which the Q-function is updated.
-        gamma :                             The discount factor used to compute the TD-error.
-        gamma_SR :                          The discount factor used by the SMA memory module.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        learning_rate :                     The learning rate with which the Q-function is updated.\n
+        gamma :                             The discount factor used to compute the TD-error.\n
+        gamma_SR :                          The discount factor used by the SMA memory module.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=learning_rate, gamma=gamma)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=learning_rate, gamma=gamma)
         # Q-table
         self.Q = np.zeros((self.number_of_states, self.number_of_actions))
         # memory module
@@ -95,16 +98,16 @@ class SFMAAgent(AbstractDynaQAgent):
         self.start_replay = False # if true, a replay trace is generated at the start of each trial
         self.td = 0. # stores the temporal difference errors accounted during each trial
         
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the SFMA agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of experiences that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the SFMA agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of experiences that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -124,7 +127,7 @@ class SFMAAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -160,15 +163,17 @@ class SFMAAgent(AbstractDynaQAgent):
                 self.M.T.fill(0)
             # callback
             self.engaged_callbacks.on_trial_end(trial_log)
+            if self.stop:
+                break
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This function is called to test the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the SFMA agent is tested.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the SFMA agent is tested.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -184,7 +189,7 @@ class SFMAAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta, True)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, end_trial, callback_value = self.interface_OAI.step(action)
                 # log reward
@@ -200,19 +205,21 @@ class SFMAAgent(AbstractDynaQAgent):
             trial_log['steps'] = step
             # callback
             self.engaged_callbacks.on_trial_end(trial_log)
+            if self.stop:
+                break
             
-    def replay(self, replay_batch_size=200, state=None) -> list:
+    def replay(self, replay_batch_size: int = 200, state: None | int = None) -> list:
         '''
         This function replays experiences to update the Q-function.
         
         Parameters
         ----------
-        replay_batch_size :                 The number of experiences that will be replayed.
-        state :                             The state at which replay should be initiated.
+        replay_batch_size :                 The number of experiences that will be replayed.\n
+        state :                             The state at which replay should be initiated.\n
         
         Returns
         ----------
-        replay_batch :                      The batch of replayed experiences.
+        replay_batch :                      The batch of replayed experiences.\n
         '''
         # sample batch of experiences
         replay_batch = []
@@ -229,18 +236,18 @@ class SFMAAgent(AbstractDynaQAgent):
             
         return replay_batch
     
-    def update_Q(self, experience: dict, no_update=False) -> float:
+    def update_Q(self, experience: dict, no_update: bool = False) -> float:
         '''
         This function updates the Q-function with a given experience.
         
         Parameters
         ----------
-        experience :                        The experience with which the Q-function will be updated.
-        no_update :                         If true, the Q-function is not updated.
+        experience :                        The experience with which the Q-function will be updated.\n
+        no_update :                         If true, the Q-function is not updated.\n
         
         Returns
         ----------
-        td :                                The update's TD-error.
+        td :                                The update's TD-error.\n
         '''
         # make mask
         mask = np.arange(self.number_of_actions)
@@ -266,13 +273,12 @@ class SFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's Q-values.
+        q_values :                          The state's Q-values.\n
         '''
-        # retrieve Q-values, if entry exists
         return self.Q[state]
     
     def predict_on_batch(self, batch: np.ndarray) -> np.ndarray:
@@ -281,48 +287,47 @@ class SFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of Q-value predictions.
+        predictions :                       The batch of Q-value predictions.\n
         '''
-        predictions = []
-        for state in batch:
-            predictions += [self.retrieve_Q(state)]
-            
-        return np.array(predictions)
+        return self.Q[batch]
 
 
 class DeepSFMAAgent(AbstractDynaQAgent):               
             
-    def __init__(self, interface_OAI, epsilon=0.3, beta=5, gamma=0.99, gamma_SR=0.99, observations=None, model=None, custom_callbacks={}):
+    def __init__(self, interface_OAI: AbstractInterface, policy: AbstractPolicy, policy_test: None | AbstractPolicy = None,
+                 gamma: float = 0.99, gamma_SR: float = 0.99, observations: None | np.ndarray = None,
+                 model: None | AbstractNetwork = None, custom_callbacks: None | dict = None):
         '''
-        Implementation of a Dyna-Q agent using the Spatial Structure and Frequency-weighted Memory Access (SMA) memory module.
+        Implementation of a Dyna-Q agent using the Spatial Structure and Frequency-weighted Memory Access (SFMA) memory module.
         Q-function is represented as a deep Q-network (DQN).
         
         Parameters
         ----------
-        interface_OAI :                     The interface to the Open AI Gym environment.
-        epsilon :                           The epsilon value for the epsilon greedy policy.
-        beta :                              The inverse temperature parameter for the softmax policy.
-        gamma :                             The discount factor used for computing the target values.
-        gamma_SR :                          The discount factor used by the SMA memory module.
-        observations :                      The set of observations that will be mapped to environmental states. If undefined, a one-hot encoding for will be generated.
-        model :                             The network model to be used by the agent.
-        custom_callbacks :                  The custom callbacks defined by the user.
+        interface_OAI :                     The interface to the Open AI Gym environment.\n
+        policy :                            The agent's action selection policy.\n
+        policy_test :                       The agent's action selection policy during testing. If unspecified the agent uses the train policy.\n
+        gamma :                             The discount factor used for computing the target values.\n
+        gamma_SR :                          The discount factor used by the SMA memory module.\n
+        observations :                      The set of observations that will be mapped to environmental states. If undefined, a one-hot encoding for will be generated.\n
+        model :                             The network model to be used by the agent.\n
+        custom_callbacks :                  The custom callbacks defined by the user.\n
         
         Returns
         ----------
         None
         '''
-        super().__init__(interface_OAI, epsilon=epsilon, beta=beta, learning_rate=0.9, gamma=gamma, custom_callbacks=custom_callbacks)
+        super().__init__(interface_OAI, policy=policy, policy_test=policy_test, learning_rate=0.9, gamma=gamma, custom_callbacks=custom_callbacks)
         # observations
         self.observations = observations
         if self.observations is None:
             self.observations = np.eye(self.number_of_states)
         # build target and online models
-        self.prepare_models(model)
+        self.model_target = model
+        self.model_online = self.model_target.clone_model()
         # memory module
         self.M = SFMAMemory(self.interface_OAI, self.number_of_actions, gamma_SR)
         # training
@@ -330,39 +335,21 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         self.random_replay = False # if true, random replay batches are sampled
         self.dynamic_mode = False # if true, the replay mode is determined by the cumulative td-error
         self.td = 0. # stores the temporal difference errors accounted during each trial
-        self.target_model_update = 10**-2 # target model blending factor
+        self.target_model_update = 10 ** -2 # target model blending factor
         self.updates_per_replay = 1 # number of BP updates per replay batch
         self.local_targets = True # if true, the model will be updated with locally computed target values
         self.randomize_subsequent_replays = False # if true, only the first replay after each trial uses SFMA
         
-    def prepare_models(self, model=None):
-        '''
-        This functions prepares target and online models. 
-        
-        Parameters
-        ----------
-        model :                             The network model to be used by the agent.
-        
-        Returns
-        ----------
-        None
-        '''
-        # build target model
-        self.model_target = model
-        # build online model by cloning the target model
-        self.model_online = self.model_target.clone_model()
-
-        
-    def train(self, number_of_trials=100, max_number_of_steps=50, replay_batch_size=100, no_replay=False):
+    def train(self, number_of_trials: int = 100, max_number_of_steps: int = 50, replay_batch_size: int = 100, no_replay: bool = False):
         '''
         This function is called to train the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Deep SFMA agent is trained.
-        max_number_of_steps :               The maximum number of steps per trial.
-        replay_batch_size :                 The number of experiences that will be replayed.
-        no_replay :                         If true, experiences are not replayed.
+        number_of_trials :                  The number of trials the Deep SFMA agent is trained.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
+        replay_batch_size :                 The number of experiences that will be replayed.\n
+        no_replay :                         If true, experiences are not replayed.\n
         
         Returns
         ----------
@@ -378,7 +365,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, stop_episode, callback_value = self.interface_OAI.step(action)
                 # make experience
@@ -418,15 +405,17 @@ class DeepSFMAAgent(AbstractDynaQAgent):
                 self.M.T.fill(0)
             # callback
             self.engaged_callbacks.on_trial_end(trial_log)
+            if self.stop:
+                break
             
-    def test(self, number_of_trials=100, max_number_of_steps=50):
+    def test(self, number_of_trials: int = 100, max_number_of_steps: int = 50):
         '''
         This function is called to test the agent.
         
         Parameters
         ----------
-        number_of_trials :                  The number of trials the Deep SFMA agent is tested.
-        max_number_of_steps :               The maximum number of steps per trial.
+        number_of_trials :                  The number of trials the Deep SFMA agent is tested.\n
+        max_number_of_steps :               The maximum number of steps per trial.\n
         
         Returns
         ----------
@@ -442,7 +431,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             for step in range(max_number_of_steps):
                 self.engaged_callbacks.on_step_begin(trial_log)
                 # determine next action
-                action = self.select_action(state, self.epsilon, self.beta)
+                action = self.policy_test.select_action(self.retrieve_Q(state), self.action_mask[state] if self.mask_actions else None)
                 # perform action
                 next_state, reward, stop_episode, callback_value = self.interface_OAI.step(action)
                 # log behavior and reward
@@ -458,20 +447,22 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             trial_log['steps'] = step
             # callback
             self.engaged_callbacks.on_trial_end(trial_log)
+            if self.stop:
+                break
             
-    def replay(self, replay_batch_size=200, state=None, random_replay=False) -> list:
+    def replay(self, replay_batch_size: int = 200, state: None | int = None, random_replay: bool = False) -> list:
         '''
         This function replays experiences to update the Q-function.
         
         Parameters
         ----------
-        replay_batch_size :                 The number of experiences that will be replayed.
-        state :                             The  state at which replay should be initiated.
-        random_replay :                     If true, than a batch of random experiences is replayed.
+        replay_batch_size :                 The number of experiences that will be replayed.\n
+        state :                             The  state at which replay should be initiated.\n
+        random_replay :                     If true, than a batch of random experiences is replayed.\n
         
         Returns
         ----------
-        replay_batch :                      The batch of replayed experiences.
+        replay_batch :                      The batch of replayed experiences.\n
         '''
         # sample batch of experiences
         replay_batch = []
@@ -491,7 +482,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        replays :                           The replays with which the model will be updated.
+        replays :                           The replays with which the model will be updated.\n
         
         Returns
         ----------
@@ -522,7 +513,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        replays :                           The replays with which the model will be updated.
+        replays :                           The replays with which the model will be updated.\n
         
         Returns
         ----------
@@ -548,15 +539,15 @@ class DeepSFMAAgent(AbstractDynaQAgent):
             # update model
             self.update_model(self.observations[states], np.array(targets), self.updates_per_replay)
             
-    def update_model(self, observations: np.ndarray, targets: np.ndarray, number_of_updates=1):
+    def update_model(self, observations: np.ndarray, targets: np.ndarray, number_of_updates: int = 1):
         '''
         This function updates the model on a batch of experiences.
         
         Parameters
         ----------
-        observations :                      The observations.
-        targets :                           The targets.
-        number_of_updates :                 The number of backpropagation updates that should be performed on this batch.
+        observations :                      The observations.\n
+        targets :                           The targets.\n
+        number_of_updates :                 The number of backpropagation updates that should be performed on this batch.\n
         
         Returns
         ----------
@@ -577,7 +568,7 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        experience :                        The experience with which the Q-function will be updated.
+        experience :                        The experience with which the Q-function will be updated.\n
         
         Returns
         ----------
@@ -591,11 +582,11 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        state :                             The state for which Q-values should be retrieved.
+        state :                             The state for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        q_values :                          The state's Q-values.
+        q_values :                          The state's Q-values.\n
         '''
         # retrieve Q-values, if entry exists
         return self.model_online.predict_on_batch(np.array([self.observations[state]]))[0]
@@ -606,10 +597,10 @@ class DeepSFMAAgent(AbstractDynaQAgent):
         
         Parameters
         ----------
-        batch :                             The batch of states for which Q-values should be retrieved.
+        batch :                             The batch of states for which Q-values should be retrieved.\n
         
         Returns
         ----------
-        predictions :                       The batch of Q-value predictions.
+        predictions :                       The batch of Q-value predictions.\n
         '''  
         return self.model_online.predict_on_batch(self.observations[batch])

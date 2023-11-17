@@ -1,10 +1,12 @@
 # basic imports
 import numpy as np
+# framework imports
+from cobel.interfaces.rl_interface import AbstractInterface
 
 
 class AbstractMetric():
     
-    def __init__(self, interface_OAI):
+    def __init__(self, interface_OAI: AbstractInterface):
         '''
         Abstract metrics class.
         
@@ -36,7 +38,7 @@ class AbstractMetric():
 
 class Euclidean(AbstractMetric):
     
-    def __init__(self, interface_OAI):
+    def __init__(self, interface_OAI: AbstractInterface):
         '''
         Euclidean metrics class.
         
@@ -75,7 +77,7 @@ class Euclidean(AbstractMetric):
 
 class SR(AbstractMetric):
     
-    def __init__(self, interface_OAI, gamma: float):
+    def __init__(self, interface_OAI: AbstractInterface, gamma: float):
         '''
         Successor Representation (SR) metrics class.
         
@@ -104,7 +106,7 @@ class SR(AbstractMetric):
 
 class DR(AbstractMetric):
     
-    def __init__(self, interface_OAI, gamma: float, T_default=None):
+    def __init__(self, interface_OAI: AbstractInterface, gamma: float, T_default: None | np.ndarray = None):
         '''
         Default Representation (DR) metrics class.
         

@@ -1,6 +1,6 @@
 # basic imports
 import numpy as np
-import gym
+import gymnasium as gym
 import pyqtgraph as pg
 import PyQt5 as qt
 # framework imports
@@ -9,7 +9,7 @@ from cobel.interfaces.rl_interface import AbstractInterface
 
 class InterfaceSimple2D(AbstractInterface):
     
-    def __init__(self, modules: dict, robot_type: str, rewards: np.ndarray, with_GUI=True, gui_parent=None):
+    def __init__(self, modules: dict, robot_type: str, rewards: np.ndarray, with_GUI: bool = True, gui_parent: None | pg.GraphicsLayoutWidget = None):
         '''
         Open AI interface implementing a simple continuous 2D environment.
         Two types of virtual agent are supported:

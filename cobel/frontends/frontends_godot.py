@@ -5,11 +5,13 @@ import os
 import subprocess
 import json
 import numpy as np
+# framework imports
+from cobel.spatial_representations.spatial_representation import SpatialRepresentation
 
  
 class FrontendGodotInterface():
     
-    def __init__(self, scenario_name: str, godot_executable=None, running=False):
+    def __init__(self, scenario_name: str, godot_executable: None | str = None, running: bool = False):
         '''
         The Godot interface class.
         This class connects to the Godot environment and controls the flow of commands/data that goes to/comes from the Blender environment.
@@ -340,7 +342,7 @@ class FrontendGodotInterface():
 
 class FrontendGodotTopology(FrontendGodotInterface):
     
-    def __init__(self, scenario_name: str, godot_executable=None, running=False):
+    def __init__(self, scenario_name: str, godot_executable: None | str = None, running: bool = False):
         '''
         The Godot interface class for use with the baseline interface.
         
@@ -396,7 +398,7 @@ class FrontendGodotTopology(FrontendGodotInterface):
         
         return time_data, pose_data, sensor_data, image_data
         
-    def set_topology(self, topology_module):
+    def set_topology(self, topology_module: SpatialRepresentation):
         '''
         This function supplies the interface with a valid topology module.
         

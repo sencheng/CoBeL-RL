@@ -5,11 +5,10 @@
 *.npy
 *.png
 *.pdf
-!**/worldInfo/*.npy
-!**/environments/environments_blender/*.png
+!environments/**/*.png
 venv
 *.json
-CoBeL_RL.egg-info
+cobel.egg-info
 build
 dist
 demo/unity_demo/logsfreeze

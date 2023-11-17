@@ -1,11 +1,11 @@
 # basic imports
 import numpy as np
-import gym
+import gymnasium as gym
 
 
 class AbstractInterface(gym.Env):
     
-    def __init__(self, modules: dict, with_GUI=True):
+    def __init__(self, modules: dict, with_GUI: bool = True):
         '''
         This is the abstract OpenAI gym interface class.
         
