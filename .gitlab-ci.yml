@@ -10,7 +10,8 @@ before_script :
   - pip install -r requirements.txt
   - pip install .
   - pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-  - pip install tensorflow
+  - pip install /tensorflow_pkgs/tensorflow-2.14.1-cp310-cp310-linux_x86_64.whl
+  #- pip install tensorflow
 
 stages:  
   - code quality        
@@ -35,3 +36,4 @@ demo-job :
     - echo "Running tests...This will take several minutes"
     - python3 unit_tests/test_torchnetwork.py
     - python3 unit_tests/test_flexibletorchnetwork.py
+    - python3 unit_tests/test_tensorflow.py
