@@ -1,39 +1,39 @@
-image: ubuntu:22.04
+image: ubuntu:24.04
 
 before_script :
   - echo "Installing required packages...this can take several minutes"
   - TZ=Europe/Berlin
   - ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
   - apt update
-  - apt install -y python3-pip python3-pyqt5 libglib2.0-0 libgl1-mesa-glx qtbase5-dev
-  - pip install --upgrade pip
-  - pip install -r requirements.txt
-  - pip install .
-  - pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
-  - pip install /tensorflow_pkgs/tensorflow-2.14.1-cp310-cp310-linux_x86_64.whl
-  #- pip install tensorflow
+  - apt install -y curl
+  - curl -LsSf https://astral.sh/uv/install.sh | sh
+  - source /root/.local/bin/env
+  - uv python pin 3.13
+  - uv sync --extra torch-cpu --extra flax-cpu
+  - uv tool install ruff
 
 stages:  
-  - code quality        
+  - code quality
+  - type checking
   - test
 
-pylint:  
+ruff:  
   stage : code quality  
   script :
-    - pip install pylint
-    - pip install pylint-exit 
     - echo "Checking code quality..."
-    - pylint -d C0301 cobel/agents/*.py || pylint-exit $?
-    - pylint -d C0301 cobel/frontends/*.py || pylint-exit $?
-    - pylint -d C0301 cobel/interfaces/*.py || pylint-exit $?
-    - pylint -d C0301 cobel/memory_modules/*.py || pylint-exit $?
-    - pylint -d C0301 cobel/spatial_representations/*.py || pylint-exit $?
+    - uvx ruff check src/
 
+mypy:
+  stage : type checking
+  allow_failure : true
+  script :
+    - echo "Start static type checking..."
+    - uv run mypy src/cobel/ 
 
 demo-job :
   stage : test
   script :
     - echo "Running tests...This will take several minutes"
-    - python3 unit_tests/test_torchnetwork.py
-    - python3 unit_tests/test_flexibletorchnetwork.py
-    - python3 unit_tests/test_tensorflow.py
+    - uv pip uninstall flax
+    - uv run unit_tests/test_torchnetwork.py
+    - uv run unit_tests/test_flexibletorchnetwork.py
