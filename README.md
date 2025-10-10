@@ -25,7 +25,7 @@ If you wish to build CoBeL-RL from source download or clone the project using gi
 git clone https://github.com/sencheng/CoBeL-RL.git
 ```
 
-See [Gitlab documentation](https://docs.gitlab.com/ee/gitlab-basics/start-using-git.html#clone-a-repository) for more details and options for cloning repositories.
+See [GitHub's documentation](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) for more details and options for cloning repositories.
 
 Install the `build` package and then create a .wheel file.
 
