@@ -22,7 +22,7 @@ pip install cobel
 If you wish to build CoBeL-RL from source download or clone the project using git. You can do this by typing the following into your command line : 
 
 ```
-git clone https://gitlab.ruhr-uni-bochum.de/cns/1-frameworks/CoBeL-RL.git
+git clone https://github.com/sencheng/CoBeL-RL.git
 ```
 
 See [Gitlab documentation](https://docs.gitlab.com/ee/gitlab-basics/start-using-git.html#clone-a-repository) for more details and options for cloning repositories.
@@ -85,7 +85,7 @@ Either will run the DQN demo and combine it with the simulator in question.
 Unity
 </summary>
 
-Follow the installation instructions on the [Unity Simulator repository](https://gitlab.ruhr-uni-bochum.de/cns/3-small_projects/reinforcement_learning/unity-game-engine-interface).
+Follow the installation instructions on the [Unity Simulator repository](https://github.com/sencheng/unity-simulator).
 
 You will need to set up an environment variable for the Unity path to run the demos.
 
@@ -115,7 +115,7 @@ Godot
 </summary>
 
 
-Download the [Godot build](https://ruhr-uni-bochum.sciebo.de/s/dSGaGtflsNTqYRW) (Executable for Linux: /godot_simulator_build/godot.x86_64, and Windows: /godot_simulator_build/godot.exe).
+Follow the installation instructions on the [Godot Simulator repository](https://github.com/sencheng/godot-simulator).
 
 You will need to set up an environment variable for the Godot path to run the demos.
 
