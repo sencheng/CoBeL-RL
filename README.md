@@ -45,7 +45,7 @@ These steps are sufficient to install CoBeL-RL. Get started by running one of th
 
 Per default CoBeL-RL does not install any Deep Learning framework. Instead you can install them as optional dependencies:
 
- - PyTorch can be installed via the `[torch-cpu]`, `[torch-cuda]` or `[torch-rocm]` option. The options `[torch-cuda]` and `[torch-rocm]` will install PyTorch using CUDA 12.9 and ROCm 6.4, respectively. **Note**: These extra dependencies are only supported when using [uv](https://github.com/astral-sh/uv) since PyTorch distributes specific builds via custom indices. When using pip all options will result in downloading the build provided via PyPI.
+ - PyTorch can be installed via the `[torch]` option. PyTorch provides builds for specific platforms and hardware via its own indices. Follow the instructions on the [official website](https://pytorch.org/) to instead install the build which best fits your system.
  - Tensorflow can be installed via the `[tensorflow-cpu]` or `[tensorflow-cuda]` option.
  - Flax can installed via the `[flax-cpu]`, `[flax-cuda]` or `[flax-tpu]` option.
 
@@ -61,7 +61,7 @@ This should run the demo and visualize a 5 x 5 gridworld without obstacles.
 
 ## DQN Demo
 
-Install PyTorch using the `[torch-cpu]`, `[torch-cuda]` or `[torch-rocm]` optional dependency when using [uv](https://github.com/astral-sh/uv). Alternatively, install PyTorch by following the instructions on the [official website](https://pytorch.org/).
+Install PyTorch using the `[torch]` optional dependency. Alternatively, install PyTorch by following the instructions on the [official website](https://pytorch.org/).
 
 To run the DQN demo:
 

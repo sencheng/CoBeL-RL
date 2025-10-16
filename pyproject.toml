@@ -49,9 +49,7 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
-torch-cpu = [ "torch>=2.5.0" ]
-torch-cuda = [ "torch>=2.5.0" ]
-torch-rocm = [ "pytorch-triton-rocm", "torch>=2.5.0" ]
+torch = [ "torch>=2.5.0" ]
 flax-cuda = [ "jax[cuda12]", "flax>=0.11.0" ]
 flax-tpu = [ "jax[tpu]", "flax>=0.11.0" ]
 flax-cpu = [ "flax>=0.11.0" ]
@@ -67,39 +65,14 @@ dev = [
 [tool.uv]
 conflicts = [
     [
-        {"extra" = "torch-cpu"},
-        {"extra" = "torch-cuda"},
-        {"extra" = "torch-rocm"},
+        {"extra" = "tensorflow-cpu"},
+        {"extra" = "tensorflow-cuda"},
     ],
     [
-        {"extra" = "tensorflow"},
-        {"extra" = "tensorflow-cpu"},
+        {"extra" = "flax-cpu"},
+        {"extra" = "flax-tpu"},
+        {"extra" = "flax-cuda"},
     ]
-]
-
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-cuda"
-url = "https://download.pytorch.org/whl/cu129"
-explicit = true
-
-[[tool.uv.index]]
-name = "pytorch-rocm"
-url = "https://download.pytorch.org/whl/rocm6.4"
-explicit = true
-
-[tool.uv.sources]
-torch = [
-    { index = "pytorch-cpu", extra = "torch-cpu" },
-    { index = "pytorch-cuda", extra = "torch-cuda" },
-    { index = "pytorch-rocm", extra = "torch-rocm" },
-]
-pytorch-triton-rocm = [
-    { index = "pytorch-rocm", extra = "torch-rocm" },
 ]
 
 [tool.ruff.format]
