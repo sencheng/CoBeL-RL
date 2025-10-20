@@ -85,7 +85,7 @@ Either will run the DQN demo and combine it with the simulator in question.
 Unity
 </summary>
 
-Follow the installation instructions on the [Unity Simulator repository](https://github.com/sencheng/unity-simulator).
+Follow the installation instructions on the [Unity Simulator repository](https://github.com/sencheng/Unity-Simulator).
 
 You will need to set up an environment variable for the Unity path to run the demos.
 
@@ -115,7 +115,7 @@ Godot
 </summary>
 
 
-Follow the installation instructions on the [Godot Simulator repository](https://github.com/sencheng/godot-simulator).
+Follow the installation instructions on the [Godot Simulator repository](https://github.com/sencheng/Godot-Simulator).
 
 You will need to set up an environment variable for the Godot path to run the demos.
 
