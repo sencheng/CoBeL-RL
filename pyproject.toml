@@ -1,0 +1,97 @@
+[build-system]
+requires = ["uv_build>=0.9.0,<0.10.0"]
+build-backend = "uv_build"
+
+[project]
+name = "cobel"
+version = "3.0.0"
+dependencies = [
+    "numpy>=2.0.0",
+    "gymnasium>=0.28.0",
+    "shapely>=2.0.0",
+    "scikit-learn>=1.2.2",
+    "pyqtgraph",
+    "PyQt6",
+    "scipy",
+    "opencv-python-headless>=4.7.0.0"
+]
+requires-python = ">= 3.11"
+authors = [
+    {name = "Sen Cheng", email = "sen.cheng@rub.de"},
+    {name = "Nicolas Diekmann", email = "nicolas.diekmann@rub.de"},
+    {name = "Sandhiya Vijayabaskaran", email = "sandhiya.vijayabaskaran@rub.de"},
+    {name = "Xiangshuai Zeng", email = "xiangshuai.zeng@rub.de"},
+    {name = "Jon Recalde", email = "jon.recaldefeo@rub.de"},
+    {name = "Thomas Walther"},
+]
+maintainers = [
+    {name = "Sen Cheng", email = "sen.cheng@rub.de"},
+    {name = "Nicolas Diekmann", email = "nicolas.diekmann@rub.de"},
+    {name = "Sandhiya Vijayabaskaran", email = "sandhiya.vijayabaskaran@rub.de"},
+    {name = "Jon Recalde", email = "jon.recaldefeo@rub.de"}
+]
+description = "Closed-loop simulator of complex behavior and learning based on reinforcement learning and deep neural networks."
+readme = {file = "README.md", content-type = "text/markdown"}
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+keywords = ["reinforcement learning", "neuroscience", "simulation"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+
+[project.optional-dependencies]
+torch = [ "torch>=2.5.0" ]
+flax-cuda = [ "jax[cuda12]", "flax>=0.11.0" ]
+flax-tpu = [ "jax[tpu]", "flax>=0.11.0" ]
+flax-cpu = [ "flax>=0.11.0" ]
+tensorflow-cuda = [ "tensorflow[and-cuda]>=2.18" ]
+tensorflow-cpu = [ "tensorflow-cpu>=2.18" ]
+
+[dependency-groups]
+dev = [
+    "pylsp-mypy",
+    "python-lsp-ruff",
+]
+
+[tool.uv]
+conflicts = [
+    [
+        {"extra" = "tensorflow-cpu"},
+        {"extra" = "tensorflow-cuda"},
+    ],
+    [
+        {"extra" = "flax-cpu"},
+        {"extra" = "flax-tpu"},
+        {"extra" = "flax-cuda"},
+    ]
+]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+
+[tool.ruff.lint]
+select = ["I002", "B", "E", "W", "PL", "F", "N", "NPY", "UP"]
+ignore = ["UP012", "UP031", "PLR2004", "PLR0912", "PLR0913", "PLR0915", "PLR5501", "E712", "E721", "E741", "N813", "N817", "W191"]
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["F401"]
+"gridworld_gui.py" = ["N802", "N803", "N806", "E722"]
+"src/cobel/memory/utils/metrics.py" = ["N806", "N803"]
+"src/cobel/memory/sfma.py" = ["N806"]
+
+[project.gui-scripts]
+gridworld-editor = "cobel.misc.gridworld_gui:main"
+
+[project.urls]
+Repository = "https://github.com/sencheng/CoBeL-RL"
+Homepage = "https://ini.rub.de/research/groups/computational_neuroscience/"
