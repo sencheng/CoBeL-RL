@@ -1,8 +1,0 @@
-To use these files you must put them into the YAMLWriter folder.
-I put them here for the purpose of more structure.
-
-ObjectToYAML_Test.py is a test for ObjectToYAML.py
-	results are printed to the console
-WriteExampleScene.py is a test for DataToObjectArray.
-	this test assumes ObjectToYAML.py and Mathstuff.py work as intended
-	results are written to the file testScene.unity
