@@ -33,7 +33,7 @@ Released on 2026-03-20.
 
 ### Contributors
 
- - [Nicolas Diekmann](https://gitlab.ruhr-uni-bochum.de/diekmnmv)
+ - [Nicolas Diekmann](https://github.com/nicolasdiekmann)
 
 ## 3.0.0
 
@@ -54,13 +54,13 @@ Major refactoring of the project with many breaking changes.
 
 ### Contributors
 
- - [Nicolas Diekmann](https://gitlab.ruhr-uni-bochum.de/diekmnmv)
- - [Sandhiya Vijayabaskaran](https://gitlab.ruhr-uni-bochum.de/vijaysby)
- - [Jon Recalde](https://gitlab.ruhr-uni-bochum.de/jonrecalde)
- - [Gerrit Simon Fischer](https://gitlab.ruhr-uni-bochum.de/fischg6w)
- - [Duc Cuong Tommy Tran](https://gitlab.ruhr-uni-bochum.de/trandubv)
- - [Maximilian Wojak](https://gitlab.ruhr-uni-bochum.de/wojakmp4)
- - [Sebastian Benedict Schäfer](https://gitlab.ruhr-uni-bochum.de/schaes44)
- - [David Jarne Nörtemann](https://gitlab.ruhr-uni-bochum.de/noertdtv)
- - [Oleksandr Chaban](https://gitlab.ruhr-uni-bochum.de/chabaog9)
+ - [Nicolas Diekmann](https://github.com/nicolasdiekmann)
+ - [Sandhiya Vijayabaskaran](https://github.com/sandhiyavb)
+ - [Jon Recalde](https://github.com/jonrekalde)
+ - Gerrit Simon Fischer
+ - Duc Cuong Tommy Tran
+ - Maximilian Wojak
+ - Sebastian Benedict Schäfer
+ - David Jarne Nörtemann
+ - Oleksandr Chaban
 
