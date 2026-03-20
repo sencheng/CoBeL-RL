@@ -1,13 +1,14 @@
 # basic imports
 import numpy as np
 from scipy import linalg  # type: ignore
+
 # typing
 from typing import TypedDict, NotRequired
 from numpy.typing import NDArray
 from ..policy.policy import Policy
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: int
     action: int
     reward: float
@@ -23,9 +24,9 @@ class PMAMemory:
 
     Parameters
     ----------
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix (uniform action policy).
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The action selection policy used by the agent.
     learning_rate : float, default=0.9
         The learning rate with which experiences are updated.
@@ -41,9 +42,9 @@ class PMAMemory:
 
     Attributes
     ----------
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix (uniform action policy).
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The action selection policy used by the agent.
     learning_rate : float
         The learning rate with which experiences are updated.
@@ -75,24 +76,23 @@ class PMAMemory:
     allow_loops : bool
         A flag indicating whether replay allows looping/intersecting
         sequences. Defaults to False.
-    rewards : NDArray
+    rewards : numpy.ndarray
         Stores the rewards for each environmental transition.
-    states : NDArray
+    states : numpy.ndarray
         Stores the follow-up state for each environmental transition.
-    terminals : NDArray
+    terminals : numpy.ndarray
         Stores the terminality for each environmental transition.
-    T : NDArray
+    T : numpy.ndarray
         The state-state transition matrix.
-    SR : NDArray
+    SR : numpy.ndarray
         The successor representation matrix.
-    update_mask : NDArray
+    update_mask : numpy.ndarray
         Masks transitions that should be ignored during replay.
     rng : numpy.random.Generator
         A random number generator instance used for probablistic replay.
 
     Examples
     --------
-
     Initializing the memory module for a simple gridworld. ::
 
         >>> from cobel.memory import PMAMemory
@@ -147,11 +147,11 @@ class PMAMemory:
 
     def store(self, experience: Experience) -> None:
         """
-        This function stores a given experience.
+        Store a given experience.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.memory.pma.Experience
             The experience to be stored.
         """
         # update experience
@@ -174,13 +174,13 @@ class PMAMemory:
         force_first: None | int = None,
     ) -> tuple[list, NDArray]:
         """
-        This function replays experiences.
+        Replay experiences.
 
         Parameters
         ----------
-        q_function : NDArray
+        q_function : numpy.ndarray
             The Q-function of the agent.
-        action_mask : NDArray or None
+        action_mask : numpy.ndarray or None
             The action mask used by the agent.
         replay_length : int
             The number of experiences that will be replayed.
@@ -191,9 +191,9 @@ class PMAMemory:
 
         Returns
         -------
-        updates : list of Experience
+        updates : list of cobel.memory.pma.Experience
             The updates that were executed.
-        q_function : NDArray
+        q_function : numpy.ndarray
             The updated Q-function.
         """
         performed_updates: list[Experience] = []
@@ -236,7 +236,7 @@ class PMAMemory:
             # compute gain and need
             gain = self.compute_gain_batch(Q, action_mask)  # ! check for consistency
             if extend != -1:
-                gain[extend] = self.compute_gain(Q, action_mask, [updates[extend]])
+                gain[extend] = self.compute_gain(Q, action_mask, [updates[extend]])[0]
             # gain = self.compute_gain(updates) # (old) iterative version
             if self.equal_gain:
                 gain.fill(1)
@@ -273,20 +273,20 @@ class PMAMemory:
         updates: list[list[Experience]],
     ) -> NDArray:
         """
-        This function computes the gain for each possible n-step backup in updates.
+        Compute the gain for each possible n-step backup in updates.
 
         Parameters
         ----------
-        Q : NDArray
+        q_function : numpy.ndarray
             The Q-function of the agent.
-        action_mask : NDArray or None
+        action_mask : numpy.ndarray or None
             The action mask used by the agent.
-        updates : list of Experience
+        updates : list of cobel.memory.pma.Experience
             A list of n-step updates.
 
         Returns
         -------
-        gains : NDArray
+        gains : numpy.ndarray
             The gain values for the n-step updates.
         """
         gains = []
@@ -334,18 +334,18 @@ class PMAMemory:
         self, q_function: NDArray, action_mask: None | NDArray
     ) -> NDArray:
         """
-        This function computes the gain for each possible 1-step backup.
+        Compute the gain for each possible 1-step backup.
 
         Parameters
         ----------
-        Q : NDArray
+        q_function : numpy.ndarray
             The Q-function of the agent.
-        action_mask : NDArray or None
+        action_mask : numpy.ndarray or None
             The action mask used by the agent.
 
         Returns
         -------
-        gains : NDArray
+        gains : numpy.ndarray
             The gain values for the 1-step updates.
         """
         # prepare updates
@@ -387,7 +387,7 @@ class PMAMemory:
 
     def compute_need(self, current_state: None | int = None) -> NDArray:
         """
-        This function computes the need for each possible n-step backup in updates.
+        Compute the need for each possible n-step backup in updates.
 
         Parameters
         ----------
@@ -396,7 +396,7 @@ class PMAMemory:
 
         Returns
         -------
-        needs : NDArray
+        needs : numpy.ndarray
             The gain values for the n-step updates.
         """
         # use standing distribution of the MDP for 'offline' replay
@@ -411,15 +411,11 @@ class PMAMemory:
             return np.tile(self.SR[current_state], self.nb_actions)
 
     def update_sr(self) -> None:
-        """
-        This function updates the SR given the current state-state transition matrix T.
-        """
+        """Update the SR given the current state-state transition matrix T."""
         self.SR = np.linalg.inv(np.eye(self.T.shape[0]) - self.gamma * self.T)
 
     def compute_update_mask(self) -> None:
-        """
-        This function updates the update mask.
-        """
+        """Update the update mask."""
         self.update_mask = self.states.flatten(order='F') != np.tile(
             np.arange(self.nb_states), self.nb_actions
         )
@@ -428,19 +424,18 @@ class PMAMemory:
         self, q_function: NDArray, action_mask: None | NDArray = None
     ) -> NDArray:
         """
-        This function computes the action selection probabilities
-        for a table of Q-values.
+        Compute the action selection probabilities for a table of Q-values.
 
         Parameters
         ----------
-        q_function : NDArray
+        q_function : numpy.ndarray
             The Q-values.
-        action_mask : NDArray or None, optional
+        action_mask : numpy.ndarray or None, optional
             The action mask used by the agent.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         p = np.array(
@@ -456,18 +451,18 @@ class PMAMemory:
 
     def update_q(self, q_function: NDArray, update: list[Experience]) -> NDArray:
         """
-        This function updates the Q-function.
+        Update the Q-function.
 
         Parameters
         ----------
-        q_function : NDArray
+        q_function : numpy.ndarray
             The Q-function of the agent.
         update : list of dict
             A list containing experiences for an n-step update.
 
         Returns
         -------
-        q_function : NDArray
+        q_function : numpy.ndarray
             The updated Q-function.
         """
         # expected future value

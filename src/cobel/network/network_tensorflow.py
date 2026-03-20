@@ -4,12 +4,15 @@ from tensorflow.keras.models import Model, clone_model  # type: ignore
 from tensorflow.keras.layers import Layer  # type: ignore
 from tensorflow.keras import optimizers  # type: ignore
 from tensorflow.keras import losses  # type: ignore
+
 # CoBeL-RL
 from .network import Network
+
 # typing
 from typing import Self
 from numpy.typing import NDArray
 from .network import Batch, ParamDict
+
 # make optimizers and losses available via names
 tf_optimizers = {
     'adadelta': optimizers.Adadelta,
@@ -50,11 +53,11 @@ tf_losses = {
 
 class KerasNetwork(Network):
     """
-    This class provides an interface to Tensorflow/Keras models.
+    Provides an interface to Tensorflow/Keras models.
 
     Parameters
     ----------
-    model : Model
+    model : tensorflow.keras.models.Model
         The network model.
     device : str, default='/CPU:0'
         The name of the device that model will be stored on.
@@ -62,7 +65,7 @@ class KerasNetwork(Network):
 
     Attributes
     ----------
-    model : Model
+    model : tensorflow.keras.models.Model
         The network model.
     device : str, default='/CPU:0'
         The name of the device that model will be stored on.
@@ -70,7 +73,6 @@ class KerasNetwork(Network):
 
     Examples
     --------
-
     Simply define a Sequential network which you want to use
     with classes like the DQN agent. ::
 
@@ -106,16 +108,16 @@ class KerasNetwork(Network):
 
     def predict_on_batch(self, batch: Batch) -> Batch:
         """
-        This function computes the network predictions for a batch of input samples.
+        Compute the network predictions for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
         -------
-        predictions : Batch
+        predictions : cobel.network.network.Batch
             A batch of network predictions.
         """
         preds = self.model(batch)
@@ -128,15 +130,15 @@ class KerasNetwork(Network):
         self, batch: Batch, targets: Batch, sample_weights: None | NDArray = None
     ) -> None:
         """
-        This functions trains the network on a batch of input samples.
+        Train the network on a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        targets : Batch
+        targets : cobel.network.network.Batch
             The batch of target values.
-        sample_weights : NDArray or None, optional
+        sample_weights : numpy.ndarray or None, optional
             An optional batch of sample_weights
         """
         assert type(batch) is type(targets)
@@ -144,33 +146,33 @@ class KerasNetwork(Network):
 
     def get_weights(self) -> list[NDArray]:
         """
-        This function returns the weights of the network.
+        Return the weights of the network.
 
         Returns
         -------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         return self.model.get_weights()
 
     def set_weights(self, weights: list[NDArray]) -> None:
         """
-        This function sets the weights of the network.
+        Set the weights of the network.
 
         Parameters
         ----------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         self.model.set_weights(weights)
 
     def clone(self) -> Self:
         """
-        This function returns a copy of the network.
+        Return a copy of the network.
 
         Returns
         -------
-        model : Self
+        model : cobel.network.network_tensorflow.KerasNetwork
             The network model's copy.
         """
         return type(self)(clone_model(self.model))
@@ -179,13 +181,13 @@ class KerasNetwork(Network):
         self, optimizer: str | optimizers.Optimizer, parameters: None | ParamDict = None
     ) -> None:
         """
-        This function sets the optimizer of the network model.
+        Set the optimizer of the network model.
 
         Parameters
         ----------
-        optimizer : str or optimizers.Optimizer
+        optimizer : str or tensorflow.keras.optimizers.Optimizer
             The optimizer that should be used.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the optimizer (e.g., learning rate).
         """
         config = self.model.get_compile_config()
@@ -209,13 +211,13 @@ class KerasNetwork(Network):
         self, loss: str | losses.Loss, parameters: None | ParamDict = None
     ) -> None:
         """
-        This function sets the loss of the network model.
+        Set the loss of the network model.
 
         Parameters
         ----------
-        loss : str or losses.Loss
+        loss : str or tensorflow.keras.losses.Loss
             The name of the loss.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The paramters of the loss.
         """
         config = self.model.get_compile_config()
@@ -237,12 +239,12 @@ class KerasNetwork(Network):
 
     def get_layer_activity(self, batch: Batch, layer_index: int | str) -> NDArray:
         """
-        This function return the activity of a specified layer
+        Return the activity of a specified layer
         for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
         layer_index : int or str
             The index or name of the layer from which
@@ -250,7 +252,7 @@ class KerasNetwork(Network):
 
         Returns
         -------
-        activity : NDArray
+        activity : numpy.ndarray
             The layer activities of the specified layer
             for the batch of input samples.
         """
@@ -277,7 +279,7 @@ class KerasNetwork(Network):
         trainable: bool | list[bool] | dict[str, bool],
     ) -> None:
         """
-        This function sets the trainability of specified network layers.
+        Set the trainability of specified network layers.
 
         Parameters
         ----------

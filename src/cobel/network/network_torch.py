@@ -1,11 +1,14 @@
 # basic imports
 import numpy as np
 import copy
+
 # torch imports
 import torch
 import torch.optim as optimizers
+
 # framework
 from .network import Network
+
 # typing
 from numpy.typing import NDArray
 from typing import Self
@@ -27,13 +30,13 @@ FlexibleLossParameters = (
 
 class TorchNetwork(Network):
     """
-    This class provides an interface to Torch models.
+    Provides an interface to Torch models.
 
     Parameters
     ----------
     model : torch.nn.Module
         The network model.
-    optimizer : str, optimizers.Optimizer or None, optional
+    optimizer : str, torch.optim.optimizers.Optimizer or None, optional
         The optimizer that should be used.
         Defaults to Adam if none was provided.
     loss : str, torch.nn.modules.loss._Loss or None, optional
@@ -57,9 +60,9 @@ class TorchNetwork(Network):
         The network model.
     device : torch.device
         The device that the model is stored on.
-    optimizer : optimizers.Optimizer
+    optimizer : torch.optim.optimizers.Optimizer
         The optimizer that is being used.
-    loss : torch.nn.modules.loss._Loss
+    criterion : torch.nn.modules.loss._Loss
         The loss that is being used.
     activations : list or dict
         A list/dict of layer activation functions.
@@ -67,7 +70,6 @@ class TorchNetwork(Network):
 
     Examples
     --------
-
     Simpy define a PyTorch network which you want to use
     with classes like the DQN agent. ::
 
@@ -107,16 +109,16 @@ class TorchNetwork(Network):
 
     def predict_on_batch(self, batch: Batch) -> NDArray:
         """
-        This function computes network predictions for a batch of input samples.
+        Compute network predictions for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             A batch of network predictions.
         """
         with torch.inference_mode():
@@ -131,15 +133,15 @@ class TorchNetwork(Network):
         self, batch: Batch, targets: Batch, sample_weights: None | NDArray = None
     ) -> None:
         """
-        This function trains the network on a batch of input samples.
+        Train the network on a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        targets : Batch
+        targets : cobel.network.network.Batch
             The batch of target values.
-        sample_weights : NDArray or None, optional
+        sample_weights : numpy.ndarray or None, optional
             An optional batch of sample weights.
         """
         assert type(targets) is np.ndarray, ''
@@ -166,15 +168,15 @@ class TorchNetwork(Network):
 
     def get_weights(self) -> list[NDArray]:
         """
-        This function returns the weights of the network.
+        Return the weights of the network.
 
         Returns
         -------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         # retrieve params from state_dict and save them as a list of numpy arrays
-        weights = list(self.model.state_dict().values())
+        weights = copy.deepcopy(list(self.model.state_dict().values()))
         for i in range(len(weights)):
             weights[i] = weights[i].cpu().numpy()
 
@@ -182,11 +184,11 @@ class TorchNetwork(Network):
 
     def set_weights(self, weights: list[NDArray]) -> None:
         """
-        This function sets the weights of the network.
+        Set the weights of the network.
 
         Parameters
         ----------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         # prepare a new state_dict
@@ -198,11 +200,11 @@ class TorchNetwork(Network):
 
     def clone(self) -> Self:
         """
-        This function returns a copy of the network.
+        Return a copy of the network.
 
         Returns
         -------
-        model : Self
+        model : cobel.network.network_torch.TorchNetwork
             The network model's copy.
         """
         network = copy.deepcopy(self.model)
@@ -224,13 +226,13 @@ class TorchNetwork(Network):
         parameters: None | ParamDict = None,
     ) -> None:
         """
-        This function sets the optimizer of the network model.
+        Set the optimizer of the network model.
 
         Parameters
         ----------
-        optimizer : str, optimizers.Optimizer or None
+        optimizer : str, torch.optim.optimizers.Optimizer or None
             The optimizer that should be used.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the optimizer (e.g., learning rate).
         """
         valid_optimizers = {
@@ -279,13 +281,13 @@ class TorchNetwork(Network):
         parameters: None | ParamDict = None,
     ) -> None:
         """
-        This function sets the loss of the network model.
+        Set the loss of the network model.
 
         Parameters
         ----------
         loss : str or torch.nn.modules.loss._Loss or None
             The loss that should be used.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the loss.
         """
         valid_losses = {
@@ -328,20 +330,20 @@ class TorchNetwork(Network):
 
     def get_layer_activity(self, batch: Batch, layer: int | str) -> NDArray:
         """
-        This function returns the activity of a specified layer
+        Return the activity of a specified layer
         for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        layer_index : int or str
+        layer : int or str
             The index or name of the layer from which
             activity should be retrieved.
 
         Returns
         -------
-        activity : NDArray
+        activity : numpy.ndarray
             The layer activities of the specified layer
             for the batch of input samples.
         """
@@ -391,7 +393,7 @@ class TorchNetwork(Network):
         trainable: bool | list[bool] | dict[str, bool],
     ) -> None:
         """
-        This function sets the trainability of specified network layers.
+        Set the trainability of specified network layers.
 
         Parameters
         ----------
@@ -437,7 +439,7 @@ class TorchNetwork(Network):
 
     def set_device(self, device: str = 'cpu') -> None:
         """
-        This function moves the model to a specified device.
+        Move the model to a specified device.
 
         Parameters
         ----------
@@ -451,13 +453,13 @@ class TorchNetwork(Network):
 
 class FlexibleTorchNetwork(Network):
     """
-    This class provides an interface to Torch models.
+    Provides an interface to Torch models.
 
     Parameters
     ----------
     model : torch.nn.Module
         The network model.
-    optimizer : str, optimizers.Optimizer or None, optional
+    optimizer : str, torch.optim.optimizers.Optimizer or None, optional
         The optimizer that should be used.
         Defaults to Adam if none was provided.
     loss : str, torch.nn.modules.loss._Loss, list, dict or None, optional
@@ -465,7 +467,7 @@ class FlexibleTorchNetwork(Network):
         Defaults to MSE if none was provided.
     optimizer_params : dict or None, optional
         The parameters of the optimizer (e.g., learning rate).
-    loss_params : ParamDict, list, dict or None, optional
+    loss_params : cobel.network.network.ParamDict, list, dict or None, optional
         The parameters of the loss(es).
     loss_weights : list of float, dict of float or None, optional
         Optional weightings applied to different loss functions.
@@ -484,9 +486,9 @@ class FlexibleTorchNetwork(Network):
         The network model.
     device : torch.device
         The device that the model is stored on.
-    optimizer : optimizers.Optimizer
+    optimizer : torch.optim.optimizers.Optimizer
         The optimizer that is being used.
-    loss : torch.nn.modules.loss._Loss
+    criteria : list of torch.nn.modules.loss._Loss or dict of torch.nn.modules.loss._Loss
         The loss that is being used.
     activations : list or dict
         A list/dict of layer activation functions.
@@ -497,7 +499,6 @@ class FlexibleTorchNetwork(Network):
 
     Examples
     --------
-
     This class is compatible with networks that have multiple
     input and output streams. ::
 
@@ -532,7 +533,7 @@ class FlexibleTorchNetwork(Network):
         >>> network = nn.Sequential(OrderedDict(layers))
         >>> model = FlexibleTorchNetwork(network)
 
-    """
+    """  # noqa: E501
 
     def __init__(
         self,
@@ -558,11 +559,11 @@ class FlexibleTorchNetwork(Network):
         self, batch: Batch
     ) -> dict[str, torch.Tensor] | list[torch.Tensor]:
         """
-        This function prepares a batch of input samples.
+        Prepare a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
@@ -602,16 +603,16 @@ class FlexibleTorchNetwork(Network):
         self, batch: Batch
     ) -> NDArray | list[NDArray] | dict[str, NDArray]:
         """
-        This function computes network predictions for a batch of input samples.
+        Compute network predictions for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
         -------
-        predictions : NDArray, list of NDArray or dict of NDArray
+        predictions : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             A batch of network predictions.
         """
         with torch.inference_mode():
@@ -635,15 +636,15 @@ class FlexibleTorchNetwork(Network):
         self, batch: Batch, targets: Batch, sample_weights: None | NDArray = None
     ) -> None:
         """
-        This function trains the network on a batch of input samples.
+        Train the network on a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        targets : Batch
+        targets : cobel.network.network.Batch
             The batch of target values.
-        sample_weights : NDArray or None, optional
+        sample_weights : numpy.ndarray or None, optional
             An optional batch of sample weights.
         """
         self.optimizer.zero_grad()
@@ -689,15 +690,15 @@ class FlexibleTorchNetwork(Network):
 
     def get_weights(self) -> list[NDArray]:
         """
-        This function returns the weights of the network.
+        Return the weights of the network.
 
         Returns
         -------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         # retrieve params from state_dict and save them as a list of numpy arrays
-        weights = list(self.model.state_dict().values())
+        weights = copy.deepcopy(list(self.model.state_dict().values()))
         for i in range(len(weights)):
             weights[i] = weights[i].cpu().numpy()
 
@@ -705,11 +706,11 @@ class FlexibleTorchNetwork(Network):
 
     def set_weights(self, weights: list[NDArray]) -> None:
         """
-        This function sets the weights of the network.
+        Set the weights of the network.
 
         Parameters
         ----------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         # prepare a new state_dict
@@ -721,11 +722,11 @@ class FlexibleTorchNetwork(Network):
 
     def clone(self) -> Self:
         """
-        This function returns a copy of the network.
+        Return a copy of the network.
 
         Returns
         -------
-        model : Self
+        model : cobel.network.network_torch.FlexibleTorchNetwork
             The network model's copy.
         """
         network = copy.deepcopy(self.model)
@@ -758,13 +759,13 @@ class FlexibleTorchNetwork(Network):
         parameters: None | ParamDict = None,
     ) -> None:
         """
-        This function sets the optimizer of the network model.
+        Set the optimizer of the network model.
 
         Parameters
         ----------
-        optimizer : str, optimizers.Optimizer or None
+        optimizer : str, torch.optim.optimizers.Optimizer or None
             The name of the optimizer.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the optimizer (e.g., learning rate).
         """
         valid_optimizers = {
@@ -814,14 +815,14 @@ class FlexibleTorchNetwork(Network):
         loss_weights: None | list[float] | dict[str, float] = None,
     ) -> None:
         """
-        This function sets the loss of the network model.
+        Set the loss of the network model.
 
         Parameters
         ----------
         loss : str, torch.nn.modules.loss._Loss, list, dict or None, optional
             The loss(es) that should be used.
             Defaults to MSE if none was provided.
-        parameters : ParamDict, list, dict or None, optional
+        parameters : cobel.network.network.ParamDict, list, dict or None, optional
             The parameters of the loss(es).
         loss_weights : list of float, dict of float or None, optional
             Optional weightings applied to different loss functions.
@@ -900,7 +901,7 @@ class FlexibleTorchNetwork(Network):
                 self.criteria[list(loss.keys())[i]] = _criterion
             else:
                 assert type(self.criteria) is list
-                self.criteria.append(_criterion)
+                self.criteria.append(_criterion)  # type: ignore
         # create loss weightings (uniform by default)
         if loss_weights is not None:
             assert type(self.criteria) is type(loss_weights), (
@@ -917,20 +918,20 @@ class FlexibleTorchNetwork(Network):
 
     def get_layer_activity(self, batch: Batch, layer: int | str) -> NDArray:
         """
-        This function returns the activity of a specified layer
+        Return the activity of a specified layer
         for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        layer_index : int or str
+        layer : int or str
             The index or name of the layer from which
             activity should be retrieved.
 
         Returns
-        ----------
-        activity : NDArray
+        -------
+        activity : numpy.ndarray
             The layer activities of the specified layer
             for the batch of input samples.
         """
@@ -980,7 +981,7 @@ class FlexibleTorchNetwork(Network):
         trainable: bool | list[bool] | dict[str, bool],
     ) -> None:
         """
-        This function sets the trainability of specified network layers.
+        Set the trainability of specified network layers.
 
         Parameters
         ----------
@@ -1026,7 +1027,7 @@ class FlexibleTorchNetwork(Network):
 
     def set_device(self, device: str = 'cpu') -> None:
         """
-        This function moves the model to a specified device.
+        Move the model to a specified device.
 
         Parameters
         ----------

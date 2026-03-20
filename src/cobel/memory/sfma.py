@@ -1,13 +1,15 @@
 # basic imports
 import numpy as np
+
 # framework imports
 from .utils.metrics import Metric
+
 # typing
 from typing import TypedDict, NotRequired
 from numpy.typing import NDArray
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: int
     action: int
     reward: float
@@ -23,7 +25,7 @@ class SFMAMemory:
 
     Parameters
     ----------
-    metric : Metric
+    metric : cobel.memory.utils.metrics.Metric
         The metric used to compute the similarity between experiences.
     nb_states : int
         The number of environmental states.
@@ -67,19 +69,19 @@ class SFMAMemory:
         A flag indicating whether the policy modulates experience strength.
     state_mod : bool
         A flag indicating whether the state modulates experience strength.
-    metric : Metric
+    metric : cobel.memory.utils.metrics.Metric
         The metric used to compute the similarity between experiences.
-    rewards : NDArray
+    rewards : numpy.ndarray
         Stores the rewards for each environmental transition.
-    states : NDArray
+    states : numpy.ndarray
         Stores the follow-up state for each environmental transition.
-    terminals : NDArray
+    terminals : numpy.ndarray
         Stores the terminality for each environmental transition.
-    C : NDArray
+    C : numpy.ndarray
         Stores the experience strengths.
-    T : NDArray
+    T : numpy.ndarray
         Stores the experience recencies.
-    I : NDArray
+    I : numpy.ndarray
         Stores the experience inhibition.
     C_step : float
         The amount by which experience strengths are increased.
@@ -118,7 +120,6 @@ class SFMAMemory:
 
     Examples
     --------
-
     Initializing the memory module for a simple gridworld. ::
 
         >>> from cobel.memory import SFMAMemory
@@ -193,11 +194,11 @@ class SFMAMemory:
 
     def store(self, experience: Experience) -> None:
         """
-        This function stores a given experience.
+        Store a given experience.
 
         Parameters
         ----------
-        experience : dict
+        experience : cobel.memory.sfma.Experience
             The experience to be stored.
         """
         state, action = experience['state'], experience['action']
@@ -241,7 +242,7 @@ class SFMAMemory:
         current_action: None | int = None,
     ) -> list[Experience]:
         """
-        This function replays experiences using SFMA.
+        Replay experiences using SFMA.
 
         Parameters
         ----------
@@ -249,12 +250,12 @@ class SFMAMemory:
             The number of experiences that will be replayed.
         current_state : int or None, optional
             The state at which replay should start.
-        current_action : int or None, optionald
+        current_action : int or None, optional
             The action with which replay should start.
 
         Returns
         -------
-        experiences : list of dict
+        experiences : list of cobel.memory.sfma.Experience
             The replay batch.
         """
         action = current_action
@@ -347,11 +348,11 @@ class SFMAMemory:
 
     def softmax(self, data: NDArray, offset: float = 0, beta: float = 5) -> NDArray:
         """
-        This function computes the custom softmax over the input.
+        Compute the custom softmax over the input.
 
         Parameters
         ----------
-        data : NDArray
+        data : numpy.ndarray
             Input of the softmax function.
         offset : float, default=0
             Offset added after applying the softmax function.
@@ -360,7 +361,7 @@ class SFMAMemory:
 
         Returns
         -------
-        priorities : NDArray
+        priorities : numpy.ndarray
             The softmax priorities.
         """
         exp = np.exp(data * beta) + offset
@@ -375,18 +376,18 @@ class SFMAMemory:
         self, number_of_experiences: int, mask: NDArray
     ) -> list[Experience]:
         """
-        This function retrieves a number of random experiences.
+        Retrieve a number of random experiences.
 
         Parameters
         ----------
         number_of_experiences : int
             The number of random experiences to be drawn.
-        mask : NDArray
+        mask : numpy.ndarray
             Masks invalid transitions.
 
         Returns
         -------
-        experiences : list of dict
+        experiences : list of cobel.memory.sfma.Experience
             The replay batch.
         """
         # draw random experiences
@@ -401,8 +402,8 @@ class SFMAMemory:
         )
         # build experience batch
         experiences: list[Experience] = []
-        for state, action in transitions:
-            experiences += [
+        for state, action in zip(*transitions, strict=True):
+            experiences.append(
                 {
                     'state': state,
                     'action': action,
@@ -410,6 +411,6 @@ class SFMAMemory:
                     'next_state': self.states[state][action],
                     'terminal': self.terminals[state][action],
                 }
-            ]
+            )
 
         return experiences

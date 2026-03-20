@@ -1,8 +1,10 @@
 # basic imports
 import numpy as np
 import pyqtgraph as pg  # type: ignore
+
 # framework imports
 from .monitor import Monitor
+
 # typing
 from numpy.typing import NDArray
 from ..agent.agent import Logs
@@ -12,7 +14,7 @@ from ..network.network import Batch
 
 class RepresentationMonitor(Monitor):
     """
-    This class implements a monitor which tracks the activity
+    Implements a monitor which tracks the activity
     of a specified network layer for a set of observations.
 
     Parameters
@@ -21,7 +23,7 @@ class RepresentationMonitor(Monitor):
         The name of the model belonging to the agent.
     layer : int or str
         The index or name of the layer for which activity will be tracked.
-    observations : Batch
+    observations : cobel.network.network.Batch
         The batch of observations for which activity will be tracked.
     interval : int or tuple of int, default=0
         The interval (calls to the update function)
@@ -37,7 +39,7 @@ class RepresentationMonitor(Monitor):
         The name of the model belonging to the agent.
     layer : int or str
         The index or name of the layer for which activity will be tracked.
-    observations : Batch
+    observations : cobel.network.network.Batch
         The batch of observations for which activity will be tracked.
     interval : int, default=0
         The interval (calls to the update function)
@@ -46,12 +48,13 @@ class RepresentationMonitor(Monitor):
         or provide a tuple of trials at which activity will be recorded.
     last_update : int
         Tracks when the monitor was last updated.
-    activity_trace : list of NDArray
+    activity_trace : list of numpy.ndarray
         The network activity trace.
+    widget : pg.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the representation monitor to track representations in
     the DQN's online network's penultimate layer (callbacks are assumed
     to have been passed to the agent). ::
@@ -85,18 +88,16 @@ class RepresentationMonitor(Monitor):
         self.activity_trace: list[NDArray] = []
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         pass
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         record: bool = False
@@ -115,11 +116,11 @@ class RepresentationMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the layer activity trace.
+        Return the layer activity trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return np.array(self.activity_trace)

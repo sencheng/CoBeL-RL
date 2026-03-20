@@ -1,5 +1,5 @@
 """
-This module offers a wide range of reinforcement learning environments
+Offers a wide range of reinforcement learning environments
 as well as 3D simulator interfaces.
 
 Classes

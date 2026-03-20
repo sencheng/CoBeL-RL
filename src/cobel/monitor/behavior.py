@@ -1,8 +1,10 @@
 # basic imports
 import numpy as np
 import pyqtgraph as pg  # type: ignore
+
 # framework imports
 from .monitor import Monitor
+
 # typing
 from numpy.typing import NDArray
 from ..agent.agent import Logs
@@ -13,7 +15,7 @@ from ..network.network import Batch
 
 class EscapeLatencyMonitor(Monitor):
     """
-    This class implements a monitor which tracks the number of steps per trial.
+    Implements a monitor which tracks the number of steps per trial.
 
     Parameters
     ----------
@@ -21,21 +23,22 @@ class EscapeLatencyMonitor(Monitor):
         The number of trials that will be tracked.
     max_steps : int
         The maximum number of steps per trial. Used for visualization.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the monitor will be visualized.
 
     Attributes
     ----------
     max_steps : int
         The maximum number of steps per trial. Used for visualization.
-    latency_trace : list of NDArray
+    latency_trace : list of numpy.ndarray
         The escape latency trace.
-    latency_trace_avg : list of NDArray
+    latency_trace_avg : list of numpy.ndarray
         The smoothed (average over the 10 most recent trials) escape latency trace.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the monitor to track escape latency
     (callbacks are assumed to have been passed to the agent). ::
 
@@ -63,19 +66,17 @@ class EscapeLatencyMonitor(Monitor):
             self.refresh_visualization()
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         if self.widget is not None:
             self.widget.removeItem(self.el_plot)
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         trial = logs['trial']
@@ -97,11 +98,11 @@ class EscapeLatencyMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the escape latency trace.
+        Return the escape latency trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return self.latency_trace
@@ -109,7 +110,7 @@ class EscapeLatencyMonitor(Monitor):
 
 class RewardMonitor(Monitor):
     """
-    This class implements a monitor which tracks the cumulative episodic rewards.
+    Implements a monitor which tracks the cumulative episodic rewards.
 
     Parameters
     ----------
@@ -117,21 +118,22 @@ class RewardMonitor(Monitor):
         The number of trials that will be tracked.
     reward_range : 2-tuple of float, default=(0., 1.)
         The range of rewards. Used for visualization.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the monitor will be visualized.
 
     Attributes
     ----------
     reward_range : 2-tuple of float
         The range of rewards. Used for visualization.
-    reward_trace : list of NDArray
+    reward_trace : list of numpy.ndarray
         The reward trace.
-    reward_trace_avg : list of NDArray
+    reward_trace_avg : list of numpy.ndarray
         The smoothed (average over the 10 most recent trials) reward trace.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the monitor to track the episodic reward
     (callbacks are assumed to have been passed to the agent). ::
 
@@ -165,19 +167,17 @@ class RewardMonitor(Monitor):
             self.refresh_visualization()
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         if self.widget is not None:
             self.widget.removeItem(self.reward_plot)
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         trial = logs['trial']
@@ -199,11 +199,11 @@ class RewardMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the reward trace.
+        Return the reward trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return self.reward_trace
@@ -211,7 +211,7 @@ class RewardMonitor(Monitor):
 
 class ResponseMonitor(Monitor):
     """
-    This class implements a monitor which tracks the agent's responses.
+    Implements a monitor which tracks the agent's responses.
     Responses must be encoded by the user and added to the trial log.
     If no response was defined the monitor will encode
     whether reward was received (1) or not (0).
@@ -220,19 +220,20 @@ class ResponseMonitor(Monitor):
     ----------
     trials : int
         The number of trials that will be tracked.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the monitor will be visualized.
 
     Attributes
     ----------
-    responses : NDArray
+    responses : numpy.ndarray
         The response trace.
-    CRC : NDArray
+    CRC : numpy.ndarray
         The cumulative response curve.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the monitor to track when an agent executes action 3
     (callbacks are assumed to have been passed to the agent). ::
 
@@ -261,19 +262,17 @@ class ResponseMonitor(Monitor):
             self.refresh_visualization()
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         if self.widget is not None:
             self.widget.removeItem(self.CRC_plot)
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         trial = logs['trial']
@@ -292,11 +291,11 @@ class ResponseMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the response trace.
+        Return the response trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return self.responses
@@ -304,29 +303,30 @@ class ResponseMonitor(Monitor):
 
 class TrajectoryMonitor(Monitor):
     """
-    This class implements a monitor which tracks the agent's trajectory.
+    Implements a monitor which tracks the agent's trajectory.
 
     Parameters
     ----------
     trials : int
         The number of trials that will be tracked.
-    env : Interface
+    env : cobel.interface.interface.Interface
         The environment that the agent is interacting with.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the monitor will be visualized.
 
     Attributes
     ----------
-    env : Interface
+    env : cobel.interface.interfaceInterface
         The environment that the agent is interacting with.
     trajectory_trace : list of list
         The trajectory trace.
     current_trial : int or None
         Tracks the current trial.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the monitor to track position in a gridworld environment
     (callbacks are assumed to have been passed to the agent). ::
 
@@ -351,20 +351,18 @@ class TrajectoryMonitor(Monitor):
             pass
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         if self.widget is not None:
             # to be implemented
             pass
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         if self.current_trial != logs['trial_session']:
@@ -377,11 +375,11 @@ class TrajectoryMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the trajectory trace.
+        Return the trajectory trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return self.trajectory_trace
@@ -389,27 +387,28 @@ class TrajectoryMonitor(Monitor):
 
 class QMonitor(Monitor):
     """
-    This class implements a monitor which tracks the agent's Q-function.
+    Implements a monitor which tracks the agent's Q-function.
 
     Parameters
     ----------
     trials : int
         The number of trials that will be tracked.
-    observations : Batch
+    observations : cobel.network.network.Batch
         A set of observations for which the Q-function is tracked.
     widget : pg.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the monitor will be visualized.
 
     Attributes
     ----------
-    observations : Batch
+    observations : cobel.network.network.Batch
         A set of observations for which the Q-function is tracked.
-    q_trace : list of NDArray
+    q_trace : list of numpy.ndarray
         The Q-function trace.
+    widget : pg.GraphicsLayoutWidget or None
+        An optional widget. If provided the monitor will be visualized.
 
     Examples
     --------
-
     Setting up the monitor to track the Q-function at each step
     (callbacks are assumed to have been passed to the agent). ::
 
@@ -434,20 +433,18 @@ class QMonitor(Monitor):
             pass
 
     def clear_plots(self) -> None:
-        """
-        This function clears all plots.
-        """
+        """Clear all plots."""
         if self.widget is not None:
             # to be implemented
             pass
 
     def update(self, logs: Logs) -> None:
         """
-        This function updates the monitor.
+        Update the monitor.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The log dictionary.
         """
         self.q_trace.append(logs['agent'].predict_on_batch(self.observations))
@@ -457,11 +454,11 @@ class QMonitor(Monitor):
 
     def get_trace(self) -> Trace:
         """
-        This function returns the Q-function trace.
+        Return the Q-function trace.
 
         Returns
         -------
-        trace : Trace
+        trace : cobel.monitor.monitor.Trace
             The trace of the monitored variable.
         """
         return self.q_trace

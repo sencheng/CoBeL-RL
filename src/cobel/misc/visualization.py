@@ -3,10 +3,10 @@ import pyqtgraph as pg  # type: ignore
 from PyQt6 import QtGui
 
 
-class CogArrow(pg.ArrowItem):
+class CogArrow(pg.ArrowItem):  # noqa: D101
     def set_data(self, x: float, y: float, orientation: float) -> None:
         """
-        This function sets the position and orientation of the arrow.
+        Set the position and orientation of the arrow.
 
         Parameters
         ----------

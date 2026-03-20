@@ -1,10 +1,10 @@
 [build-system]
-requires = ["uv_build>=0.9.0,<0.10.0"]
+requires = ["uv_build>=0.10.10,<0.11.0"]
 build-backend = "uv_build"
 
 [project]
 name = "cobel"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
     "numpy>=2.0.0",
     "gymnasium>=0.28.0",
@@ -39,7 +39,6 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Education",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
@@ -80,8 +79,11 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.ruff.lint]
-select = ["I002", "B", "E", "W", "PL", "F", "N", "NPY", "UP"]
-ignore = ["UP012", "UP031", "PLR2004", "PLR0912", "PLR0913", "PLR0915", "PLR5501", "E712", "E721", "E741", "N813", "N817", "W191"]
+select = ["I002", "B", "E", "W", "PL", "F", "N", "NPY", "UP", "D", "D417"]
+ignore = ["UP012", "UP031", "PLR2004", "PLR0912", "PLR0913", "PLR0915", "PLR5501", "E712", "E721", "E741", "N813", "N817", "W191", "D100", "D205"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["F401"]

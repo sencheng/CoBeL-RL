@@ -3,12 +3,14 @@ import copy
 import numpy as np
 import shapely as sh  # type: ignore
 from shapely.ops import nearest_points  # type: ignore
-import gymnasium as gym
 import pyqtgraph as pg  # type: ignore
 import PyQt6 as qt
+from gymnasium.spaces import Space, Box, Discrete
+
 # framework imports
 from .interface import Interface
 from ..misc.visualization import CogArrow
+
 # typing
 from .interface import Action, StepTuple, ResetTuple
 from .simulator.simulator import Simulator
@@ -26,23 +28,22 @@ class Continuous2D(Interface):
 
     Parameters
     ----------
-    robot_type : str
+    robot_type : {"step", "wheel"}
         A string defining the robot type.
-        Can be either 'step' or 'wheel'.
-    room : sh.Polygon
+    room : shapely.Polygon
         A Shapely polygon representing the environment's borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A Shapely polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon or None
+    obstacles : list of shapely.Polygon or None
         An optional list of Shapely polygons representing
         environmental obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         The reward function as a (N, 3) NumPy array.
         The first two columns represent the reward x and y positions,
         the third column represent the reward magnitude.
-    simulator : Simulator or None, optional
+    simulator : cobel.interface.simulator.simulator.Simulator or None, optional
         An optional simulator which overwrites observations for all positions.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the environment will be visualized.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -50,44 +51,44 @@ class Continuous2D(Interface):
 
     Attributes
     ----------
-    R : NDArray
+    R : numpy.ndarray
         The reward function as a (N, 3) NumPy array.
         The first two columns represent the reward x and y positions,
         the third column represent the reward magnitude.
-    room : sh.Polygon
+    room : shapely.Polygon
         A Shapely polygon representing the environment's borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A Shapely polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon or None
+    obstacles : list of shapely.Polygon or None
         An optional list of Shapely polygons representing
         environmental obstacles.
-    environment : sh.Polygon
+    environment : shapely.Polygon
         A Shapely polygon representing the final environment,
         i.e., room - obstacles.
     buffer : float
         Buffer distance used when computing collisions with
         the environment.
-    state: NDArray
+    state: numpy.ndarray
         The agent's current state (position and orientation).
     punish_wall: bool
         Flag indicating whether the agent receives a reward
         penalty for hitting a wall. False by default.
-    robot_type: str
+    type: {"step", "wheel"}
         The robot type that will be used.
         Can be either 'step' for which the agent can move
         in the four cardinal directions for a specified step size,
         or 'wheel' for which the agent will behave like a
         differential wheel robot (each wheel can be moved for
         a specified step size).
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space. Per default it is a
         gym.spaces.Box containing the 2D position (`robot_type` is 'step')
         or 2D position and orientation (`robot_type` is 'wheel').
         When a simulator was provided `observation_space` is overwritten.
-    simulator : Simulator or None
-        An optional simulator which overwrites observations for all positions.
-    action_space : gym.spaces.Discrete
+    action_space : gymnasium.spaces.Discrete
         The action space.
+    simulator : cobel.interface.simulator.simulator.Simulator or None
+        An optional simulator which overwrites observations for all positions.
     body_radius: float
         The radius of the agent.
     wheel_radius: float
@@ -98,13 +99,14 @@ class Continuous2D(Interface):
         The agent's step size.
     current_step: int
         Tracks the agent current step.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the environment will be visualized.
     rng : numpy.random.Generator
         A random number generator instance used for
         probablistic action selection.
 
     Examples
     --------
-
     Continuous 2D environment can be easily set up using Shapely
     and template function provided by CoBeL-RL. ::
 
@@ -161,13 +163,11 @@ class Continuous2D(Interface):
         self.type = robot_type
         self.simulator = simulator
         # prepare observation and action spaces
-        self.observation_space: gym.spaces.Space = gym.spaces.Box(
-            low=0.0, high=1.0, shape=(2,)
-        )
-        self.action_space = gym.spaces.Discrete(4)
+        self.observation_space: Space = Box(low=0.0, high=1.0, shape=(2,))
+        self.action_space: Discrete = Discrete(4)
         if self.type == 'wheel':
-            self.observation_space = gym.spaces.Box(low=0.0, high=1.0, shape=(3,))
-            self.action_space = gym.spaces.Discrete(3)
+            self.observation_space = Box(low=0.0, high=1.0, shape=(3,))
+            self.action_space = Discrete(3)
         if self.simulator is not None:
             pass  # implement later
             # self.observation_space = self.simulator.observation_space
@@ -184,16 +184,17 @@ class Continuous2D(Interface):
 
     def step(self, action: Action) -> StepTuple:
         """
-        The interface's step function (compatible with Gymnasium's step function).
+        Perform one simulation step in the environment
+        (compatible with Gymnasium's step function).
 
         Parameters
         ----------
-        action : Action
+        action : cobel.interface.interface.Action
             The action selected by the agent.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         reward : float
             The reward received.
@@ -232,7 +233,7 @@ class Continuous2D(Interface):
                 ICC = target_state[:2] + np.array(  # noqa: N806
                     [-R * np.sin(target_state[2]), R * np.sin(target_state[2])]
                 )
-                M = np.array( # noqa: N806
+                M = np.array(  # noqa: N806
                     [
                         [np.cos(omega), -np.sin(omega), 0.0],
                         [np.sin(omega), np.cos(omega), 0.0],
@@ -266,11 +267,11 @@ class Continuous2D(Interface):
 
     def reset(self) -> ResetTuple:
         """
-        The interface's reset function (compatible with Gymnasium's reset function).
+        Reset the environment (compatible with Gymnasium's reset function).
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         logs : dict
             The (empty) logs dictionary.
@@ -293,14 +294,13 @@ class Continuous2D(Interface):
 
     def clip_movement(self, current_state: NDArray, target_state: NDArray) -> tuple:
         """
-        This function clips the movement so that the target state lies
-        within the environment.
+        Clip the movement so that the target state lies within the environment.
 
         Parameters
         ----------
-        current_state : NDArray
+        current_state : numpy.ndarray
             The current state.
-        target_state : NDArray
+        target_state : numpy.ndarray
             The target state after movement.
 
         Returns
@@ -329,9 +329,7 @@ class Continuous2D(Interface):
         return intersections[min(len(intersections) - 1, 1)]
 
     def initialize_visualization(self) -> None:
-        """
-        This function initializes the elements required for visualization.
-        """
+        """Initialize the elements required for visualization."""
         if self.widget:
             # determine minimum and maximum coordinates
             self.coord_min = min(self.limits[0], self.limits[2])
@@ -406,9 +404,7 @@ class Continuous2D(Interface):
                 self.behavior_panel.addItem(self.arrow)
 
     def update_visualization(self) -> None:
-        """
-        This function updates the visualization.
-        """
+        """Update the visualization."""
         if self.widget:
             # update state information panel
             self.coord_info.setText(str(self.state[:2]))
@@ -432,11 +428,11 @@ class Continuous2D(Interface):
 
     def get_position(self) -> NDArray:
         """
-        This function returns the agent's position in the environment.
+        Return the agent's position in the environment.
 
         Returns
         -------
-        position : NDArray
+        position : numpy.ndarray
             Numpy array containing the agent's position.
         """
         return np.copy(self.state[:2])

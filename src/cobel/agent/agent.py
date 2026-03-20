@@ -2,8 +2,10 @@
 import abc
 import copy
 import gymnasium as gym
+
 # framework imports
 from ..interface.interface import Interface
+
 # typing
 from typing import Any
 from collections.abc import Callable
@@ -20,20 +22,20 @@ class Agent(abc.ABC):
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    custom_callbacks : Callbacks
+    callbacks : cobel.agent.agent.Callbacks
         The custom callbacks defined by the user.
     current_trial : int
         Tracks the current trial of the agent.
@@ -61,11 +63,11 @@ class Agent(abc.ABC):
     @abc.abstractmethod
     def train(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -77,11 +79,11 @@ class Agent(abc.ABC):
     @abc.abstractmethod
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -93,7 +95,7 @@ class Agent(abc.ABC):
     @abc.abstractmethod
     def predict_on_batch(self, batch: npt.ArrayLike) -> npt.NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -102,7 +104,7 @@ class Agent(abc.ABC):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         pass
@@ -114,16 +116,16 @@ class Callbacks:
 
     Parameters
     ----------
-    agent : Agent
+    agent : cobel.agent.agent.Agent
         Reference to the RL agent.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    agent : Agent
+    agent : cobel.agent.agent.Agent
         Reference to the RL agent.
-    custom_callbacks : CallbackDict
+    custom_callbacks : cobel.agent.agent.CallbackDict
         The custom callbacks defined by the user.
         If none were provided in `custom_callbacks` it is
         set to an empty dictionary.
@@ -142,17 +144,17 @@ class Callbacks:
 
     def on_step_begin(self, logs: Logs) -> Logs:
         """
-        The functions is called whenever a step begins,
-        and executes callbacks defined by the user.
+        Call whenever a step begins,
+        and execute callbacks defined by the user.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The step log dictionary.
 
         Returns
         -------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The updated step log dictionary.
         """
         step_logs: dict = copy.copy(logs)
@@ -167,17 +169,17 @@ class Callbacks:
 
     def on_step_end(self, logs: Logs) -> Logs:
         """
-        The functions is called whenever a step ends,
-        and executes callbacks defined by the user.
+        Call whenever a step ends,
+        and execute callbacks defined by the user.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The step log dictionary.
 
         Returns
         -------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The updated step log dictionary.
         """
         step_logs: dict = copy.copy(logs)
@@ -192,17 +194,17 @@ class Callbacks:
 
     def on_trial_begin(self, logs: Logs) -> Logs:
         """
-        The functions is called whenever a trial begins,
-        and executes callbacks defined by the user.
+        Call whenever a trial begins,
+        and execute callbacks defined by the user.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The trial log dictionary.
 
         Returns
         -------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The updated trial log dictionary.
         """
         trial_logs: dict = copy.copy(logs)
@@ -217,17 +219,17 @@ class Callbacks:
 
     def on_trial_end(self, logs: Logs) -> Logs:
         """
-        The functions is called whenever a trial ends,
-        and executes callbacks defined by the user.
+        Call whenever a trial ends,
+        and execute callbacks defined by the user.
 
         Parameters
         ----------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The trial log dictionary.
 
         Returns
         -------
-        logs : Logs
+        logs : cobel.agent.agent.Logs
             The updated trial log dictionary.
         """
         trial_logs: dict = copy.copy(logs)

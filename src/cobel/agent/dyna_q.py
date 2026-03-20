@@ -1,12 +1,14 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..memory.dyna_q import DynaQMemory, Experience
 from ..policy.policy import Policy
 from ..network.network import Network
 from ..interface.interface import Interface
+
 # typing
 from numpy.typing import ArrayLike, NDArray
 from .agent import CallbackDict
@@ -14,53 +16,55 @@ from .agent import CallbackDict
 
 class DynaQ(Agent):
     """
-    This class implements a Dyna-Q agent.
+    Implements a Dyna-Q agent.
     The Q-function is represented as a static table.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float, default=0.99
         The agent's learning rate.
     gamma : float, default=0.99
         The agent's discount factor.
-    memory : DynaQMemory or None, optional
+    memory : cobel.memory.dyna_q.DynaQMemory or None, optional
         The agent's memory module.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
     gamma : float
         The agent's discount factor.
     learning_rate : float
         The agent's learning rate.
-    Q : NDArray
+    Q : numpy.ndarray
         A 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents the agent's Q-function.
         The Q-function is initialized to all zeros.
-    M : DynaQMemory
+    M : cobel.memory.dyna_q.DynaQMemory
         The memory module used by the Dyna-Q agent for storing
         environmental transitions.
         If none was provided in `memory` an instance with default
         parameters will be created.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -77,7 +81,6 @@ class DynaQ(Agent):
 
     Examples
     --------
-
     Here we initialize the Dyna-Q agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -90,7 +93,7 @@ class DynaQ(Agent):
     Training and testing of the agent is done with the train
     and test methods, respectively.
     Both methods expect an RL interface and number of trials
-    as input.::
+    as input. ::
 
         >>> from cobel.interface import Gridworld
         >>> from cobel.misc.gridworld_tools import make_open_field
@@ -122,14 +125,14 @@ class DynaQ(Agent):
         self.policy_test = policy if policy_test is None else policy_test
         self.learning_rate = learning_rate
         self.gamma = gamma
-        self.Q = np.zeros((observation_space.n, action_space.n))
+        self.Q = np.zeros((int(observation_space.n), int(action_space.n)))
         self.M: DynaQMemory
         if memory is None:
             self.M = DynaQMemory(int(observation_space.n), int(action_space.n))
         else:
             self.M = memory
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
         self.episodic_replay: bool = False
@@ -143,11 +146,11 @@ class DynaQ(Agent):
         no_replay: bool = False,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -213,11 +216,11 @@ class DynaQ(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -271,16 +274,16 @@ class DynaQ(Agent):
 
     def update_q(self, experience: Experience) -> Experience:
         """
-        This function updates the Q-function for a given experience.
+        Update the Q-function for a given experience.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.memory.dyna_q.Experience
             A dictionary containing the experience tuple.
 
         Returns
         -------
-        experience : Experience
+        experience : cobel.memory.dyna_q.Experience
             A dictionary containing the experience tuple and the TD-error.
         """
         # compute TD-error
@@ -299,7 +302,7 @@ class DynaQ(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -308,14 +311,14 @@ class DynaQ(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return self.Q[np.array(batch).astype(int)]
 
     def replay(self, batch_size: int) -> None:
         """
-        This function retrieves a batch of experiences and updates the Q-function.
+        Retrieve a batch of experiences and updates the Q-function.
 
         Parameters
         ----------
@@ -329,46 +332,48 @@ class DynaQ(Agent):
 
 class DynaDQN(Agent):
     """
-    This class combines the Dyna-Q model with the DQN algorithm.
+    Combines the Dyna-Q model with the DQN algorithm.
     Gridworld states are mapped to predefined observations and fed into the network.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    model : Network
+    model : cobel.network.network.Network
         The network model used by the agent.
-    observations : NDArray or None, optional
+    observations : numpy.ndarray or None, optional
         The observations that will be mapped to gridworld states.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     gamma : float, default=0.99
         The agent's discount factor.
-    memory : DynaQMemory or None, optional
+    memory : cobel.memory.dyna_q.DynaQMemory or None, optional
         The agent's memory module.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
-    model_target : Network
+    model_target : cobel.network.network.Network
         The target network which is used to compute target values.
-    model_online : Network
+    model_online : cobel.network.network.Network
         The online network which is used for behavior.
-    observations : NDArray
+    observations : numpy.ndarray
         The observations that will be mapped to environmental states.
         If none were provided in `observations` then a one-hot
         encoding will be used.
@@ -385,12 +390,12 @@ class DynaDQN(Agent):
         when updating `model_online`.
     gamma : float
         The agent's discount factor.
-    M : DynaQMemory
+    M : cobel.memory.dyna_q.DynaQMemory
         The memory module used by the Dyna-Q agent for storing
         environmental transitions.
         If none was provided in `memory` an instance with default
         parameters will be created.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -407,7 +412,6 @@ class DynaDQN(Agent):
 
     Examples
     --------
-
     Here we initialize the Dyna-DQN agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -427,7 +431,7 @@ class DynaDQN(Agent):
     Training and testing of the agent is done with the train
     and test methods, respectively.
     Both methods expect an RL interface and number of trials
-    as input.::
+    as input. ::
 
         >>> from cobel.interface import Gridworld
         >>> from cobel.misc.gridworld_tools import make_open_field
@@ -478,7 +482,7 @@ class DynaDQN(Agent):
         else:
             self.M = memory
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
         self.episodic_replay: bool = False
@@ -492,11 +496,11 @@ class DynaDQN(Agent):
         no_replay: bool = False,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -561,11 +565,11 @@ class DynaDQN(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -619,7 +623,7 @@ class DynaDQN(Agent):
 
     def retrieve_q(self, state: int) -> NDArray:
         """
-        This function retrieves the Q-values for a given state.
+        Retrieve the Q-values for a given state.
 
         Parameters
         ----------
@@ -628,7 +632,7 @@ class DynaDQN(Agent):
 
         Returns
         -------
-        q_values : NDArray
+        q_values : numpy.ndarray
             The Q-values.
         """
         return self.model_online.predict_on_batch(
@@ -637,7 +641,7 @@ class DynaDQN(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -646,7 +650,7 @@ class DynaDQN(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return self.model_online.predict_on_batch(
@@ -655,7 +659,7 @@ class DynaDQN(Agent):
 
     def replay(self, batch_size: int) -> None:
         """
-        This function retrieves a batch of experiences and updates the Q-function.
+        Retrieve a batch of experiences and updates the Q-function.
 
         Parameters
         ----------
@@ -680,7 +684,7 @@ class DynaDQN(Agent):
         assert type(bootstrap_values) is np.ndarray and type(targets) is np.ndarray
         if self.DDQN:
             preds = self.model_online.predict_on_batch(np.array(next_states))
-            assert type(preds) is NDArray
+            assert type(preds) is np.ndarray
             bootstrap_actions = np.argmax(preds, axis=1)
         else:
             bootstrap_actions = np.argmax(bootstrap_values, axis=1)
@@ -706,50 +710,52 @@ class DynaDQN(Agent):
 
 class DynaDSR(Agent):
     """
-    This class combines the Dyna-Q model with the DSR algorithm.
+    Combines the Dyna-Q model with the DSR algorithm.
     Gridworld states are mapped to predefined observations and fed into the network.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    model_sr : Network
+    model_sr : cobel.network.network.Network
         The network model used by the agent to represent the successor representation.
-    model_reward : Network
+    model_reward : cobel.network.network.Network
         The network model used by the agent to represent the reward function.
-    observations : NDArray or None, optional
+    observations : numpy.ndarray or None, optional
         The observations that will be mapped to gridworld states.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     gamma : float, default=0.99
         The agent's discount factor.
-    memory : DynaQMemory or None, optional
+    memory : cobel.memory.dyna_q.DynaQMemory or None, optional
         The agent's memory module.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
-    model_target : dict of Network
+    model_target : dict of cobel.network.network.Network
         The target network which is used to compute target values.
-    model_online : dict of Network
+    model_online : dict of cobel.network.network.Network
         The online network which is used for behavior.
-    model_reward : Network
+    model_reward : cobel.network.network.Network
         The network which is used to represent the reward function.
-    observations : NDArray
+    observations : numpy.ndarray
         The observations that will be mapped to environmental states.
         If none were provided in `observations` then a one-hot
         encoding will be used.
@@ -773,12 +779,12 @@ class DynaDSR(Agent):
         learning the SR/DR. By Default set to true.
     gamma : float
         The agent's discount factor.
-    M : DynaQMemory
+    M : cobel.memory.dyna_q.DynaQMemory
         The memory module used by the Dyna-Q agent for storing
         environmental transitions.
         If none was provided in `memory` an instance with default
         parameters will be created.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -795,7 +801,6 @@ class DynaDSR(Agent):
 
     Examples
     --------
-
     Here we initialize the Dyna-DSR agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -815,7 +820,7 @@ class DynaDSR(Agent):
     Training and testing of the agent is done with the train
     and test methods, respectively.
     Both methods expect an RL interface and number of trials
-    as input.::
+    as input. ::
 
         >>> from cobel.interface import Gridworld
         >>> from cobel.misc.gridworld_tools import make_open_field
@@ -849,8 +854,12 @@ class DynaDSR(Agent):
         self.policy_test = policy if policy_test is None else policy_test
         # build target and online models
         assert type(self.action_space) is gym.spaces.Discrete
-        self.models_target = {a: model_sr.clone() for a in range(self.action_space.n)}
-        self.models_online = {a: model_sr.clone() for a in range(self.action_space.n)}
+        self.models_target = {
+            a: model_sr.clone() for a in range(int(self.action_space.n))
+        }
+        self.models_online = {
+            a: model_sr.clone() for a in range(int(self.action_space.n))
+        }
         self.model_reward = model_reward
         # generate one-encoding if no observations were provided
         assert type(self.observation_space) is gym.spaces.Discrete
@@ -871,7 +880,7 @@ class DynaDSR(Agent):
         else:
             self.M = memory
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
         self.episodic_replay: bool = False
@@ -885,11 +894,11 @@ class DynaDSR(Agent):
         no_replay: bool = False,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -954,11 +963,11 @@ class DynaDSR(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -1012,7 +1021,7 @@ class DynaDSR(Agent):
 
     def retrieve_q(self, state: int) -> NDArray:
         """
-        This function retrieves the Q-values for a given state.
+        Retrieve the Q-values for a given state.
 
         Parameters
         ----------
@@ -1021,19 +1030,19 @@ class DynaDSR(Agent):
 
         Returns
         -------
-        q_values : NDArray
+        q_values : numpy.ndarray
             The Q-values.
         """
         q_values = np.zeros(len(self.models_online))
         for action, model in self.models_online.items():
             sr = model.predict_on_batch(self.observations[state : (state + 1)])[0]  # type: ignore
-            q_values[action] = self.model_reward.predict_on_batch(np.array([sr]))[0]  # type: ignore
+            q_values[action] = self.model_reward.predict_on_batch(np.array([sr]))[0][0]  # type: ignore
 
         return q_values
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -1042,7 +1051,7 @@ class DynaDSR(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         q = np.zeros((np.array(batch).shape[0], len(self.models_online)))
@@ -1054,7 +1063,7 @@ class DynaDSR(Agent):
 
     def replay(self, batch_size: int) -> None:
         """
-        This function retrieves a batch of experiences and updates the Q-function.
+        Retrieve a batch of experiences and updates the Q-function.
 
         Parameters
         ----------

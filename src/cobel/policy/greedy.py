@@ -1,7 +1,9 @@
 # basic imports
 import numpy as np
+
 # framework imports
 from .policy import Policy
+
 # typing
 from numpy.typing import NDArray
 from numpy.random import Generator
@@ -10,7 +12,7 @@ from .policy import Action
 
 class EpsilonGreedy(Policy):
     """
-    This class implements an epsilon greedy-policy.
+    Implements an epsilon greedy-policy.
 
     Parameters
     ----------
@@ -24,6 +26,9 @@ class EpsilonGreedy(Policy):
     ----------
     epsilon : float
         The probability of taking a random action.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -34,18 +39,18 @@ class EpsilonGreedy(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function selects an action for a given set of Q-values.
+        Select an action for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         probs = self.get_action_probs(v, mask)
@@ -54,19 +59,19 @@ class EpsilonGreedy(Policy):
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection probabilities
+        Compute the action selection probabilities
         for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         values, actions, probs = np.copy(v), np.arange(v.shape[0]), np.zeros(v.shape)
@@ -85,7 +90,7 @@ class EpsilonGreedy(Policy):
 
 class ExclusiveEpsilonGreedy(EpsilonGreedy):
     """
-    This class implements an epsilon-greedy policy which
+    Implements an epsilon-greedy policy which
     excludes the greedy action from exploration.
 
     Parameters
@@ -96,6 +101,14 @@ class ExclusiveEpsilonGreedy(EpsilonGreedy):
         An optional random number generator instance.
         If none is provided a new instance will be created.
 
+    Attributes
+    ----------
+    epsilon : float
+        The probability of taking a random action.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
+
     """
 
     def __init__(self, epsilon: float = 0.1, rng: None | Generator = None) -> None:
@@ -103,19 +116,19 @@ class ExclusiveEpsilonGreedy(EpsilonGreedy):
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection probabilities
+        Compute the action selection probabilities
         for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         values, actions, probs = np.copy(v), np.arange(v.shape[0]), np.zeros(v.shape)

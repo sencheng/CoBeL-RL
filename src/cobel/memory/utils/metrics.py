@@ -1,6 +1,7 @@
 # basic imports
 import abc
 import numpy as np
+
 # typing
 from numpy.typing import NDArray
 
@@ -11,7 +12,7 @@ class Metric(abc.ABC):
 
     Attributes
     ----------
-    D : NDArray
+    D : numpy.ndarray
         The state-state similarity metric.
 
     """
@@ -21,9 +22,7 @@ class Metric(abc.ABC):
 
     @abc.abstractmethod
     def update_transitions(self) -> None:
-        """
-        This function updates the metrics when changes in the environment occur.
-        """
+        """Update the metrics when changes in the environment occur."""
 
 
 class Euclidean(Metric):
@@ -39,7 +38,7 @@ class Euclidean(Metric):
 
     Attributes
     ----------
-    D : NDArray
+    D : numpy.ndarray
         The state-state similarity metric.
 
     """
@@ -60,9 +59,7 @@ class Euclidean(Metric):
                 self.D[s2, s1] = np.exp(-distance)
 
     def update_transitions(self) -> None:
-        """
-        This function updates the metrics when changes in the environment occur.
-        """
+        """Update the metrics when changes in the environment occur."""
         pass
 
 
@@ -72,7 +69,7 @@ class SR(Metric):
 
     Parameters
     ----------
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix representing
         the gridworld environment.
     gamma : float
@@ -80,17 +77,16 @@ class SR(Metric):
 
     Attributes
     ----------
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix representing
         the gridworld environment.
     gamma : float
         The discount factor used to compute the SR.
-    D : NDArray
+    D : numpy.ndarray
         The state-state similarity metric.
 
     Examples
     --------
-
     The SR metric can be easily set up in combination with
     gridworld environments. ::
 
@@ -110,9 +106,7 @@ class SR(Metric):
         self.D = np.linalg.inv(np.eye(self.D.shape[0]) - self.gamma * self.D)
 
     def update_transitions(self) -> None:
-        """
-        This function updates the metric when changes in the environment occur.
-        """
+        """Update the metric when changes in the environment occur."""
         self.D = np.sum(self.sas, axis=1) / self.sas.shape[1]
         self.D = np.linalg.inv(np.eye(self.D.shape[0]) - self.gamma * self.D)
 
@@ -127,7 +121,7 @@ class DR(Metric):
         The width of the environment in number of states.
     height : int
         The height of the environment in number of states.
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix representing
         the gridworld environment.
     gamma : float
@@ -135,7 +129,7 @@ class DR(Metric):
     invalid_transitions : list of 2-tuple of int
         A list containing invalid environmental transitions,
         i.e., walls/borders.
-    T_default : NDArray or None, optional
+    T_default : numpy.ndarray or None, optional
         The default state-state transition matrix. If none,
         then one is created assuming an open field gridworld.
 
@@ -147,7 +141,7 @@ class DR(Metric):
         The height of the environment in number of states.
     nb_states : int
         The number of gridworld states.
-    sas : NDArray
+    sas : numpy.ndarray
         The state-action-state transition matrix representing
         the gridworld environment.
     gamma : float
@@ -155,22 +149,21 @@ class DR(Metric):
     invalid_transitions : list of 2-tuple of int
         A list containing invalid environmental transitions,
         i.e., walls/borders.
-    T_default : NDArray or None
+    T_default : numpy.ndarray or None
         The default state-state transition matrix. If none,
         then one is created assuming an open field gridworld.
-    D0 : NDArray
+    D0 : numpy.ndarray
         The default state-state similarity metric.
-    T_new : NDArray or None
+    T_new : numpy.ndarray or None
         The new state-state transition matrix. If none,
         then one is created assuming an open field gridworld.
-    B : NDArray
+    B : numpy.ndarray
         The DR's update matrix.
-    D : NDArray
+    D : numpy.ndarray
         The full state-state similarity metric.
 
     Examples
     --------
-
     The DR metric can be easily set up in combination with
     gridworld environments. ::
 
@@ -226,9 +219,7 @@ class DR(Metric):
         self.D = self.D0 - self.B
 
     def update_transitions(self) -> None:
-        """
-        This function updates the metric when changes in the environment occur.
-        """
+        """Update the metric when changes in the environment occur."""
         # compute new transition matrix
         self.T_new = np.sum(self.sas, axis=1) / self.sas.shape[1]
         # prepare update matrix B
@@ -252,7 +243,7 @@ class DR(Metric):
 
     def build_default_transition_matrix(self) -> None:
         """
-        This function builds the default transition graph in
+        Build the default transition graph in
         an open field environment under a uniform policy.
         """
         self.T_default = np.zeros((self.nb_states, self.nb_states))

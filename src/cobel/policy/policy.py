@@ -1,6 +1,7 @@
 # basic imports
 import abc
 from numpy.random import Generator, default_rng
+
 # typing
 from numpy.typing import NDArray
 
@@ -31,18 +32,18 @@ class Policy(abc.ABC):
     @abc.abstractmethod
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function selects an action for a given set of Q-values.
+        Select an action for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         pass
@@ -50,19 +51,17 @@ class Policy(abc.ABC):
     @abc.abstractmethod
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection probabilities
-        for a given set of Q-values.
+        Compute the action selection probabilities for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
-        pass

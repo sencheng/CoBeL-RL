@@ -1,5 +1,5 @@
 """
-This module provides memory modules which are used by
+Provides memory modules which are used by
 the different reinforcement learning agents.
 
 Classes

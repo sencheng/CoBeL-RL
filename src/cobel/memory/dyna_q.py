@@ -1,10 +1,11 @@
 # basic imports
 import numpy as np
+
 # typing
 from typing import TypedDict, NotRequired
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: int
     action: int
     reward: float
@@ -38,18 +39,17 @@ class DynaQMemory:
         The number of the agent's actions.
     learning_rate : float, default=0.9
         The learning rate with which experiences are updated.
-    rewards : NDArray
+    rewards : numpy.ndarray
         Stores the rewards for each environmental transition.
-    states : NDArray
+    states : numpy.ndarray
         Stores the follow-up state for each environmental transition.
-    terminals : NDArray
+    terminals : numpy.ndarray
         Stores the terminality for each environmental transition.
     rng : numpy.random.Generator
         A random number generator instance used for probablistic replay.
 
     Examples
     --------
-
     Initializing the memory module for a simple gridworld. ::
 
         >>> from cobel.memory import DynaQMemory
@@ -76,11 +76,11 @@ class DynaQMemory:
 
     def store(self, experience: Experience) -> None:
         """
-        This function stores a given experience.
+        Store a given experience.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.memory.dyna_q.Experience
             The experience to be stored.
         """
         (
@@ -97,7 +97,7 @@ class DynaQMemory:
 
     def retrieve(self, state: int, action: int) -> Experience:
         """
-        This function retrieves the experience for a specified state-action pair.
+        Retrieve the experience for a specified state-action pair.
 
         Parameters
         ----------
@@ -108,7 +108,7 @@ class DynaQMemory:
 
         Returns
         -------
-        experience : Experience
+        experience : cobel.memory.dyna_q.Experience
             The experience that is retrieved.
         """
         return {
@@ -121,7 +121,7 @@ class DynaQMemory:
 
     def retrieve_batch(self, batch_size: int = 32) -> list[Experience]:
         """
-        This function retrieves a number of random experiences.
+        Retrieve a number of random experiences.
 
         Parameters
         ----------
@@ -130,7 +130,7 @@ class DynaQMemory:
 
         Returns
         -------
-        batch : list of Experience
+        batch : list of cobel.memory.dyna_q.Experience
             The batch of experiences that is retrieved.
         """
         # draw random experiences

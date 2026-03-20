@@ -1,12 +1,13 @@
 # basic imports
 import numpy as np
+
 # typing
 from numpy.typing import NDArray
 
 
 def state_to_coordinates(state: int, width: int, y_first: bool = True) -> NDArray:
     """
-    This function computes the coordinates of a gridworld state.
+    Compute the coordinates of a gridworld state.
 
     Parameters
     ----------
@@ -19,7 +20,7 @@ def state_to_coordinates(state: int, width: int, y_first: bool = True) -> NDArra
 
     Returns
     -------
-    coordinates : NDArray
+    coordinates : numpy.ndarray
         The state coordinates.
     """
     assert state >= 0 and width > 0
@@ -30,11 +31,11 @@ def state_to_coordinates(state: int, width: int, y_first: bool = True) -> NDArra
 
 def states_to_coordinates(states: NDArray, width: int, y_first: bool = True) -> NDArray:
     """
-    This function computes the coordinates of a set of gridworld states.
+    Compute the coordinates of a set of gridworld states.
 
     Parameters
     ----------
-    states : int
+    states : numpy.ndarray
         A numpy array containing the gridworld state indeces.
     width : int
         The width of the gridworld.
@@ -43,7 +44,7 @@ def states_to_coordinates(states: NDArray, width: int, y_first: bool = True) -> 
 
     Returns
     -------
-    coordinates : NDArray
+    coordinates : numpy.ndarray
         The state coordinates.
     """
     assert np.amin(states) >= 0 and width > 0

@@ -1,7 +1,9 @@
 # basic imports
 import numpy as np
+
 # framework imports
 from .policy import Policy
+
 # typing
 from numpy.typing import NDArray
 from numpy.random import Generator
@@ -10,7 +12,7 @@ from .policy import Action
 
 class Proportional(Policy):
     """
-    This class implements a policy which transforms a scalar value to a binary action.
+    Implements a policy which transforms a scalar value to a binary action.
     Action selection probabilities are proportional to the scalar value.
 
     Parameters
@@ -31,6 +33,9 @@ class Proportional(Policy):
     code_reverse : bool
         Flag indicating whether value close to the maximum value code
         for action zero, i.e., the first action. True by default.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -46,37 +51,37 @@ class Proportional(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function selects an action for a given value.
+        Select an action for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         return abs(self.code_reverse - int(self.rng.random() < v / self.value_max))
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         probs = np.abs(np.array([1.0, 0.0]) - v / self.value_max)
@@ -88,7 +93,7 @@ class Proportional(Policy):
 
 class Threshold(Policy):
     """
-    This class implements a threshold policy which transfrms a
+    Implements a threshold policy which transforms a
     scalar value to a binary action.
 
     Parameters
@@ -117,6 +122,9 @@ class Threshold(Policy):
     code_reverse : bool
         Flag indicating whether value close to the maximum value code
         for action zero, i.e., the first action. True by default.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -142,18 +150,18 @@ class Threshold(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function selects an action for a given value.
+        Select an action for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         v /= self.value_max
@@ -165,19 +173,19 @@ class Threshold(Policy):
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         v /= self.value_max
@@ -191,7 +199,7 @@ class Threshold(Policy):
 
 class Sigmoid(Policy):
     """
-    This class implements a threshold policy which transfrms a
+    Implements a threshold policy which transforms a
     scalar value to a binary action. Action selection probabilities
     are proportional to the sigmoid transformed scalar value.
 
@@ -221,6 +229,9 @@ class Sigmoid(Policy):
     code_reverse : bool
         Flag indicating whether value close to the maximum value code
         for action zero, i.e., the first action. True by default.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -244,18 +255,18 @@ class Sigmoid(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function selects an action for a given value.
+        Select an action for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         prob = 1 / (1 + np.exp(-(v / self.value_max - self.threshold) * self.scale))
@@ -264,19 +275,19 @@ class Sigmoid(Policy):
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given value.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         probs = np.abs(

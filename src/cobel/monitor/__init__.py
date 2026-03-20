@@ -1,6 +1,5 @@
 """
-This module provides various monitor classes for the
-tracking of relevant simulation variables.
+Provides various monitor classes for the tracking of relevant simulation variables.
 
 Classes
 -------

@@ -1,10 +1,12 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from .agent import CallbackDict
 from numpy.typing import NDArray, ArrayLike
@@ -12,24 +14,26 @@ from numpy.typing import NDArray, ArrayLike
 
 class RescorlaWagner(Agent):
     """
-    This class implements an (associative) agent based on the Rescorla-Wagner model.
+    Implements an (associative) agent based on the Rescorla-Wagner model.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
     learning_rate : float or tuple of float, default=0.9
         The learning rate(s) for the input stimuli.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymasium.spaces.Space
         The agent's observation space.
-    W : NDArray
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    W : numpy.ndarray
         The agent's weights.
-    learning_rate : float or NDArray
+    learning_rate : float or numpy.ndarray
         The learning rate(s) for the input stimuli.
     current_trial : int
         Tracks the current trial.
@@ -40,7 +44,6 @@ class RescorlaWagner(Agent):
 
     Examples
     --------
-
     Here we initialize the agent for a Sequence environment
     which presents observations of shape (10, ). ::
 
@@ -74,11 +77,11 @@ class RescorlaWagner(Agent):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -125,11 +128,11 @@ class RescorlaWagner(Agent):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -172,7 +175,7 @@ class RescorlaWagner(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the values for a batch of observations.
+        Retrieve the values for a batch of observations.
 
         Parameters
         ----------
@@ -181,7 +184,7 @@ class RescorlaWagner(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of value predictions.
         """
         assert type(batch) is np.ndarray
@@ -191,34 +194,36 @@ class RescorlaWagner(Agent):
 
 class BinaryRescorlaWagner(RescorlaWagner):
     """
-    This class implements an (associative) agent based on the Rescorla-Wagner model
+    Implements an (associative) agent based on the Rescorla-Wagner model
     which transforms learned associativity into binary actions.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float or tuple of float, default=0.9
         The learning rate(s) for the input stimuli.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
-    W : NDArray
+    W : numpy.ndarray
         The agent's weights.
-    learning_rate : float or NDArray
+    learning_rate : float or numpy.ndarray
         The learning rate(s) for the input stimuli.
     current_trial : int
         Tracks the current trial.
@@ -233,7 +238,6 @@ class BinaryRescorlaWagner(RescorlaWagner):
 
     Examples
     --------
-
     Here we initialize the agent for a Sequence environment
     which presents observations of shape (10, ). ::
 
@@ -264,11 +268,11 @@ class BinaryRescorlaWagner(RescorlaWagner):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interfaceInterface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -324,11 +328,11 @@ class BinaryRescorlaWagner(RescorlaWagner):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.

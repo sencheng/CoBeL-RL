@@ -1,5 +1,5 @@
 """
-This module provides interface network classes for
+Provides interface network classes for
 commonly used deep learning frameworks.
 
 Classes

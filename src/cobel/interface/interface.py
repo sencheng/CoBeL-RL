@@ -2,6 +2,7 @@
 import abc
 import numpy as np
 import pyqtgraph as pg  # type: ignore
+
 # framework imports
 # typing
 from typing import Any
@@ -15,16 +16,16 @@ ResetTuple = tuple[Observation, dict[str, Any]]
 
 class Interface(abc.ABC):
     """
-    This class implements a simple (tabular) Q-learning agent.
+    The abstract interface class.
 
     Parameters
     ----------
-    widget : pg.GraphicsLayoutWidget or None, Optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, Optional
         An optional widget. If provided the environment will be visualized.
 
     Attributes
     ----------
-    widget : pg.GraphicsLayoutWidget or None
+    widget : pyqtgraph.GraphicsLayoutWidget or None
         An optional widget. If provided the environment will be visualized.
 
     """
@@ -35,16 +36,17 @@ class Interface(abc.ABC):
     @abc.abstractmethod
     def step(self, action: Action) -> StepTuple:
         """
-        The interface's step function (compatible with Gymnasium's step function).
+        Perform one simulation step in the environment
+        (compatible with Gymnasium's step function).
 
         Parameters
         ----------
-        action : Action
+        action : cobel.interface.interface.Action
             The action selected by the agent.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         reward : float
             The reward received.
@@ -60,11 +62,11 @@ class Interface(abc.ABC):
     @abc.abstractmethod
     def reset(self) -> ResetTuple:
         """
-        The interface's reset function (compatible with Gymnasium's reset function).
+        Reset the environment (compatible with Gymnasium's reset function).
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         logs : dict of Any
             The (empty) logs dictionary.
@@ -74,11 +76,11 @@ class Interface(abc.ABC):
     @abc.abstractmethod
     def get_position(self) -> NDArray:
         """
-        This function returns the agent's position in the environment.
+        Return the agent's position in the environment.
 
         Returns
         -------
-        position : NDArray
+        position : numpy.ndarray
             A numpy array containing the agent's position.
         """
         return np.array([])

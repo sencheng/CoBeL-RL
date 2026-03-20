@@ -8,15 +8,82 @@ import subprocess
 import numpy as np
 import gymnasium as gym
 import cv2
+
 # framework imports
 from cobel.interface.simulator.simulator import Simulator, ImageInfo, Pose
 from cobel.interface.interface import Observation
+
 # typing
 from typing import Any
 from numpy.typing import NDArray
 
 
 class UnitySimulator(Simulator):
+    """
+    The Unity interface class. This class connects to the Unity
+    environment and controls the flow of commands/data to/from Unity.
+
+    Parameters
+    ----------
+    scene : str
+        The name of the Unity scene that should loaded initially.
+    executable : str of Node or None, optional
+        The path to the Unity executable.
+    resize : 2-tuple of int or None, optional
+        Optional resize dimensions for image observations.
+    running : bool, default=False
+        If true the starting of a new process will be skipped.
+    ports : 3-tuple of int or None, optional
+        The ports to connect to the Unity simulator. If None, random
+        ports will be tried out until a working set was found.
+        Must not be None when connecting to a already running process.
+    nb_agents : int, default=1
+        The number of agents in the Unity scene. This is used to determine
+        how many agents are created when the simulator launches.
+    batch_mode : bool, default=True
+        A flag indicating whether batch mode should be used to prevent
+        unnecessary rendering (will result in the Unity window being black).
+    rng : numpy.random.Generator or None, optional
+        An optional random number generator instance.
+        If none is provided a new instance will be created.
+
+    Attributes
+    ----------
+    control_socket : socket.socket
+        Socket used for sending commands to the simulator.
+    video_socket : socket.socket
+        Socket used for retrieving video data from the simulator.
+    data_socket : socket.socket
+        Socket used for sending and receiving data to and from the simulator.
+    agent_pose : cobel.interface.topology.Pose
+        The agent's current pose.
+    observation_space : gymnasium.spaces.Space
+        The observation space.
+    image_info : cobel.interface.simulator.simulator.ImageInfo
+        A dictionary containing information about the image
+        size and format.
+    resize : 2-tuple of int or None
+        Optional resize dimensions for image observations.
+    rng : numpy.random.Generator
+        An optional random number generator instance.
+        If none is provided a new instance will be created.
+
+    Examples
+    --------
+    If the appropriate environmental variable was set the
+    Unity simulator can easily be started. To properly
+    stop simulator calls the stop method. ::
+
+        >>> from cobel.interface import UnitySimulator
+        >>> sim = UnitySimulator('room.')
+        >>> sim.stop()
+
+    Alternatively, one can provide the executable path directly. ::
+
+        >>> sim = UnitySimulator('room', 'PATH/TO/UNITY')
+
+    """
+
     def __init__(
         self,
         scene_name: str,
@@ -28,58 +95,6 @@ class UnitySimulator(Simulator):
         batch_mode: bool = True,
         rng: None | np.random.Generator = None,
     ) -> None:
-        """
-        The Unity interface class. This class connects to the Unity
-        environment and controls the flow of commands/data to/from Unity.
-
-        Parameters
-        ----------
-        scene : str
-            The name of the Unity scene that should loaded initially.
-        executable : str of Node or None, optional
-            The path to the Unity executable.
-        resize : 2-tuple of int or None, optional
-            Optional resize dimensions for image observations.
-        running : bool, default=False
-            If true the starting of a new process will be skipped.
-        ports : 3-tuple of int or None, optional
-            The ports to connect to the Unity simulator. If None, random
-            ports will be tried out until a working set was found.
-            Must not be None when connecting to a already running process.
-        nb_agents : int, default=1
-            The number of agents in the Unity scene. This is used to determine
-            how many agents are created when the simulator launches.
-        batch_mode : bool, default=True
-            A flag indicating whether batch mode should be used to prevent
-            unnecessary rendering (will result in the Unity window being black).
-        rng : numpy.random.Generator or None, optional
-            An optional random number generator instance.
-            If none is provided a new instance will be created.
-
-        Attributes
-        ----------
-        image_info : ImageInfo
-            A dictionary containing information about the image
-            size and format.
-        resize : 2-tuple of int or None
-            Optional resize dimensions for image observations.
-
-        Examples
-        --------
-
-        If the appropriate environmental variable was set the
-        Unity simulator can easily be started. To properly
-        stop simulator calls the stop method.::
-
-            >>> from cobel.interface.simulator.unity import UnitySimulator
-            >>> sim = UnitySimulator('room.')
-            >>> sim.stop()
-
-        Alternatively, one can provide the executable path directly. ::
-
-            >>> sim = UnitySimulator('room', 'PATH/TO/UNITY')
-
-        """
         portrange_min = 1024
         portrange_max = 49152  # max - 2 because of the 3 sockets used
         nb_retries = 25
@@ -187,7 +202,7 @@ class UnitySimulator(Simulator):
 
     def receive_in_chunks(self, socket: socket.socket, chunk_size: int) -> bytes:
         """
-        This function reads data in chunks from a socket.
+        Read data in chunks from a socket.
 
         Parameters
         ----------
@@ -214,8 +229,8 @@ class UnitySimulator(Simulator):
 
     def echo(self, message: str) -> str:
         """
-        This function sends a message to the unity simulator and
-        recieves the echo
+        Send a message to the unity simulator and
+        recieves the echo.
 
         Parameters
         ----------
@@ -237,7 +252,7 @@ class UnitySimulator(Simulator):
 
     def change_scene(self, scene: str) -> None:
         """
-        This function sends the path to a scene to the simulator
+        Send the path to a scene to the simulator
         and the command to change to this scene.
 
         Parameters
@@ -253,7 +268,7 @@ class UnitySimulator(Simulator):
 
     def get_image_info(self, agent: int = 0) -> ImageInfo:
         """
-        This function retrieves image information from the simulation.
+        Retrieve image information from the simulation.
 
         Parameters
         ----------
@@ -262,9 +277,9 @@ class UnitySimulator(Simulator):
 
         Returns
         -------
-        image_info : ImageInfo
+        image_info : cobel.interface.simulator.simulator.ImageInfo
             A dictionary containing information about the images
-            rendered by Unity (i.e. dimensions, channels, format).
+            rendered by Unity (i.e., dimensions, channels, format).
         """
         # send the request for image information to unity
         self.control_socket.send(
@@ -281,11 +296,11 @@ class UnitySimulator(Simulator):
 
     def get_observation(self, pose: Pose, agent: int = 0) -> Observation:
         """
-        This function returns the observation at a given pose.
+        Return the observation at a given pose.
 
         Parameters
         ----------
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The global pose that the agent is moved to.
         agent : int, default=0
             The agent that will be moved and from which
@@ -302,7 +317,7 @@ class UnitySimulator(Simulator):
         self, x: float, y: float, yaw: float, agent: int = 0
     ) -> tuple[NDArray, NDArray]:
         """
-        This function propels the simulation. It uses teleportation to
+        Propel the simulation. It uses teleportation to
         guide the agent directly by means of global x, y, yaw values.
 
         Parameters
@@ -318,9 +333,9 @@ class UnitySimulator(Simulator):
 
         Returns
         -------
-        pose_data : NDArray
+        pose_data : numpy.ndarray
             The pose observation received from the simulation.
-        image_data : NDArray
+        image_data : numpy.ndarray
             The image observation received from the simulation.
         """
         # send the actuation command to the virtual agent
@@ -364,7 +379,7 @@ class UnitySimulator(Simulator):
 
     def get_illumination(self, light_source: str) -> NDArray:
         """
-        This function retrieves color values of a light source
+        Retrieve color values of a light source.
 
         Parameters
         ----------
@@ -373,7 +388,7 @@ class UnitySimulator(Simulator):
 
         Returns
         -------
-        colors : NDArray
+        colors : numpy.ndarray
             An array containing the RGB values of the light source.
             If no object was found (-1, -1, -1) will be returned.
         """
@@ -394,7 +409,7 @@ class UnitySimulator(Simulator):
 
     def get_objects(self) -> dict[str, Any]:
         """
-        This function retrieves object information from the current unity scene.
+        Retrieve object information from the current unity scene.
 
         Returns
         -------
@@ -434,14 +449,13 @@ class UnitySimulator(Simulator):
 
     def move_object(self, object_id: str, pose: Pose) -> None:
         """
-        This function propels the simulation. It uses teleportation to
-        guide the agent directly by means of global x, y, yaw values.
+        Change the pose of a specified object.
 
         Parameters
         ----------
         object_id : str
             The id of the moved object, (currently the name)
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The tuple contains the new position and rotation
         """
         # invokes move_object
@@ -453,21 +467,21 @@ class UnitySimulator(Simulator):
 
     def stop(self) -> None:
         """
-        This function stops the unity simulator.
+        Stop the unity simulator.
         It does not expect a AKN from the simulator.
         """
         self.process.terminate()
 
     def set_illumination(self, light_source: str, color: NDArray) -> None:
         """
-        This function sets the RGB values of a light
+        Set the RGB values of a light
         component connected to a game object.
 
         Parameters
         ----------
         light_source : str
             The name of the object the light source is connected to
-        colors : NDArray
+        color : numpy.ndarray
             An array of RGB values ranging from 0 to 255
         """
         assert color.size == 3, 'The array should have three elements!'
@@ -487,7 +501,7 @@ class UnitySimulator(Simulator):
 
     def get_pose(self, object_id: str) -> Pose | None:
         """
-        This function will return the pose of a given object.
+        Return the pose of a given object.
         If the object name is not valid it will return None.
 
         Parameters
@@ -497,7 +511,7 @@ class UnitySimulator(Simulator):
 
         Returns
         -------
-        pose : Pose or None
+        pose : cobel.interface.topology.Pose or None
             The pose of the object.
         """
         self.control_socket.send(
@@ -517,15 +531,15 @@ class UnitySimulator(Simulator):
 
     def change_material(self, object_name: str, material_path: str) -> None:
         """
-        This function sends the object id and the path to a material to the simulator
+        Send the object id and the path to a material to the simulator
         and the command to change to this material for this object.
 
         Parameters
         ----------
-        object_id : str
+        object_name : str
             The name of the object.
-        scene : str
-            The path to the scene to change to.
+        material_path : str
+            The path to the material to change to.
         """
         assert os.path.isfile(material_path), 'File does not exist.'
         # convert material path into formatted json command and send it

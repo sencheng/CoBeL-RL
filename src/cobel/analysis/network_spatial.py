@@ -2,8 +2,10 @@
 import numpy as np
 import scipy.ndimage as nd  # type: ignore
 from scipy.spatial.distance import pdist  # type: ignore
+
 # framework imports
 from ..network import Network
+
 # typing
 from numpy.typing import NDArray
 
@@ -15,23 +17,22 @@ def get_activity_maps(
     units: None | NDArray = None,
 ) -> NDArray:
     """
-    This function returns the unit activation of a
-    specified layer for a set of observations.
+    Return the unit activation of a specified layer for a set of observations.
 
     Parameters
     ----------
-    observations : NDArray, list of NDArray or dict of NDArray
+    observations : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
         A dictionary containing observations for different input streams.
-    model : Network
+    model : cobel.network.network.Network
         The network model.
     layer : int or str
         The layer index or name for which activity maps will be computed.
-    units : NDArray or None, optional
+    units : numpy.ndarray or None, optional
         The indices of units whose activity will be returned.
 
     Returns
     -------
-    activity_maps : NDArray
+    activity_maps : numpy.ndarray
         The layer activities of the specified layer for the batch of input samples.
     """
     return np.copy(
@@ -43,19 +44,18 @@ def get_activity_maps(
 
 def process_activity_maps(activity_maps: NDArray, threshold: float = 0.15) -> NDArray:
     """
-    This function normalizes activity maps and removes
-    values below a specified threshold.
+    Normalize activity maps and remove values below a specified threshold.
 
     Parameters
     ----------
-    activity_maps : NDArray
+    activity_maps : numpy.ndarray
         The activity maps.
     threshold : float, default=0.15
         The activity threshold.
 
     Returns
     -------
-    activity_maps : NDArray
+    activity_maps : numpy.ndarray
         The processed layer activities.
     """
     # feature scaling
@@ -75,12 +75,11 @@ def classify_place_field(
     verbose: bool = False,
 ) -> tuple[bool, NDArray]:
     """
-    This function detects whether or not a given
-    spatial activity map contains place fields.
+    Detect whether or not a given spatial activity map contains place fields.
 
     Parameters
     ----------
-    activity_map : NDArray
+    activity_map : numpy.ndarray
         A 2d numpy array of spatial activations.
     sigma : float, default=0.
         Sigma value used for the gaussian smoothing that is applied
@@ -96,7 +95,7 @@ def classify_place_field(
     -------
     has_field : bool
         Flag indicating whether the activity map contains a place field.
-    field : NDArray
+    field : numpy.ndarray
         The (thresholded) activity map.
     """
     assert size_threshold > 0 and size_threshold < 1, (
@@ -149,21 +148,20 @@ def calculate_pdist(
     fields_sliced: NDArray, place_indices: NDArray
 ) -> tuple[NDArray, NDArray]:
     """
-    This function calculates the pairwise distances between
-    field centers for specified fields.
+    Calculate the pairwise distances between field centers for specified fields.
 
     Parameters
     ----------
-    fields_sliced : NDArray
+    fields_sliced : numpy.ndarray
         The fields for which the pairwise distances will be calculated.
-    place_indices : NDArray
+    place_indices : numpy.ndarray
         (legacy, remove)
 
     Returns
     -------
-    pdist_centers : NDArray
+    pdist_centers : numpy.ndarray
         The pairwise distances's centers.
-    pdist : NDArray
+    pdist : numpy.ndarray
         The pairwise distances.
     """
     centers = np.zeros((max(1, len(place_indices)), 6, 2))
@@ -186,11 +184,11 @@ def place_like(
     verbose: bool = False,
 ) -> tuple[NDArray, NDArray, NDArray, NDArray]:
     """
-    This function computes the number of place fields for a set of trials.
+    Compute the number of place fields for a set of trials.
 
     Parameters
     ----------
-    fields : NDArray
+    fields : numpy.ndarray
         The activity maps across trials.
     resolution : tuple
         The spatial resolution of the activity maps.
@@ -206,13 +204,13 @@ def place_like(
 
     Returns
     -------
-    fields : NDArray
+    fields : numpy.ndarray
         The place fields.
-    field_indeces : NDArray
+    field_indeces : numpy.ndarray
         The place field indeces.
-    pdist_centers : NDArray
+    pdist_centers : numpy.ndarray
         The pairwise distances's centers.
-    pdist : NDArray
+    pdist : numpy.ndarray
         The pairwise distances.
     """
     area, n_units = np.prod(resolution), fields.shape[2]

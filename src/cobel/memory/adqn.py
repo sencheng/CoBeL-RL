@@ -1,6 +1,7 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # typing
 from typing import TypedDict
 from collections.abc import Callable
@@ -17,7 +18,7 @@ InitialRetrieve = SimpleRetrieve | ListRetrieve | DictRetrieve
 StateBatch = NDArray | list[NDArray] | dict[str, NDArray]
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: NDArray | dict[str, NDArray] | list[NDArray]
     action: float
     reward: float
@@ -27,13 +28,13 @@ class Experience(TypedDict):
 
 class ADQNMemory:
     """
-    This class implements a memory module for storing experiences,
+    Implements a memory module for storing experiences,
     and replays them in a prioritized fashion according to recency
     and prediction errors.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space.
     decay : float, default=1.
         The recency decay factor.
@@ -46,13 +47,13 @@ class ADQNMemory:
 
     Attributes
     ----------
-    states : NDArray, list of NDArray or NDArray
+    states : numpy.ndarray, list of numpy.ndarray or numpy.ndarray
         Stores the state/observation of each experience.
-    reinforcements : NDArray
+    reinforcements : numpy.ndarray
         Stores the reinforcements/rewards for each experience.
-    errors : NDArray
+    errors : numpy.ndarray
         Stores the prediction error for each experience.
-    priorities : NDArray
+    priorities : numpy.ndarray
         Stores the priority for each experience.
     decay : float
         The recency decay factor.
@@ -64,7 +65,6 @@ class ADQNMemory:
 
     Examples
     --------
-
     Initializing the memory module for unimodal
     observations. ::
 
@@ -118,11 +118,11 @@ class ADQNMemory:
 
     def store(self, experience: Experience) -> None:
         """
-        This function stores an experience tuple.
+        Store an experience tuple.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.memory.adqn.Experience
             The experience to be stored.
         """
         # store experience
@@ -139,7 +139,7 @@ class ADQNMemory:
 
     def sample_batch(self, batch_size: int) -> tuple[StateBatch, NDArray]:
         """
-        This function samples an experience replay batch.
+        Sample an experience replay batch.
 
         Parameters
         ----------
@@ -148,9 +148,9 @@ class ADQNMemory:
 
         Returns
         -------
-        observations : NDArray, list of NDArray or dict of NDArray
+        observations : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The observation batch.
-        rewards : NDArray
+        rewards : numpy.ndarray
             The reward batch.
         """
         probs = np.ones(self.priorities.shape[0]) / self.priorities.shape[0]
@@ -164,45 +164,35 @@ class ADQNMemory:
         return self._state_retrieve(idx), np.copy(self.reinforcements[idx])
 
     def _store_unimodal(self, state: NDArray) -> None:
-        """
-        Function for storing unimodal observations.
-        """
+        """Store unimodal observations."""
         assert isinstance(self.states, np.ndarray)
         self.states = np.append(self.states, state[np.newaxis], axis=0)
 
     def _store_multimodal_list(self, state: list[NDArray]) -> None:
-        """
-        Function for storing multimodal observations using a list.
-        """
+        """Store multimodal observations using a list."""
         assert isinstance(self.states, list)
         for i, obs in enumerate(state):
-            self.states[i] = np.append(self.states[i], obs)
+            self.states[i] = np.append(self.states[i], np.array([obs]), axis=0)
 
     def _store_multimodal_dict(self, state: dict[str, NDArray]) -> None:
-        """
-        Function for storing multimodal observations using a dictionary.
-        """
+        """Store multimodal observations using a dictionary."""
         assert isinstance(self.states, dict)
         for modality, obs in state.items():
-            self.states[modality] = np.append(self.states[modality], obs)
+            self.states[modality] = np.append(
+                self.states[modality], np.array([obs]), axis=0
+            )
 
     def _retrieve_unimodal(self, idx: NDArray[np.int_]) -> NDArray:
-        """
-        Function for retrieving unimodal observations.
-        """
+        """Retrieve unimodal observations."""
         assert isinstance(self.states, np.ndarray)
         return np.copy(self.states[idx])
 
     def _retrieve_multimodal_list(self, idx: NDArray[np.int_]) -> list[NDArray]:
-        """
-        Function for retrieving multimodal observations using a list.
-        """
+        """Retrieve multimodal observations using a list."""
         assert isinstance(self.states, list)
         return [np.copy(obs[idx]) for obs in self.states]
 
     def _retrieve_multimodal_dict(self, idx: NDArray[np.int_]) -> dict[str, NDArray]:
-        """
-        Function for retrieving multimodal observations using a dictionary.
-        """
+        """Retrieve multimodal observations using a dictionary."""
         assert isinstance(self.states, dict)
         return {m: np.copy(obs[idx]) for m, obs in self.states.items()}

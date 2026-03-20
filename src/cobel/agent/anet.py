@@ -1,10 +1,12 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from .agent import CallbackDict
 from numpy.typing import NDArray, ArrayLike
@@ -12,28 +14,28 @@ from numpy.typing import NDArray, ArrayLike
 
 class AssociativeNetwork(Agent):
     """
-    This class implements the associative net model from Donoso et al. (2021):
-    https://doi.org/10.1007/s10071-021-01521-4
+    Implements the associative net model from Donoso et al. (2021):
+    https://doi.org/10.1007/s10071-021-01521-4.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
-    saturation : float or dict of NDArray, default=0.9
+    saturation : float or dict of numpy.ndarray, default=0.9
         The saturation level of the weights.
-    learning_rate : float or dict of NDArray, default=0.01
+    learning_rate : float or dict of numpy.ndarray, default=0.01
         The learning rates of the weights.
     noise : float, default=1.
         The amplitude of the noise that is added to the output units.
     linear_update : bool, default=False
         Flag indicating whether linear update should be used.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -41,21 +43,23 @@ class AssociativeNetwork(Agent):
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
-    weights : dict of NDArray
+    weights : dict of numpy.ndarray
         A dictionary containing the excitatory and
         inhibitory weights of the associative network.
-    saturation : dict of NDArray
+    saturation : dict of numpy.ndarray
         The saturation level of the weights.
-    learning_rate : float or dict of NDArray
+    learning_rate : float or dict of numpy.ndarray
         The learning rates of the weights.
     linear_update : bool
         Flag indicating whether linear update should be used.
@@ -81,7 +85,6 @@ class AssociativeNetwork(Agent):
 
     Examples
     --------
-
     Here we initialize the agent for a Sequence environment
     which presents observations of shape (10, ) and has 2 actions. ::
 
@@ -117,10 +120,10 @@ class AssociativeNetwork(Agent):
         # initialize weights
         self.weights = {
             'excitatory': np.zeros(
-                (np.prod(self.observation_space.shape), self.action_space.n - 1)
+                (np.prod(self.observation_space.shape), int(self.action_space.n) - 1)
             ),
             'inhibitory': np.zeros(
-                (np.prod(self.observation_space.shape), self.action_space.n - 1)
+                (np.prod(self.observation_space.shape), int(self.action_space.n) - 1)
             ),
         }
         # define saturation values for all weights
@@ -130,11 +133,17 @@ class AssociativeNetwork(Agent):
         else:
             self.saturation = {
                 'excitatory': np.full(
-                    (np.prod(self.observation_space.shape), self.action_space.n - 1),
+                    (
+                        np.prod(self.observation_space.shape),
+                        int(self.action_space.n) - 1,
+                    ),
                     saturation,
                 ),
                 'inhibitory': np.full(
-                    (np.prod(self.observation_space.shape), self.action_space.n - 1),
+                    (
+                        np.prod(self.observation_space.shape),
+                        int(self.action_space.n) - 1,
+                    ),
                     saturation,
                 ),
             }
@@ -145,11 +154,17 @@ class AssociativeNetwork(Agent):
         else:
             self.learning_rate = {
                 'excitatory': np.full(
-                    (np.prod(self.observation_space.shape), self.action_space.n - 1),
+                    (
+                        np.prod(self.observation_space.shape),
+                        int(self.action_space.n) - 1,
+                    ),
                     learning_rate,
                 ),
                 'inhibitory': np.full(
-                    (np.prod(self.observation_space.shape), self.action_space.n - 1),
+                    (
+                        np.prod(self.observation_space.shape),
+                        int(self.action_space.n) - 1,
+                    ),
                     learning_rate,
                 ),
             }
@@ -167,11 +182,11 @@ class AssociativeNetwork(Agent):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -226,11 +241,11 @@ class AssociativeNetwork(Agent):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -282,7 +297,7 @@ class AssociativeNetwork(Agent):
 
     def rescale_weights(self, factor: dict[str, float]) -> None:
         """
-        This function rescales the excitatory and inhibitory weights of the network.
+        Rescale the excitatory and inhibitory weights of the network.
 
         Parameters
         ----------
@@ -295,16 +310,16 @@ class AssociativeNetwork(Agent):
 
     def retrieve_q(self, observation: NDArray) -> NDArray:
         """
-        This function predicts Q-values for a given observation.
+        Predict Q-values for a given observation.
 
         Parameters
         ----------
-        observation : NDArray
+        observation : numpy.ndarray
             The observation for which Q-values should be retrieved.
 
         Returns
         -------
-        q_values : NDArray
+        q_values : numpy.ndarray
             The predicated Q-values.
         """
         noise = self.noise_amplitude * self.rng.random(
@@ -319,7 +334,7 @@ class AssociativeNetwork(Agent):
 
     def update_q(self, experience: dict) -> None:
         """
-        This function updates the agent with a given experience.
+        Update the agent with a given experience.
 
         Parameters
         ----------
@@ -342,7 +357,7 @@ class AssociativeNetwork(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -351,7 +366,7 @@ class AssociativeNetwork(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return np.array(

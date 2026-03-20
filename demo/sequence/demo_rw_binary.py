@@ -11,26 +11,28 @@ to the terminal along with the ground truths.
 import numpy as np
 import pyqtgraph as pg  # type: ignore
 import gymnasium as gym
+
 # CoBeL-RL
 from cobel.agent import BinaryRescorlaWagner
 from cobel.policy import Sigmoid
 from cobel.monitor import ResponseMonitor
 from cobel.interface import Sequence
+
 # typing
 from cobel.typing import Logs, Trial, Observation, CallbackDict
 
 
 def prepare_sequence() -> tuple[list[Trial], dict[str, Observation], gym.Space]:
     """
-    This function prepares a predefined trial sequence.
+    Prepare a predefined trial sequence.
 
     Returns
     -------
-    sequence : list of Trial
+    sequence : list of cobel.interface.sequence.Trial
         A list of predefined trials of experiences.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary of named observations referenced by the prepared sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.Space
         The observation space of the observations.
     """
     sequence: list[Trial] = []
@@ -58,15 +60,15 @@ def simulation(
     observation_space: gym.Space,
 ) -> None:
     """
-    This function represents one simulation run.
+    Perform one simulation run.
 
     Parameters
     ----------
-    sequence : list of Trial
+    sequence : list of cobel.interface.sequence.Trial
         A list of predefined trials of experiences.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary of named observations referenced by the prepared sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.Space
         The observation space of the observations.
     """
     trials = len(sequence)
@@ -105,7 +107,8 @@ def simulation(
     main_window.close()
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """The main function."""  # noqa: D401
     # generate trial sequence and observations
     sequence: list
     observations: dict[str, Observation]
@@ -113,3 +116,7 @@ if __name__ == '__main__':
     sequence, observations, observation_space = prepare_sequence()
     # run
     simulation(sequence, observations, observation_space)
+
+
+if __name__ == '__main__':
+    main()

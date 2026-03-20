@@ -1,5 +1,6 @@
 # basic imports
 import numpy as np
+
 # typing
 from typing import TypedDict
 from collections.abc import Callable
@@ -20,7 +21,7 @@ RaggedRetrieve = Callable[[NDArray[np.int_]], tuple[NDArray, NDArray]]
 InitialRetrieve = Callable[[NDArray[np.int_]], tuple[Obs, Obs]]
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: Obs
     action: int
     reward: float
@@ -30,7 +31,7 @@ class Experience(TypedDict):
 
 class DQNMemory:
     """
-    This class implements a simple memory structure of the storing of experiences.
+    Implements a simple memory structure of the storing of experiences.
 
     Parameters
     ----------
@@ -54,22 +55,21 @@ class DQNMemory:
         an experience should be retrieved.
         The precise function depends on the type of Observation and
         is determined when the initial observation should be stored.
-    actions : NDArray
+    actions : numpy.ndarray
         Stores the actions for each experience.
-    rewards : NDArray
+    rewards : numpy.ndarray
         Stores the rewards for each experience.
-    terminals : NDArray
+    terminals : numpy.ndarray
         Stores the terminal flag for each experience.
-    states : NDArray, list of NDArray or dict of NDArray
+    states : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
         Stores the state/observation for each experience.
-    next_states : NDArray, list of NDArray or dict of NDArray
+    next_states : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
         Stores the follow-up state/observation for each experience.
     rng : numpy.random.Generator
         A random number generator instance used for probablistic replay.
 
     Examples
     --------
-
     Initializing the memory module. ::
 
         >>> from cobel.memory import DQNMemory
@@ -102,11 +102,11 @@ class DQNMemory:
 
     def store(self, experience: Experience) -> None:
         """
-        This function stores an experience tuple.
+        Store an experience tuple.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.memory.dqn.Experience
             The experience to be stored.
         """
         self.state_store(experience['state'], experience['next_state'])  # type: ignore
@@ -123,7 +123,7 @@ class DQNMemory:
         self, batch_size: int = 32
     ) -> tuple[Obs, NDArray, NDArray, Obs, NDArray]:
         """
-        This function retrieves a random batch of experiences.
+        Retrieve a random batch of experiences.
 
         Parameters
         ----------
@@ -132,15 +132,15 @@ class DQNMemory:
 
         Returns
         -------
-        states : NDArray, list of NDArray or dict of NDArray
+        states : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The batch of current states.
-        actions : NDArray
+        actions : numpy.ndarray
             The batch of actions.
-        rewards : NDArray
+        rewards : numpy.ndarray
             The batch of rewards.
-        next_states : NDArray, list of NDArray or dict of NDarray
+        next_states : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The batch of next states.
-        terminals : NDArray
+        terminals : numpy.ndarray
             The batch of terminals.
         """
         assert batch_size > 0
@@ -154,14 +154,13 @@ class DQNMemory:
 
     def store_initial(self, state: Obs, next_state: Obs) -> None:
         """
-        This function stores the very first observation and
-        initializes the memory structures.
+        Store the very first observation and initialize the memory structures.
 
         Parameters
         ----------
-        state : NDArray, list of NDArray or dict of NDArray
+        state : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The current state to be stored.
-        next_state : NDArray, list of NDArray or dict of NDArray
+        next_state : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The next state to be stored.
         """
         if type(state) is np.ndarray:
@@ -201,13 +200,13 @@ class DQNMemory:
 
     def store_simple(self, state: NDArray, next_state: NDArray) -> None:
         """
-        This function stores simple observations.
+        Store simple observations.
 
         Parameters
         ----------
-        state : NDArray
+        state : numpy.ndarray
             The current state to be stored.
-        next_state : NDArray
+        next_state : numpy.ndarray
             The next state to be stored.
         """
         assert type(self.states) is np.ndarray and type(self.next_states) is np.ndarray
@@ -223,13 +222,13 @@ class DQNMemory:
         self, state: list[NDArray], next_state: list[NDArray]
     ) -> None:
         """
-        This function stores multimodal observations provided as a list.
+        Store multimodal observations provided as a list.
 
         Parameters
         ----------
-        state : list of NDArray
+        state : list of numpy.ndarray
             The current state to be stored.
-        next_state : list of NDArray
+        next_state : list of numpy.ndarray
             The next state to be stored.
         """
         assert type(self.states) is list and type(self.next_states) is list
@@ -251,13 +250,13 @@ class DQNMemory:
         self, state: dict[str, NDArray], next_state: dict[str, NDArray]
     ) -> None:
         """
-        This function stores multimodal observations provided as a dictionary.
+        Store multimodal observations provided as a dictionary.
 
         Parameters
         ----------
-        state : dict of NDArray
+        state : dict of numpy.ndarray
             The current state to be stored.
-        next_state : dict of NDArray
+        next_state : dict of numpy.ndarray
             The next state to be stored.
         """
         assert type(self.states) is dict and type(self.next_states) is dict
@@ -277,13 +276,13 @@ class DQNMemory:
 
     def store_multimodal_ragged(self, state: NDArray, next_state: NDArray) -> None:
         """
-        This function stores multimodal observations provided as a ragged array.
+        Store multimodal observations provided as a ragged array.
 
         Parameters
         ----------
-        state : NDArray
+        state : numpy.ndarray
             The current state to be stored.
-        next_state : NDArray
+        next_state : numpy.ndarray
             The next state to be stored.
         """
         assert type(self.states) is NDArray and type(self.next_states) is NDArray
@@ -303,18 +302,18 @@ class DQNMemory:
 
     def retrieve_simple(self, idx: NDArray[np.int_]) -> tuple[NDArray, NDArray]:
         """
-        This function retrieves simple observations.
+        Retrieve simple observations.
 
         Parameters
         ----------
-        idx : NDArray
+        idx : numpy.ndarray
             The indeces of the observations that should be retrieved.
 
         Returns
         -------
-        states : NDArray
+        states : numpy.ndarray
             The batch of current states.
-        next_states : NDArray
+        next_states : numpy.ndarray
             The batch of next states.
         """
         assert type(self.states) is np.ndarray and type(self.next_states) is np.ndarray
@@ -324,18 +323,18 @@ class DQNMemory:
         self, idx: NDArray[np.int_]
     ) -> tuple[list[NDArray], list[NDArray]]:
         """
-        This function retrieves multimodal observations as a list.
+        Retrieve multimodal observations as a list.
 
         Parameters
         ----------
-        idx : NDArray
+        idx : numpy.ndarray
             The indeces of the observations that should be retrieved.
 
         Returns
         -------
-        states : list of NDArray
+        states : list of numpy.ndarray
             The batch of current states.
-        next_states : list of NDArray
+        next_states : list of numpy.ndarray
             The batch of next states.
         """
         assert type(self.states) is list and type(self.next_states) is list
@@ -348,18 +347,18 @@ class DQNMemory:
         self, idx: NDArray[np.int_]
     ) -> tuple[dict[str, NDArray], dict[str, NDArray]]:
         """
-        This function retrieves multimodal observations as a dictionary.
+        Retrieve multimodal observations as a dictionary.
 
         Parameters
         ----------
-        idx : NDArray
+        idx : numpy.ndarray
             The indeces of the observations that should be retrieved.
 
         Returns
         -------
-        states : dict of NDArray
+        states : dict of numpy.ndarray
             The batch of current states.
-        next_states : dict of NDArray
+        next_states : dict of numpy.ndarray
             The batch of next states.
         """
         assert type(self.states) is dict and type(self.next_states) is dict
@@ -372,18 +371,18 @@ class DQNMemory:
         self, idx: NDArray[np.int_]
     ) -> tuple[NDArray, NDArray]:
         """
-        This function retrieves multimodal observations as a ragged array.
+        Retrieve multimodal observations as a ragged array.
 
         Parameters
         ----------
-        idx : NDArray
+        idx : numpy.ndarray
             The indeces of the observations that should be retrieved.
 
         Returns
         -------
-        states : NDArray
+        states : numpy.ndarray
             The batch of current states.
-        next_states : NDArray
+        next_states : numpy.ndarray
             The batch of next states.
         """
         assert type(self.states) is NDArray and type(self.next_states) is NDArray

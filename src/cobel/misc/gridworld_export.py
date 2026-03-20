@@ -2,6 +2,7 @@
 import itertools
 import numpy as np
 from scipy.spatial.transform import Rotation as R  # type: ignore
+
 # typing
 from numpy.typing import NDArray
 
@@ -13,7 +14,7 @@ def state_coordinates(
     state: int, width: int, height: int, state_size: float
 ) -> NDArray:
     """
-    This function computes the coordinates of a gridworld state.
+    Compute the coordinates of a gridworld state.
 
     Parameters
     ----------
@@ -28,7 +29,7 @@ def state_coordinates(
 
     Returns
     -------
-    coordinates : NDArray
+    coordinates : numpy.ndarray
         The 3-dimensional coordinates of the gridworld state (z-coordinates is 0).
     """
     y = height - int(state / width) - 0.5
@@ -45,8 +46,7 @@ def retrieve_wall_info(
     include_perimeter: bool = True,
 ) -> tuple[WallList, PillarList]:
     """
-    This function retrieves the necessary wall information
-    from a list of invalid transitions.
+    Retrieve the necessary wall information from a list of invalid transitions.
 
     Parameters
     ----------
@@ -63,9 +63,9 @@ def retrieve_wall_info(
 
     Returns
     -------
-    walls : WallList
+    walls : list of (numpy.ndarray, bool)
         A list containing the position and rotation information for each wall.
-    pillars : PillarList
+    pillars : list of numpy.ndarray
         A list containing the position information for each pillar.
     """
     walls: WallList = []
@@ -136,14 +136,14 @@ def generate_walls(
     wall_depth: float,
 ) -> list[NDArray]:
     """
-    This function generates a list of wall objects.
+    Generate a list of wall objects.
 
     Parameters
     ----------
-    walls : WallList
+    walls : list of (numpy.ndarray, bool)
         A list containing the position and rotation information
         of the wall objects that will be generated.
-    pillars : PillarList
+    pillars : list of numpy.ndarray
         A list containing the position information of the
         pillar objects that will be generated.
     width : int
@@ -160,7 +160,7 @@ def generate_walls(
 
     Returns
     -------
-    meshes : list of NDArray
+    meshes : list of numpy.ndarray
         A list of vertices that define walls and pillars.
     """
     # check validity of parameters
@@ -197,13 +197,13 @@ def export_as_obj(
     meshes: list[NDArray], width: int, height: int, state_size: float, file_name: str
 ) -> None:
     """
-    This function exports the gridworld as 3D object in the Wavefront (obj) format.
+    Export the gridworld as 3D object in the Wavefront (obj) format.
     Vertices are written in the format (z+ up, y+ front).
 
     Parameters
     ----------
-    walls : list of NDArray
-        A list of wall objects.
+    meshes : list of numpy.ndarray
+        A list of meshes.
     width : int
         The width of the gridworld environment.
     height : int

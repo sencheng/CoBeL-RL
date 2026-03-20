@@ -1,6 +1,5 @@
 """
-This module provides optimizer classes for
-the fitting of model hyper-parameters to behavioral data.
+Provides optimizer classes for the fitting of model hyper-parameters to behavioral data.
 
 Classes
 -------

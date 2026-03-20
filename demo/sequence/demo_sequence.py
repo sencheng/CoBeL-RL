@@ -1,25 +1,28 @@
 """
-This demo simulation demonstrates how the Sequence class can be used
+A simulation that demonstrates how the Sequence class can be used
 to model tasks which use pre-defined trial sequences.
 A Q-learning agent is trained on a multi-arm-bandit like task in which
 four different stimuli are shown and one of four arms yields are reward.
 The reward received in each trial is visualized.
 Per default discrete indeces serve as observations for the stimuli but
 the simulation can be set to use unimodal, i.e., one-hot encodings, and
-multimodal, i.e., one-hot encodings wrapped in a dictionary, by providing
-'unimodal' and 'multimodal' command line arguments, respectively.
+multimodal, i.e., one-hot encodings wrapped in a dictionary,
+by providing '--observation-type unimodal' and '--observation-type multimodal'
+command line arguments, respectively.
 """
 
 # basic imports
-import sys
+import argparse
 import numpy as np
 import pyqtgraph as pg  # type: ignore
 import gymnasium as gym
+
 # CoBeL-RL
 from cobel.agent import QAgent
 from cobel.policy import EpsilonGreedy
 from cobel.monitor import RewardMonitor
 from cobel.interface import Sequence
+
 # typing
 from typing import Literal
 from cobel.typing import Trial, Observation, CallbackDict
@@ -29,20 +32,20 @@ def prepare_sequence(
     obs_type: Literal['discrete', 'unimodal', 'multimodal'] = 'discrete',
 ) -> tuple[list[Trial], dict[str, Observation], gym.Space]:
     """
-    This function prepares a predefined trial sequence.
+    Prepare a predefined trial sequence.
 
     Parameters
     ----------
-    obs_type : Literal of 'discrete', 'unimodal' and 'multimodal'
+    obs_type : {"discrete", "unimodal", "multimodal"}, default="discrete"
         The type of observation that will be prepared.
 
     Returns
     -------
-    sequence : list of Trial
+    sequence : list of cobel.interface.sequence.Trial
         A list of predefined trials of experiences.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary of named observations referenced by the prepared sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.Space
         The observation space of the observations.
     """
     sequence: list[Trial] = []
@@ -82,15 +85,15 @@ def simulation(
     observation_space: gym.Space,
 ) -> None:
     """
-    This function represents one simulation run.
+    Perform one simulation run.
 
     Parameters
     ----------
-    sequence : list of Trial
+    sequence : list of cobel.interface.sequence.Trial
         A list of predefined trials of experiences.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary of named observations referenced by the prepared sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.Space
         The observation space of the observations.
     """
     trials = len(sequence)
@@ -121,16 +124,24 @@ def simulation(
     main_window.close()
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """The main function."""  # noqa: D401
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--observation-type',
+        type=str,
+        default='discrete',
+        choices=('unimodal', 'multimodal', 'discrete'),
+    )
+    args = parser.parse_args()
     # generate trial sequence and observations
     sequence: list
     observations: dict[str, Observation]
     observation_space: gym.Space
-    if 'unimodal' in sys.argv:
-        sequence, observations, observation_space = prepare_sequence('unimodal')
-    elif 'multimodal' in sys.argv:
-        sequence, observations, observation_space = prepare_sequence('multimodal')
-    else:
-        sequence, observations, observation_space = prepare_sequence('discrete')
+    sequence, observations, observation_space = prepare_sequence(args.observation_type)
     # run
     simulation(sequence, observations, observation_space)
+
+
+if __name__ == '__main__':
+    main()

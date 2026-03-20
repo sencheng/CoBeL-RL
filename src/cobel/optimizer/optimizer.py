@@ -1,5 +1,6 @@
 # basic imports
 import abc
+
 # typing
 from typing import Any
 from collections.abc import Callable
@@ -10,9 +11,7 @@ FitLoss = Callable[[dict[str, Any], dict[str, Any]], tuple[float, ...] | float]
 
 
 class Optimizer(abc.ABC):
-    """
-    The abstract optimizer class.
-    """
+    """The abstract optimizer class."""
 
     @abc.abstractmethod
     def __init__(self) -> None:
@@ -27,22 +26,22 @@ class Optimizer(abc.ABC):
         loss: FitLoss,
     ) -> Fit:
         """
-        This function fits a given model to behavioral data.
+        Fit a given model to behavioral data.
 
         Parameters
         ----------
-        simulation : Simulation
+        simulation : cobel.optimizer.optimizer.Simulation
             The python function representing one simulation run.
         tasks : dict
             A dictionary containing different tasks (e.g., trial sequences)
             that the model has to be run for.
         data : dict
             A dictionary containing behavioral data for the different tasks.
-        loss : FitLoss
+        loss : cobel.optimizer.optimizer.FitLoss
             The loss function that is used for computing the fit.
 
         Returns
         -------
-        fitness : Fit
+        fitness : cobel.optimizer.optimizer.Fit
             A dictionary containing the fitness values for all parameter combinations.
         """

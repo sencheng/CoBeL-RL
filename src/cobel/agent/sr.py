@@ -1,17 +1,19 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from typing import TypedDict, NotRequired
 from numpy.typing import ArrayLike, NDArray
 from .agent import CallbackDict
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: int
     action: int
     reward: float
@@ -22,51 +24,53 @@ class Experience(TypedDict):
 
 class SR(Agent):
     """
-    This class implements an agent based on the successor representation (SR).
+    Implements an agent based on the successor representation (SR).
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float, default=0.99
         The agent's learning rate.
     gamma : float, default=0.99
         The agent's discount factor.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
     gamma : float
         The agent's discount factor.
     learning_rate : float
         The agent's learning rate.
-    SR : NDArray
+    SR : numpy.ndarray
         A 2D NumPy array of shape (`observation_space.n`, `observation_space.n`)
         which represents the agent's successor representation (SR).
         The SR is initialized to all zeros.
-    R : NDArray
+    R : numpy.ndarray
         A 1D NumPy array of shape (`observation_space.n`,)
         which represents the reward function.
-    transitions : NDArray
+    transitions : numpy.ndarray
         A 3D NumPy array of shape (`observation_space.n`, `observation_space.n`,
         `observation_space.n`) which represents possible environmental transitions.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -80,7 +84,6 @@ class SR(Agent):
 
     Examples
     --------
-
     Here we initialize the SR agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -130,19 +133,19 @@ class SR(Agent):
             self.transitions, (self.SR.shape[0], 1, self.SR.shape[0])
         )
         self.transitions = np.tile(self.transitions, (1, int(action_space.n), 1))
-        self.rewards = np.zeros(observation_space.n)
+        self.rewards = np.zeros(int(observation_space.n))
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
 
     def train(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -195,11 +198,11 @@ class SR(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -251,16 +254,16 @@ class SR(Agent):
 
     def update(self, experience: Experience) -> Experience:
         """
-        This function updates the SR for a given experience.
+        Update the SR for a given experience.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.agent.sr.Experience
             A dictionary containing the experience tuple.
 
         Returns
         -------
-        experience : Experience
+        experience : cobel.agent.sr.Experience
             A dictionary containing the experience tuple and the TD-error.
         """
         state, action = experience['state'], experience['action']
@@ -284,7 +287,7 @@ class SR(Agent):
 
     def retrieve_q(self, state: int) -> NDArray:
         """
-        This function retrieves the Q-values for a given state index.
+        Retrieve the Q-values for a given state index.
 
         Parameters
         ----------
@@ -293,7 +296,7 @@ class SR(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         values = np.sum(self.SR * self.rewards, axis=1)
@@ -306,7 +309,7 @@ class SR(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -315,7 +318,7 @@ class SR(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return np.array([self.retrieve_q(int(s)) for s in np.array(batch).astype(int)])

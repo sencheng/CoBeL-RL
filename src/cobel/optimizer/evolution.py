@@ -5,8 +5,10 @@ import numpy as np
 import multiprocessing as mp
 from os import listdir
 from os.path import isfile, join
+
 # framework imports
 from .optimizer import Optimizer
+
 # typing
 from typing import Any
 from .optimizer import Simulation, FitLoss, Fit
@@ -14,7 +16,7 @@ from .optimizer import Simulation, FitLoss, Fit
 
 class EAOptimizer(Optimizer):
     """
-    This class implements a simple evolutionary algorithm optimizer.
+    Implements a simple evolutionary algorithm optimizer.
 
     Parameters
     ----------
@@ -91,18 +93,18 @@ class EAOptimizer(Optimizer):
         pool: None | mp.pool.Pool = None,
     ) -> Fit:
         """
-        This function fits a given model to behavioral data.
+        Fit a given model to behavioral data.
 
         Parameters
         ----------
-        simulation : Simulation
+        simulation : cobel.optimizer.optimizer.Simulation
             The python function representing one simulation run.
         tasks : dict
             A dictionary containing different tasks (e.g., trial sequences)
             that the model has to be run for.
         data : dict
             A dictionary containing behavioral data for the different tasks.
-        loss : FitLoss
+        loss : cobel.optimizer.optimizer.FitLoss
             The loss function that is used for computing the fit.
         overwrite : bool, default=False
             If true, simulations are run for all parameter combinations
@@ -111,13 +113,13 @@ class EAOptimizer(Optimizer):
             The number of generations in each run.
         individuals : int, default=10
             The number of individuals in each generation.
-        pool : mp.pool.Pool or None, optional
+        pool : multiprocessing.pool.Pool or None, optional
             Optional worker pool for multiprocessing.
             If none is given simulations are run sequentially.
 
         Returns
         -------
-        fitness : Fit
+        fitness : cobel.optimizer.optimizer.Fit
             A dictionary containing the fitness values for all runs.
         """
         assert tasks.keys() == data.keys(), 'Task mismatch!'

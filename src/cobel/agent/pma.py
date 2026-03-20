@@ -2,11 +2,13 @@
 import copy
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from ..memory.pma import PMAMemory, Experience
 from .agent import Agent, Callbacks, CallbackDict, Logs
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from numpy.typing import NDArray, ArrayLike
 
@@ -14,50 +16,52 @@ from numpy.typing import NDArray, ArrayLike
 class PMA(Agent):
     """
     Implementation of a Dyna-Q agent using the Prioritized Memory Access (PMA)
-    method described by Mattar & Daw (2018): https://doi.org/10.1038/s41593-018-0232-z
+    method described by Mattar & Daw (2018): https://doi.org/10.1038/s41593-018-0232-z.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    memory : PMAMemory
+    memory : cobel.memory.pma.PMAMemory
         The agent's memory module.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float, default=0.9
         The agent's learning rate.
     gamma : float, default=0.99
         The agent's discount factor.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
     gamma : float
         The agent's discount factor.
     learning_rate : float
         The agent's learning rate.
-    Q : NDArray
+    Q : numpy.ndarray
         A 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents the agent's Q-function.
         The Q-function is initialized to all zeros.
-    M : PMAMemory
+    M : cobel.memory.pma.PMAMemory
         The memory module used by the Dyna-Q agent for storing
         environmental transitions.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -71,7 +75,6 @@ class PMA(Agent):
 
     Examples
     --------
-
     Here we initialize the PMA agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -94,9 +97,9 @@ class PMA(Agent):
 
         Parameters
         ----------
-        agent : Agent
+        agent : cobel.agent.agent.Agent
             Reference to the RL agent.
-        custom_callbacks : CallbackDict or None, optional
+        custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
             The custom callbacks defined by the user.
 
         """
@@ -108,17 +111,17 @@ class PMA(Agent):
 
         def on_replay_end(self, logs: Logs) -> Logs:
             """
-            This function is called on the end of replay,
-            and executes callbacks defined by the user.
+            Call on the end of replay,
+            and execute callbacks defined by the user.
 
             Parameters
             ----------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The replay log.
 
             Returns
             -------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The replay log.
             """
             replay_logs: dict = copy.copy(logs)
@@ -154,10 +157,10 @@ class PMA(Agent):
         self.callbacks = self.CallbacksPMA(self, custom_callbacks)
         self.learning_rate = learning_rate
         self.gamma = gamma
-        self.Q = np.zeros((observation_space.n, action_space.n))
+        self.Q = np.zeros((int(observation_space.n), int(action_space.n)))
         self.M = memory
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
 
@@ -170,11 +173,11 @@ class PMA(Agent):
         no_replay: bool = False,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -256,11 +259,11 @@ class PMA(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -315,11 +318,11 @@ class PMA(Agent):
 
     def update_q(self, update: list[Experience]) -> None:
         """
-        This function updates the Q-function.
+        Update the Q-function.
 
         Parameters
         ----------
-        update : list of dict
+        update : list of cobel.memory.pma.Experience
             A list containing experiences for an n-step update.
         """
         # expected future value
@@ -351,7 +354,7 @@ class PMA(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves Q-values for a batch of states.
+        Retrieve Q-values for a batch of states.
 
         Parameters
         ----------
@@ -360,7 +363,7 @@ class PMA(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return self.Q[np.array(batch).astype(int)]

@@ -1,5 +1,5 @@
 """
-This module offers a wide range of reinforcement learning agents.
+Offers a wide range of reinforcement learning agents.
 
 Classes
 -------

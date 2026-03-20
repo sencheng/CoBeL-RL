@@ -1,17 +1,19 @@
 # basic imports
 import copy
 import numpy as np
-import gymnasium as gym
 import pyqtgraph as pg  # type: ignore
+from gymnasium.spaces import Space, Box, Dict, Discrete
+
 # framework imports
 from .interface import Interface
+
 # typing
 from .interface import Observation, StepTuple, ResetTuple, Action
 from typing import TypedDict
 from numpy.typing import NDArray
 
 
-class TrialStep(TypedDict):
+class TrialStep(TypedDict):  # noqa: D101
     observation: str
     reward: float | NDArray
     action: None | int
@@ -22,51 +24,52 @@ Trial = list[TrialStep]
 
 class Sequence(Interface):
     """
-    This class presents a predefined sequences of experiences to the agent.
+    An interface class that presents a predefined sequences of experiences to the agent.
 
     Parameters
     ----------
-    trials : list of Trial
+    trials : list of cobel.interface.sequence.Trial
         A list containing the predefined trials of experiences.
         Each Trial consists of multiple TrialStep dictionaries which
         define observation, rewards and an optional action which
         can overwrite the agent's action.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary containing the observations referenced by the trial sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space.
     nb_actions : int, default=1
         The number of actions that can be executed.
     overwrite : bool, default=False
         A flag indicating whether actions should be overwritten.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the environment will be visualized.
 
     Attributes
     ----------
-    trials : list of Trial
+    trials : list of cobel.interface.sequence.Trial
         A list containing the predefined trials of experiences.
         Each Trial consists of multiple TrialStep dictionaries which
         define observation, rewards and an optional action which
         can overwrite the agent's action.
-    observations : dict of Observation
+    observations : dict of cobel.interface.interface.Observation
         A dictionary containing the observations referenced by the trial sequence.
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space.
-    nb_actions : int, default=1
-        The number of actions that can be executed.
-    overwrite : bool, default=False
+    action_space : gymnasium.spaces.Space
+        The action space.
+    overwrite : bool
         A flag indicating whether actions should be overwritten.
     current_trial : int
         Tracks the current trial.
     current_step : int
         Tracks the current trial step.
-    current_observation : Observation
+    current_observation : cobel.interface.interfacea.Observation
         The current observation.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the environment will be visualized.
 
     Examples
     --------
-
     Trials sequences and observations can be easily predefined
     and used to train RL agents. ::
 
@@ -88,7 +91,7 @@ class Sequence(Interface):
         self,
         trials: list[Trial],
         observations: dict[str, Observation],
-        observation_space: gym.spaces.Space,
+        observation_space: Space,
         nb_actions: int = 1,
         overwrite: bool = False,
         widget: None | pg.GraphicsLayoutWidget = None,
@@ -106,37 +109,36 @@ class Sequence(Interface):
         self.current_step = 0
         # prepare observation and action spaces
         self.observation_space = observation_space
-        self.action_space = gym.spaces.Discrete(nb_actions)
+        self.action_space: Discrete = Discrete(nb_actions)
         self.zero_current()
 
     def zero_current(self) -> None:
-        """
-        This function zeros the current observation.
-        """
-        if type(self.observation_space) is gym.spaces.Dict:
+        """Zero the current observation."""
+        if type(self.observation_space) is Dict:
             obs = list(self.observations.values())[0]
             assert type(obs) is dict
             self.current_observation = {i: np.zeros(o.shape) for i, o in obs.items()}
-        elif type(self.observation_space) is gym.spaces.Box:
+        elif type(self.observation_space) is Box:
             assert type(self.observations) is dict
             self.current_observation = np.zeros(
                 list(self.observations.values())[0].shape  # type: ignore
             )
-        elif type(self.observation_space) is gym.spaces.Discrete:
+        elif type(self.observation_space) is Discrete:
             self.current_observation = 0
 
     def step(self, action: Action) -> StepTuple:
         """
-        The interface's step function (compatible with Gymnasium's step function).
+        Perform one simulation step in the environment
+        (compatible with Gymnasium's step function).
 
         Parameters
         ----------
-        action : Action
+        action : cobel.interface.interface.Action
             The action selected by the agent.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         reward : float
             The reward received.
@@ -151,6 +153,7 @@ class Sequence(Interface):
         self.zero_current()
         reward: float
         a: int = int(action)
+        a_copy = a
         step_reward = self.trials[self.current_trial][self.current_step]['reward']
         step_action = self.trials[self.current_trial][self.current_step]['action']
         if type(step_reward) is float:
@@ -179,16 +182,16 @@ class Sequence(Interface):
             reward,
             end_trial,
             end_trial,
-            {'action': a, 'step_action': step_action},
+            {'action': a_copy, 'step_action': step_action},
         )
 
     def reset(self) -> ResetTuple:
         """
-        The interface's reset function (compatible with Gymnasium's reset function).
+        Reset the environment (compatible with Gymnasium's reset function).
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         logs : dict
             The (empty) logs dictionary.
@@ -202,11 +205,11 @@ class Sequence(Interface):
 
     def get_position(self) -> NDArray:
         """
-        This function returns the agent's position in the environment.
+        Return the agent's position in the environment.
 
         Returns
         -------
-        position : NDArray
+        position : numpy.ndarray
             A numpy array containing the agent's position.
         """
         return np.array([])

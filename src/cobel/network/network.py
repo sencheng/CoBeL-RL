@@ -1,5 +1,6 @@
 # basic imports
 import abc
+
 # typing
 from typing import Any, Self
 from numpy.typing import NDArray
@@ -9,9 +10,7 @@ ParamDict = dict[str, Any]
 
 
 class Network(abc.ABC):
-    """
-    This class implements an abstract network class.
-    """
+    """Implements an abstract network class."""
 
     @abc.abstractmethod
     def __init__(self) -> None:
@@ -20,62 +19,62 @@ class Network(abc.ABC):
     @abc.abstractmethod
     def predict_on_batch(self, batch: Batch) -> Batch:
         """
-        This function computes network predictions for a batch of input samples.
+        Compute network predictions for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
         -------
-        predictions : Batch
+        predictions : cobel.network.network.Batch
             A batch of network predictions.
         """
 
     @abc.abstractmethod
     def train_on_batch(self, batch: Batch, targets: Batch) -> None:
         """
-        This function trains the network on a batch of input samples.
+        Train the network on a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        targets : Batch
+        targets : cobel.network.network.Batch
             The batch of target values.
         """
 
     @abc.abstractmethod
     def get_weights(self) -> list[NDArray]:
         """
-        This function returns the weights of the network.
+        Return the weights of the network.
 
         Returns
         -------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
 
     @abc.abstractmethod
     def set_weights(self, weights: list[NDArray]) -> None:
         """
-        This function sets the weights of the network.
+        Set the weights of the network.
 
         Parameters
         ----------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
 
     @abc.abstractmethod
     def clone(self) -> Self:
         """
-        This function returns a copy of the network model.
+        Return a copy of the network model.
 
         Returns
         -------
-        model : Self
+        model : cobel.network.network.Network
             The network model's copy.
         """
 
@@ -84,38 +83,38 @@ class Network(abc.ABC):
         self, optimizer: str, parameters: None | ParamDict = None
     ) -> None:
         """
-        This function sets the optimizer of the network model.
+        Set the optimizer of the network model.
 
         Parameters
         ----------
         optimizer : str
             The name of the optimizer.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the optimizer (e.g., learning rate).
         """
 
     @abc.abstractmethod
     def set_loss(self, loss: str, parameters: None | ParamDict = None) -> None:
         """
-        This function sets the loss of the network model.
+        Set the loss of the network model.
 
         Parameters
         ----------
         loss : str
             The name of the loss.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the loss.
         """
 
     @abc.abstractmethod
     def get_layer_activity(self, batch: Batch, layer_index: int | str) -> NDArray:
         """
-        This function returns the activity of a specified
+        Return the activity of a specified
         layer for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
         layer_index : int or str
             The index of the layer from which activity
@@ -123,7 +122,7 @@ class Network(abc.ABC):
 
         Returns
         -------
-        activity : NDArray
+        activity : numpy.ndarray
             The layer activities of the specified layer for the batch of input samples.
         """
 
@@ -134,7 +133,7 @@ class Network(abc.ABC):
         trainable: bool | list[bool] | dict[str, bool],
     ) -> None:
         """
-        This function sets the trainability of specified network layers.
+        Set the trainability of specified network layers.
 
         Parameters
         ----------

@@ -1,30 +1,29 @@
 """
-This demo simulation showcases how to instatiate and control
+A demo simulation that showcases how to instatiate and control
 the Godot simulator via the GodotSimulator class.
 A scene consisting of a square room is loaded and the virtual
 agent (represented as a white cube) moves in a circular motion
 through the room while the color of a light source is constantly
-being changed.
-Additionally, information about the rendered image and
-simulation objects is printed.
+being changed. Additionally, information about the rendered image
+and simulation objects is printed.
 """
 
 # basic imports
-import sys
 import time
+import argparse
 import numpy as np
+
 # CoBeL-RL
 from cobel.interface import GodotSimulator
 
 
 def single_run() -> None:
-    """
-    This function represents one demo run.
-    """
+    """Perform one demo run."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--executable', type=str)
+    args = parser.parse_args()
     # init simulator
-    executable: None | str = None
-    if '--executable' in sys.argv:
-        executable = sys.argv[sys.argv.index('--executable') + 1]
+    executable: None | str = args.executable
     simulator = GodotSimulator('room.tscn', executable=executable)
     # print image info
     print('\nImage Info:', simulator.image_info, '\n')

@@ -1,5 +1,6 @@
 # basic imports
 import numpy as np
+
 # typing
 from typing import Literal
 from numpy.typing import NDArray
@@ -19,7 +20,7 @@ def make_gridworld(
     deterministic: bool = True,
 ) -> WorldDict:
     """
-    This function builds a gridworld according to the given parameters.
+    Build a gridworld according to the given parameters.
 
     Parameters
     ----------
@@ -29,7 +30,7 @@ def make_gridworld(
         The width of the gridworld.
     terminals : list of int or None, optional
         A list containing the gridworld's terminal states' indeces.
-    rewards : NDArray or None, optional
+    rewards : numpy.ndarray or None, optional
         A numpy array containing the gridworld's state rewards
         where the first column represents the state indeces and
         the second column the reward.
@@ -41,7 +42,7 @@ def make_gridworld(
         A list containing the unreachable states.
     invalid_transitions : list of 2-tuple of int or None, optional
         A list containing the invalid state transitions.
-    wind : NDArray or None, optional
+    wind : numpy.ndarray or None, optional
         The wind applied to the gridworld's states where the first
         column contains the state indeces and the second and thirds
         column the wind applied to height and width coordinates.
@@ -50,7 +51,7 @@ def make_gridworld(
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     world: WorldDict = {}  # type: ignore
@@ -139,7 +140,7 @@ def make_open_field(
     height: int, width: int, goal_state: int = 0, reward: float = 1
 ) -> WorldDict:
     """
-    This function builds an open field gridworld with one terminal goal state.
+    Build an open field gridworld with one terminal goal state.
 
     Parameters
     ----------
@@ -154,7 +155,7 @@ def make_open_field(
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     return make_gridworld(
@@ -168,7 +169,7 @@ def make_open_field(
 
 def make_empty_field(height: int, width: int) -> WorldDict:
     """
-    This function builds an empty open field gridworld.
+    Build an empty open field gridworld.
 
     Parameters
     ----------
@@ -179,7 +180,7 @@ def make_empty_field(height: int, width: int) -> WorldDict:
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     return make_gridworld(height, width)
@@ -194,7 +195,7 @@ def make_windy_gridworld(
     direction: Literal['up', 'down'] = 'up',
 ) -> WorldDict:
     """
-    This function builds a windy gridworld with one terminal goal state.
+    Build a windy gridworld with one terminal goal state.
 
     Parameters
     ----------
@@ -202,18 +203,18 @@ def make_windy_gridworld(
         The height of the gridworld.
     width : int
         The width of the gridworld.
-    columns : NDArray
+    columns : numpy.ndarray
         The wind strengths for the different columns.
     goal_state : int, default=0
         The goal state's index.
     reward : float, default=1.
         The reward provided at the goal state.
-    direction : str, default='up'
+    direction : {"up", "down"}, default="up"
         The wind's direction (up, down).
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     directions = {'up': 1, 'down': -1}
@@ -240,7 +241,7 @@ def make_t_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds a T-maze gridworld.
+    Build a T-maze gridworld.
 
     Parameters
     ----------
@@ -248,14 +249,14 @@ def make_t_maze(
         The T-maze's stem length.
     arm_length : int
         The T-maze's arm length.
-    goal_arm : str, default='right'
+    goal_arm : {"left", "right"}, default="right"
         The rewarded arm (left, right).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     assert stem_length > 0 and arm_length > 0, (
@@ -306,7 +307,7 @@ def make_double_t_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds a double T-maze gridworld.
+    Build a double T-maze gridworld.
 
     Parameters
     ----------
@@ -314,16 +315,16 @@ def make_double_t_maze(
         The double T-maze's stem length.
     arm_length : int
         The double T-maze's arm length.
-    goal_arm : str, default='right-right'
+    goal_arm : {"left-left", "left-right", "right-left", "right-right"}, default="right-right"
         The rewarded arm (left-left, left-right, right-left, right-right).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
-    """
+    """  # noqa: E501
     assert stem_length > 0 and arm_length > 0, (
         'Stem and arm length must be greater than zero!'
     )
@@ -440,7 +441,7 @@ def make_two_sided_t_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds a two sided T-maze gridworld.
+    Build a two sided T-maze gridworld.
 
     Parameters
     ----------
@@ -448,16 +449,16 @@ def make_two_sided_t_maze(
         The two sided T-maze's stem length.
     arm_length : int
         The two sided T-maze's arm length.
-    goal_arm : str, default='right-right'
+    goal_arm : {"left-left", "left-right", "right-left", "right-right"}, default="right-right"
         The rewarded arm (left-left, left-right, right-left, right-right).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
-    """
+    """  # noqa: E501
     assert stem_length > 0 and arm_length > 0, (
         'Stem and arm length must be greater than zero!'
     )
@@ -514,7 +515,7 @@ def make_two_choice_t_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds a two-choice T-maze gridworld.
+    Build a two-choice T-maze gridworld.
 
     Parameters
     ----------
@@ -524,16 +525,16 @@ def make_two_choice_t_maze(
         The width of the laps.
     arm_length : int
         The length of the (inner) T-maze's arms.
-    chirality : str, default='right'
+    chirality : {"left", "right"}, default="right"
         Defines whether the T-maze is located at the left or right side of the maze.
-    goal_location : str, default='right'
+    goal_location : {"left", "right"}, default="right"
         The rewarded lap (left, right).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     assert arm_length > 0, '!'
@@ -672,7 +673,7 @@ def make_8_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds an 8-maze gridworld.
+    Build an 8-maze gridworld.
 
     Parameters
     ----------
@@ -680,14 +681,14 @@ def make_8_maze(
         The height of the maze's center piece.
     lap_width : int
         The width of the laps.
-    goal_location : str, default='right'
+    goal_location : {"left", "right"}, default="right"
         The rewarded lap (left, right).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     assert center_height > 0 and lap_width > 0, (
@@ -742,7 +743,7 @@ def make_detour_maze(
     reward: float = 1,
 ) -> WorldDict:
     """
-    This function builds a detour maze gridworld.
+    Build a detour maze gridworld.
 
     Parameters
     ----------
@@ -759,7 +760,7 @@ def make_detour_maze(
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     assert width_small > 0 and height_small > 0, (
@@ -901,7 +902,7 @@ def make_cross_maze(
     reward: float = 1.0,
 ) -> WorldDict:
     """
-    This function builds a cross maze gridworld.
+    Build a cross maze gridworld.
 
     Parameters
     ----------
@@ -909,14 +910,14 @@ def make_cross_maze(
         The cross maze's arm length.
     arm_width : int
         The cross maze's arm width.
-    goal_arm : str, default='top'
+    goal_arm : {"left", "top", "right", "bottom"}, default="top"
         The rewarded arm (left, top, right, bottom).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    world : WorldDict
+    world : cobel.interface.gridworld.WorldDict
         The gridworld as a dictionary.
     """
     assert arm_length > 0, 'The arm length must be greater than zero!'

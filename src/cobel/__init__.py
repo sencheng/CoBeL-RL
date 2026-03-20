@@ -37,7 +37,7 @@ gridworld-editor
 __version__
     CoBeL-RL version string
 
-"""
+"""  # noqa: D400
 
 from importlib.metadata import distribution
 

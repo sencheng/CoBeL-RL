@@ -1,5 +1,5 @@
 """
-This module offers a variety of action selection policies.
+Offers a variety of action selection policies.
 
 Classes
 -------

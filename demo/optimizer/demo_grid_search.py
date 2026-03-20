@@ -1,5 +1,5 @@
 """
-This demo simulation showcases how the GridSearchOptimizer can be used to fit
+A demo simulation that showcases how the GridSearchOptimizer can be used to fit
 the learning parameters of a Q-learning agent that is trained on a multi-arm-bandit like
 task in which four different stimuli are shown and one of eight arms yields are reward.
 Synthetic data is generated using a learning rate of 0.9 and inverse temperatures
@@ -13,23 +13,26 @@ import os
 import numpy as np
 import gymnasium as gym
 import multiprocessing as mp
+
 # CoBeL-RL
 from cobel.agent import QAgent
 from cobel.policy import Softmax
 from cobel.monitor import RewardMonitor
 from cobel.interface import Sequence
 from cobel.optimizer import GridSearchOptimizer
+
 # typing
 from typing import Any
 from cobel.interface.sequence import Trial
 from cobel.interface.interface import Observation
+
 Trials = list[Trial]
 ObsDict = dict[str, Observation]
 
 
 def generate_sequence() -> tuple[Trials, ObsDict, gym.spaces.Box, gym.spaces.Discrete]:
     """
-    Generates a sequence of learning trials.
+    Generate a sequence of learning trials.
 
     Returns
     -------
@@ -37,9 +40,9 @@ def generate_sequence() -> tuple[Trials, ObsDict, gym.spaces.Box, gym.spaces.Dis
         The trial sequence.
     observations : ObsDict
         A dictionary containing the observations referenced in `sequence`.
-    observation_space : gym.spaces.Box
+    observation_space : gymnasium.spaces.Box
         The observation space.
-    action_space : gym.spaces.Discrete
+    action_space : gymnasium.spaces.Discrete
         The action space.
     """
     sequence: list[Trial] = []
@@ -55,14 +58,14 @@ def generate_sequence() -> tuple[Trials, ObsDict, gym.spaces.Box, gym.spaces.Dis
         'D': np.eye(4)[3],
     }
     observation_space = gym.spaces.Box(0.0, 1.0, (4,))
-    action_space = gym.spaces.Discrete(8)
+    action_space: gym.spaces.Discrete = gym.spaces.Discrete(8)
 
     return sequence, observations, observation_space, action_space
 
 
 def simulation(task: dict[str, Any], parameters: dict[str, Any]) -> Any:
     """
-    Represents one simulation run.
+    Perform one simulation run.
 
     Parameters
     ----------
@@ -86,8 +89,8 @@ def simulation(task: dict[str, Any], parameters: dict[str, Any]) -> Any:
     policy = Softmax(parameters['beta'])
     reward_monitor = RewardMonitor(nb_trials)
     agent = QAgent(
-        observation_space,
-        action_space,
+        task['observation_space'],
+        task['action_space'],
         policy,
         learning_rate=parameters['learning_rate'],
         custom_callbacks={'on_step_end': [reward_monitor.update]},
@@ -99,8 +102,7 @@ def simulation(task: dict[str, Any], parameters: dict[str, Any]) -> Any:
 
 def loss(simulation_data: dict[str, Any], behavioral_data: dict[str, Any]) -> float:
     """
-    The loss function used for the fitting process.
-    Here mean squared error is used.
+    Compute mean squared error loss for the fitting process.
 
     Parameters
     ----------
@@ -125,7 +127,8 @@ def loss(simulation_data: dict[str, Any], behavioral_data: dict[str, Any]) -> fl
     )
 
 
-if __name__ == '__main__':
+def main() -> None:
+    """The main function."""  # noqa: D401
     # prepare task
     trials, observations, observation_space, action_space = generate_sequence()
     tasks = {
@@ -157,3 +160,7 @@ if __name__ == '__main__':
     best_fit = np.argmin(list(fit.values()))
     print('Best fit is: ', list(fit.keys())[best_fit])
     print('Ground Truth: (0.9, 1)')
+
+
+if __name__ == '__main__':
+    main()

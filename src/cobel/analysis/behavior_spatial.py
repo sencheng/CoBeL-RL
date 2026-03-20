@@ -1,5 +1,6 @@
 # basic imports
 import numpy as np
+
 # typing
 from typing import Literal
 from numpy.typing import NDArray
@@ -13,12 +14,11 @@ def get_occupancy_map(
     margins: Literal['expand', 'include', 'ignore'] = 'expand',
 ) -> NDArray:
     """
-    This function computes the occupancy map for a
-    given set of trajectories and bin size.
+    Compute the occupancy map for a given set of trajectories and bin size.
 
     Parameters
     ----------
-    trajectories : list of NDArray
+    trajectories : list of numpy.ndarray
         A list of trajectories. Trajectories are expected to be
         numpy arrays of (non-negative) coordinates.
     width : float
@@ -27,13 +27,13 @@ def get_occupancy_map(
         The height of the environment.
     bin_size : float
         The size of the spatial bin.
-    margins : 'expand', 'include' or 'ignore', default='expand'
+    margins : {"expand", "include", "ignore"}, default="expand"
         Margin handling mode. Possible modes are 'expand' (adds bins),
         'include' (clips coordinates) and 'ignore' (ignores margins).
 
     Returns
     -------
-    occupancy : NDArray
+    occupancy : numpy.ndarray
         The occupancy map.
     """
     assert width > 0 and height > 0, (
@@ -75,24 +75,23 @@ def get_occupancy_map(
 
 def match(sequence: NDArray, template: NDArray) -> NDArray:
     """
-    This function computes the number of matching states
-    between a given sequene and template.
+    Compute the number of matching states between a given sequene and template.
 
     Parameters
     ----------
-    sequence : NDArray
+    sequence : numpy.ndarray
         A sequence of state indeces.
-    template : NDArray
+    template : numpy.ndarray
         A template sequence of state indeces.
 
     Returns
     -------
-    match : NDArray
+    match : numpy.ndarray
         A numpy array containing the number of matching state
         indeces for each point in the sequence.
     """
     # prepare sequence and template for matching
-    T = -np.ones( # noqa: N806
+    T = -np.ones(  # noqa: N806
         (
             sequence.shape[0] + template.shape[0] * 2,
             sequence.shape[0] + template.shape[0] * 2,

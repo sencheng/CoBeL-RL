@@ -3,9 +3,11 @@ import copy
 import optax  # type: ignore
 import numpy as np
 from flax import nnx
+
 # framework imports
 from .network import Network
 from .network import Batch, ParamDict
+
 # typing
 from typing import Self
 from collections.abc import Callable
@@ -36,13 +38,13 @@ flax_losses = {
 
 class FlaxNetwork(Network):
     """
-    This class provides an interface to Flax models.
+    Provides an interface to Flax models.
 
     Parameters
     ----------
-    model : nnx.Module
+    model : flax.nnx.Module
         The network model.
-    optimizer : str, nnx.Optimizer or None, optional
+    optimizer : str, flax.nnx.Optimizer or None, optional
         The optimizer that should be used.
         Defaults to Adam if none was provided.
     loss : str, Callable or None, optional
@@ -53,16 +55,15 @@ class FlaxNetwork(Network):
 
     Attributes
     ----------
-    model : nnx.Module
+    model : flax.nnx.Module
         The network model.
-    optimizer : nnx.Optimizer
+    optimizer : flax.nnx.Optimizer
         The optimizer that is being used.
     loss : Callable
         The loss that is being used.
 
     Examples
     --------
-
     Simpy define a Flax network which you want to use
     with classes like the DQN agent. ::
 
@@ -134,16 +135,16 @@ class FlaxNetwork(Network):
 
     def predict_on_batch(self, batch: Batch) -> NDArray:
         """
-        This function computes network predictions for a batch of input samples.
+        Compute network predictions for a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             A batch of network predictions.
         """
         assert callable(self.model)
@@ -151,9 +152,7 @@ class FlaxNetwork(Network):
 
     @nnx.jit(static_argnums=(0, 2))
     def _train_step(self, model, loss, optimizer, samples, targets):
-        """
-        Train step function which updates the network.
-        """
+        """Train step function which updates the network."""
 
         def loss_fn(model):
             return loss(model(samples), targets).mean()
@@ -165,26 +164,26 @@ class FlaxNetwork(Network):
         self, batch: Batch, targets: Batch, sample_weights: None | NDArray = None
     ) -> None:
         """
-        This function trains the network on a batch of input samples.
+        Train the network on a batch of input samples.
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        targets : Batch
+        targets : cobel.network.network.Batch
             The batch of target values.
-        sample_weights : NDArray or None, optional
+        sample_weights : numpy.ndarray or None, optional
             An optional batch of sample weights.
         """
         self._train_step(self.model, self.loss, self.optim, batch, targets)
 
     def get_weights(self) -> list[NDArray]:
         """
-        This function returns the weights of the network.
+        Return the weights of the network.
 
         Returns
         -------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         weights: list[NDArray] = []
@@ -199,11 +198,11 @@ class FlaxNetwork(Network):
 
     def set_weights(self, weights: list[NDArray]) -> None:
         """
-        This function sets the weights of the network.
+        Set the weights of the network.
 
         Parameters
         ----------
-        weights : list of NDArray
+        weights : list of numpy.ndarray
             A list of layer weights.
         """
         for i, child in enumerate(self.model.iter_children()):
@@ -215,11 +214,11 @@ class FlaxNetwork(Network):
 
     def clone(self) -> Self:
         """
-        This function returns a copy of the network.
+        Return a copy of the network.
 
         Returns
         -------
-        model : Self
+        model : cobel.network.network_flax.FlaxNetwork
             The network model's copy.
         """
         network = copy.deepcopy(self.model)
@@ -232,13 +231,13 @@ class FlaxNetwork(Network):
         self, optimizer: str | nnx.Optimizer, parameters: None | ParamDict = None
     ) -> None:
         """
-        This function sets the optimizer of the network model.
+        Set the optimizer of the network model.
 
         Parameters
         ----------
-        optimizer : str or nnx.Optimizer
+        optimizer : str or flax.nnx.Optimizer
             The optimizer that should be used.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the optimizer (e.g., learning rate).
         """
         optim: nnx.Optimizer
@@ -258,13 +257,13 @@ class FlaxNetwork(Network):
         self, loss: str | Callable, parameters: None | ParamDict = None
     ) -> None:
         """
-        This function sets the loss of the network model.
+        Set the loss of the network model.
 
         Parameters
         ----------
         loss : str or Callable
             The loss that should be used.
-        parameters : ParamDict or None, optional
+        parameters : cobel.network.network.ParamDict or None, optional
             The parameters of the loss.
             Unused.
         """
@@ -275,7 +274,7 @@ class FlaxNetwork(Network):
 
     def get_layer_activity(self, batch: Batch, layer: int | str) -> NDArray:
         """
-        This function returns the activity of a specified layer
+        Return the activity of a specified layer
         for a batch of input samples.
         Currently only the recording of layer activity using intermediates
         stored with `.sow()` is supported.
@@ -283,16 +282,16 @@ class FlaxNetwork(Network):
 
         Parameters
         ----------
-        batch : Batch
+        batch : cobel.network.network.Batch
             The batch of input samples.
-        layer_index : int or str
+        layer : int or str
             The index or name of the layer from which
             activity should be retrieved.
             Will throw an assertion error when an index is given.
 
         Returns
         -------
-        activity : NDArray
+        activity : numpy.ndarray
             The layer activities of the specified layer
             for the batch of input samples.
         """
@@ -311,7 +310,7 @@ class FlaxNetwork(Network):
         trainable: bool | list[bool] | dict[str, bool],
     ) -> None:
         """
-        This function sets the trainability of specified network layers.
+        Set the trainability of specified network layers.
 
         Parameters
         ----------

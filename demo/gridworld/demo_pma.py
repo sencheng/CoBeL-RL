@@ -1,5 +1,5 @@
 """
-This demo simulation trains a Dyna-Q agent which uses PMA to replay
+A demo simulation that trains a Dyna-Q agent which uses PMA to replay
 experiences in a 5x5 gridworld with a reward located in the upper right corner.
 The agent starts each trial at the center of the environment.
 The current gridworld state and location (left plot) as well as
@@ -11,6 +11,7 @@ the steps taken in each trial and visualizes them (right plot).
 # basic imports
 import numpy as np
 from pyqtgraph import GraphicsLayoutWidget  # type: ignore
+
 # CoBeL-RL
 from cobel.agent import PMA
 from cobel.memory import PMAMemory
@@ -18,14 +19,13 @@ from cobel.policy import EpsilonGreedy
 from cobel.monitor import EscapeLatencyMonitor
 from cobel.interface import Gridworld
 from cobel.misc.gridworld_tools import make_gridworld
+
 # typing
 from cobel.typing import CallbackDict
 
 
 def simulation() -> None:
-    """
-    Represents one simulation run.
-    """
+    """Perform one simulation run."""
     trials: int = 250
     steps: int = 50
     # prepare widget

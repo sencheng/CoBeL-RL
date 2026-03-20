@@ -1,19 +1,21 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..policy.policy import Policy
 from ..memory.dqn import DQNMemory, Experience
 from ..network.network import Network
 from ..interface.interface import Interface
+
 # typing
 from typing import TypedDict
 from .agent import CallbackDict
 from numpy.typing import NDArray, ArrayLike
 
 
-class ReplayBatch(TypedDict):
+class ReplayBatch(TypedDict):  # noqa: D101
     states: NDArray | list[NDArray] | dict[str, NDArray]
     actions: NDArray
     rewards: NDArray
@@ -23,43 +25,45 @@ class ReplayBatch(TypedDict):
 
 class DQN(Agent):
     """
-    This class implements the deep Q-network algorithm (Mnih et al., 2015).
+    Implements the deep Q-network algorithm (Mnih et al., 2015).
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    model : Network
+    model : cobel.network.network.Network
         The network model used by the agent.
     gamma : float, default=0.8
         The discount factor used for computing the target values.
-    memory : DQNMemory or None, optional
+    memory : cobel.memory.dqn.DQNMemory or None, optional
         The memory module used for storing experiences.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
-    model_target : Network
+    model_target : cobel.network.network.Network
         The DQN's target network.
-    model_online : Network
+    model_online : cobel.network.network.Network
         The DQN's online network.
-    M : DQNMemory
+    M : cobel.memory.dqn.DQNMemory
         The memory module used for storing experiences.
         If none was provided an instance with default
         parameters is created.
@@ -90,7 +94,6 @@ class DQN(Agent):
 
     Examples
     --------
-
     Here we initialize the DQN agent for a topology
     environment with 4 actions. ::
 
@@ -151,11 +154,11 @@ class DQN(Agent):
         batch_size: int = 32,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -213,11 +216,11 @@ class DQN(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -272,16 +275,16 @@ class DQN(Agent):
         self, state: NDArray | list[NDArray] | dict[str, NDArray]
     ) -> NDArray:
         """
-        This function retrieves the Q-values for a given observations.
+        Retrieve the Q-values for a given observations.
 
         Parameters
         ----------
-        state : NDArray, list of NDArray or dict of NDArray
+        state : numpy.ndarray, list of numpy.ndarray or dict of numpy.ndarray
             The observation for which Q-values should be retrieved.
 
         Returns
         -------
-        q_values : NDArray
+        q_values : numpy.ndarray
             The Q-values.
         """
         preds: NDArray | list[NDArray] | dict[str, NDArray]
@@ -308,7 +311,7 @@ class DQN(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -317,7 +320,7 @@ class DQN(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         preds = self.model_online.predict_on_batch(batch)  # type: ignore
@@ -327,7 +330,7 @@ class DQN(Agent):
 
     def replay(self, batch_size: int = 32) -> ReplayBatch:
         """
-        This function replays experiences to update the Q-function.
+        Replay experiences to update the Q-function.
 
         Parameters
         ----------
@@ -336,7 +339,7 @@ class DQN(Agent):
 
         Returns
         -------
-        replay : dict
+        replay : cobel.agent.dqn.ReplayBatch
             The replayed batch.
         """
         # sample experience batch
@@ -368,7 +371,9 @@ class DQN(Agent):
             self.model_target.set_weights(weights_target)  # type: ignore
         elif self.last_update >= self.target_update:
             self.model_target.set_weights(self.model_online.get_weights())
-            self.last_update = 0
+            self.last_update = 1
+        else:
+            self.last_update += 1
 
         return {
             'states': states,

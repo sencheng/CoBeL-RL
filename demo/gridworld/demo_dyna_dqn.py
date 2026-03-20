@@ -1,5 +1,5 @@
 """
-This demo simulation trains an agent combining the Dyna-Q and DQN algorithms
+A demo simulation that trains an agent combining the Dyna-Q and DQN algorithms
 in a 5x5 gridworld with a reward located in the upper left corner.
 Each gridworld state is mapped to an observation (here one-hot encodings)
 which serve as input to a DNN that represents the Q-function.
@@ -11,12 +11,16 @@ the steps taken in each trial and visualizes them (right plot).
 """
 
 # basic imports
+import os
+import argparse
 import numpy as np
 import pyqtgraph as pg  # type: ignore
-# torch
+
+# PyTorch
 from torch import Tensor, reshape, set_num_threads
 from torch.nn import Module, Linear
 from torch.nn.functional import relu
+
 # CoBeL-RL
 from cobel.agent import DynaDQN
 from cobel.policy import EpsilonGreedy
@@ -24,12 +28,13 @@ from cobel.network import TorchNetwork
 from cobel.monitor import EscapeLatencyMonitor
 from cobel.interface import Gridworld
 from cobel.misc.gridworld_tools import make_open_field
+
 # typing
 from numpy.typing import NDArray
 from cobel.typing import CallbackDict
 
 
-class Model(Module):
+class Model(Module):  # noqa: D101
     def __init__(self, input_size: int, output_size: int):
         super().__init__()
         self.layer_dense_1 = Linear(in_features=input_size, out_features=64)
@@ -37,7 +42,7 @@ class Model(Module):
         self.layer_output = Linear(in_features=64, out_features=output_size)
         self.double()
 
-    def forward(self, layer_input: Tensor) -> Tensor:
+    def forward(self, layer_input: Tensor) -> Tensor:  # noqa: D102
         x = reshape(layer_input, (len(layer_input), -1))
         x = self.layer_dense_1(x)
         x = relu(x)
@@ -50,11 +55,11 @@ class Model(Module):
 
 def simulation() -> NDArray:
     """
-    Represents one simulation run.
+    Perform one simulation run.
 
     Returns
     -------
-    q_function : NDArray
+    q_function : numpy.ndarray
         The learned Q-function.
     """
     trials_train = 500
@@ -86,10 +91,21 @@ def simulation() -> NDArray:
     return agent.predict_on_batch(np.arange(25))
 
 
-if __name__ == '__main__':
-    set_num_threads(1)
+def main() -> None:
+    """The main function."""  # noqa: D401
+    nb_cores: int = os.cpu_count()  # type: ignore
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--threads', type=int, default=1, choices=range(1, nb_cores + 1)
+    )
+    args = parser.parse_args()
+    set_num_threads(args.threads)
     np.set_printoptions(precision=3, floatmode='fixed')
-    Q = simulation()
+    q_function = simulation()
     print('Q-function:')
     for i in range(25):
-        print('State %2d:' % i, Q[i])
+        print('State %2d:' % i, q_function[i])
+
+
+if __name__ == '__main__':
+    main()

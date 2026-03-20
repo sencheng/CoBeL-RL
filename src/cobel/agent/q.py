@@ -1,10 +1,12 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from typing import TypedDict, NotRequired
 from numpy.typing import NDArray, ArrayLike
@@ -12,7 +14,7 @@ from collections.abc import Callable
 from .agent import CallbackDict
 
 
-class Experience(TypedDict):
+class Experience(TypedDict):  # noqa: D101
     state: tuple[float, ...]
     action: int
     reward: float
@@ -23,23 +25,23 @@ class Experience(TypedDict):
 
 class QAgent(Agent):
     """
-    This class implements a simple (tabular) Q-learning agent.
+    Implements a simple (tabular) Q-learning agent.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float, default=0.9
         The agent's learning rate.
     gamma : float, default=0.8
         The agent's discount factor.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -47,13 +49,15 @@ class QAgent(Agent):
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
     gamma : float
@@ -62,13 +66,13 @@ class QAgent(Agent):
         The agent's learning rate.
     nb_actions : int
         The number of actions available to the agent.
-    Q : dict of NDArray
+    Q : dict of numpy.ndarray
         A dictionary used to store the agent's Q-function.
         Q-values are stored as NumPy arrays with the shape (`nb_actions`, )
         and are initialized to zero when a novel state is encountered.
         Observations are transformed into flattened tuples and serve
         as dictionary keys.
-    M : list of dict
+    M : list of cobel.agent.q.Experience
         A list used to store experiences for experience replay.
         Experiences are dictionaries which contain current and next state,
         action, reward and a terminal flag.
@@ -83,7 +87,6 @@ class QAgent(Agent):
 
     Examples
     --------
-
     Here we initialize the Q-learning agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -99,7 +102,7 @@ class QAgent(Agent):
     Training and testing of the agent is done with the train
     and test methods, respectively.
     Both methods expect an RL interface and number of trials
-    as input.::
+    as input. ::
 
         >>> from cobel.interface import Gridworld
         >>> from cobel.misc.gridworld_tools import make_open_field
@@ -135,7 +138,7 @@ class QAgent(Agent):
         self.rng = np.random.default_rng() if rng is None else rng
         self.gamma = gamma
         self.learning_rate = learning_rate
-        self.nb_actions = action_space.n
+        self.nb_actions = int(action_space.n)
         self.Q: dict[tuple, NDArray] = {}
         self.M: list[Experience] = []
         self.current_trial = 0
@@ -162,11 +165,11 @@ class QAgent(Agent):
         batch_size: int = 32,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -228,11 +231,11 @@ class QAgent(Agent):
         self, interface: gym.Env | Interface, trials: int, steps: int = 32
     ) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -285,16 +288,16 @@ class QAgent(Agent):
 
     def update_q(self, experience: Experience) -> Experience:
         """
-        This function updates the agent with a given experience.
+        Update the agent with a given experience.
 
         Parameters
         ----------
-        experience : Experience
+        experience : cobel.agent.q.Experience
             The experience dictionary.
 
         Returns
         -------
-        experience : Experience
+        experience : cobel.agent.q.Experience
             The experience dictionary updated with the TD-error.
         """
         # compute TD-error
@@ -313,7 +316,7 @@ class QAgent(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves the Q-values for a batch of observations.
+        Retrieve the Q-values for a batch of observations.
 
         Parameters
         ----------
@@ -322,7 +325,7 @@ class QAgent(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         if type(self.observation_space) is gym.spaces.Discrete:
@@ -334,13 +337,13 @@ class QAgent(Agent):
             assert type(batch) is list
             for o in batch:
                 q.append(
-                    self.Q[np.concatenate(tuple([m.flatten() for _, m in o.items()]))]
+                    self.Q[np.concatenate(tuple([m.flatten() for _, m in o.items()]))]  # type: ignore
                 )
             return np.array(q)
 
     def replay(self, batch_size: int = 32) -> None:
         """
-        This function performs experience replay to update the agent.
+        Perform experience replay to update the agent.
 
         Parameters
         ----------

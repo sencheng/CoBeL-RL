@@ -1,18 +1,20 @@
 # basic imports
 import numpy as np
-import gymnasium as gym
-import pyqtgraph as pg  # type: ignore
 import PyQt6 as qt
+import pyqtgraph as pg  # type: ignore
+from gymnasium.spaces import Discrete
+
 # framework imports
 from .interface import Interface
 from ..misc.visualization import CogArrow
+
 # typing
 from typing import Any, TypedDict
 from numpy.typing import NDArray
 from .interface import Action, StepTuple, ResetTuple
 
 
-class WorldDict(TypedDict):
+class WorldDict(TypedDict):  # noqa: D101
     width: int
     height: int
     states: int
@@ -30,13 +32,13 @@ class WorldDict(TypedDict):
 
 class Gridworld(Interface):
     """
-    This class implements a gridworld environment.
+    Implements a gridworld environment.
 
     Parameters
     ----------
-    world : dict
+    world : cobel.interface.gridworld.WorldDict
         A dictionary containing the gridworld's definition.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the environment will be visualized.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -44,15 +46,17 @@ class Gridworld(Interface):
 
     Attributes
     ----------
-    world : dict
+    world : cobel.interface.gridworld.WorldDict
         A dictionary containing the gridworld's definition.
-    observation_space : gym.spaces.Discrete
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the environment will be visualized.
+    observation_space : gymnasium.spaces.Discrete
         The gridworld's observation space.
-    action_space : gym.spaces.Discrete
+    action_space : gymnasium.spaces.Discrete
         The action space associated with the gridworld.
-    current_state : Observation
+    current_state : cobel.interface.interface.Observation
         The current state of the gridworld.
-    current_coordinates : NDArray
+    current_coordinates : numpy.ndarray
         the coordinates of associated with `current_state`.
     rng : numpy.random.Generator
         A random number generator instance used for
@@ -60,7 +64,6 @@ class Gridworld(Interface):
 
     Examples
     --------
-
     Gridworld environments can be easily set up using
     the various template functions provided by CoBeL-RL. ::
 
@@ -79,8 +82,8 @@ class Gridworld(Interface):
         super().__init__(widget)
         self.rng = np.random.default_rng() if rng is None else rng
         self.world = world
-        self.observation_space = gym.spaces.Discrete(self.world['states'])
-        self.action_space = gym.spaces.Discrete(4)
+        self.observation_space: Discrete = Discrete(self.world['states'])
+        self.action_space: Discrete = Discrete(4)
         self.current_state: int = 0
         self.init_visualization()
         self.reset()
@@ -88,16 +91,17 @@ class Gridworld(Interface):
 
     def step(self, action: Action) -> StepTuple:
         """
-        The interface's step function (compatible with Gymnasium's step function).
+        Perform one simulation step in the environment
+        (compatible with Gymnasium's step function).
 
         Parameters
         ----------
-        action : Action
+        action : cobel.interface.interface.Action
             The action selected by the agent.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         reward : float
             The reward received.
@@ -126,11 +130,11 @@ class Gridworld(Interface):
 
     def reset(self) -> ResetTuple:
         """
-        The interface's reset function (compatible with Gymnasium's reset function).
+        Reset the environment (compatible with Gymnasium's reset function).
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         logs : dict
             The (empty) logs dictionary.
@@ -142,19 +146,17 @@ class Gridworld(Interface):
 
     def get_position(self) -> NDArray:
         """
-        This function returns the agent's position in the environment.
+        Return the agent's position in the environment.
 
         Returns
         -------
-        position : NDArray
+        position : numpy.ndarray
             A numpy array containing the agent's position.
         """
         return np.copy(self.current_coordinates)
 
     def init_visualization(self) -> None:
-        """
-        This function initializes the visualization of the gridworld environment.
-        """
+        """Initialize the visualization of the gridworld environment."""
         if self.widget is not None:
             # prepare observation plot
             self.plot_observation = self.widget.addPlot(title='Observation')
@@ -308,11 +310,11 @@ class Gridworld(Interface):
 
     def update_visualization(self, logs: None | dict[str, Any] = None) -> None:
         """
-        This function initializes the visualization of the gridworld environment.
+        Update the visualization.
 
         Parameters
         ----------
-        logs : dict or None, optional
+        logs : dict or None
             The log dictionary.
         """
         if self.widget is not None:

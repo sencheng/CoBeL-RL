@@ -3,6 +3,7 @@ import sys
 import math
 import pickle
 import numpy as np
+
 # Qt imports
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import (
@@ -43,9 +44,11 @@ from PyQt6.QtWidgets import (
     QGraphicsLineItem,
 )
 from PyQt6 import QtWidgets
+
 # framework imports
 import cobel.misc.gridworld_tools as gwt
 import cobel.misc.gridworld_export as gwe
+
 # typing
 from numpy.typing import NDArray
 from ..interface.gridworld import WorldDict
@@ -63,14 +66,6 @@ class MainWindow(QMainWindow):
     """
 
     def __init__(self, world: None | WorldDict = None, *args, **kwargs) -> None:
-        """
-        The gridworld editor's main window class.
-
-        Parameters
-        ----------
-        world : dict or None, optional
-            The gridworld dictionary (5 x 5 open field by default).
-        """
         super().__init__(*args, **kwargs)
         # gridworld
         self.world = gwt.make_open_field(5, 5) if world is None else world
@@ -88,9 +83,7 @@ class MainWindow(QMainWindow):
         self.resize(1000, 563)
 
     def create_MenuBar(self) -> None:
-        """
-        This function creates the menu bar.
-        """
+        """Create the menu bar."""
         # Define actions
         # new
         self.action_new = QAction('&New', self)
@@ -164,59 +157,43 @@ class MainWindow(QMainWindow):
         self.tools_menu.addAction(self.action_double_tmaze)
 
     def open_tmaze_dialog(self) -> None:
-        """
-        This function opens the T-maze template dialog.
-        """
+        """Open the T-maze template dialog."""
         self.temps_open = TemplateDialog(self, 't_maze')
         self.temps_open.show()
 
     def open_eightmaze_dialog(self) -> None:
-        """
-        This function opens the 8-maze template dialog.
-        """
+        """Open the 8-maze template dialog."""
         self.temps_open = TemplateDialog(self, '8_maze')
         self.temps_open.show()
 
     def open_twochoice_dialog(self) -> None:
-        """
-        This function opens the Two-choice T-maze template dialog.
-        """
+        """Open the Two-choice T-maze template dialog."""
         self.temps_open = TemplateDialog(self, 'two_choice_t_maze')
         self.temps_open.show()
 
     def open_detour_dialog(self) -> None:
-        """
-        This function opens the detour maze template dialog.
-        """
+        """Open the detour maze template dialog."""
         self.temps_open = TemplateDialog(self, 'detour_maze')
         self.temps_open.show()
 
     def open_twosided_tmaze_dialog(self) -> None:
-        """
-        This function opens the Two-sided T-maze template dialog.
-        """
+        """Open the Two-sided T-maze template dialog."""
         self.temps_open = TemplateDialog(self, 'two_sided_t_maze')
         self.temps_open.show()
 
     def open_double_tmaze_dialog(self) -> None:
-        """
-        This function opens the Double T-maze template dialog.
-        """
+        """Open the Double T-maze template dialog."""
         self.temps_open = TemplateDialog(self, 'double_t_maze')
         self.temps_open.show()
 
     def new(self) -> None:
-        """
-        This function opens the new gridworld dialog.
-        """
+        """Open the new gridworld dialog."""
         if not self.unsaved_changes():
             self.new_open = NewDialog(self)
             self.new_open.show()
 
     def load(self) -> None:
-        """
-        This function asks the user to select a file and opens it.
-        """
+        """Ask the user to select a file and open it."""
         if not self.unsaved_changes():
             file_name = QFileDialog.getOpenFileName(
                 self, 'Open file', 'c:\\', 'Pickle files (*.pkl)'
@@ -239,9 +216,7 @@ class MainWindow(QMainWindow):
                 print("Couldn't load file.")
 
     def save_as(self) -> None:
-        """
-        This function saves the current gridworld in a file.
-        """
+        """Save the current gridworld in a file."""
         file_name = QFileDialog.getSaveFileName(
             self, 'Open file', 'c:\\', 'Pickle files (*.pkl)'
         )[0]
@@ -255,9 +230,7 @@ class MainWindow(QMainWindow):
             print("Couldn't save file.")
 
     def save(self) -> None:
-        """
-        This function saves the current gridworld.
-        """
+        """Save the current gridworld."""
         if self.file is None:
             self.save_as()
         else:
@@ -270,9 +243,7 @@ class MainWindow(QMainWindow):
                 print("Couldn't save file.")
 
     def export(self) -> None:
-        """
-        This function exports the current gridworld into a Wavefront obj file.
-        """
+        """Export the current gridworld into a Wavefront obj file."""
         file_name = QFileDialog.getSaveFileName(
             self, 'export as 3D-Model', '', 'Obj files (*.obj)'
         )[0]
@@ -297,7 +268,7 @@ class MainWindow(QMainWindow):
 
     def unsaved_changes(self) -> bool:
         """
-        This function checks for unsaved changes and informs the user accordingly.
+        Check for unsaved changes and inform the user accordingly.
 
         Returns
         -------
@@ -316,19 +287,17 @@ class MainWindow(QMainWindow):
         return False
 
     def info(self) -> None:
-        """
-        This functions opens the info dialog.
-        """
+        """Open the info dialog."""
         self.info_dialog = InfoDialog(self)
         self.info_dialog.exec()
 
     def closeEvent(self, event: None | QCloseEvent) -> None:
         """
-        This function closes the program.
+        Close the program.
 
         Parameters
         ----------
-        event : QCloseEvent or None
+        event : PyQt6.QtGui.QCloseEvent or None
             The close event.
         """
         if not self.unsaved_changes():
@@ -344,7 +313,7 @@ class CentralPanel(QWidget):
 
     Parameters
     ----------
-    parent : MainWindow
+    parent : cobel.misc.gridworld_gui.MainWindow
         The central panel's parent window (i.e., the main window).
 
     """
@@ -374,7 +343,7 @@ class CentralPanel(QWidget):
 
     def change_state_information(self, textCoord: str, index: int) -> None:
         """
-        This function updates the state information panel.
+        Update the state information panel.
 
         Parameters
         ----------
@@ -389,28 +358,29 @@ class CentralPanel(QWidget):
         self, terminals: NDArray, startings: NDArray, goals: list[int]
     ) -> None:
         """
-        This function marks states according to whether
-        they are terminal or starting states.
+        Mark states according to whether they are terminal or starting states.
 
         Parameters
         ----------
-        terminal : NDArray
-            A numpy array containg the gridworld's terminal state's indeces.
-        startings : list of int
-            A list containing the gridworld's starting state's indeces.
+        terminals : numpy.ndarray
+            A numpy array containg the gridworld's terminal states' indeces.
+        startings : numpy.ndarray
+            A numpy array containing the gridworld's starting states' indeces.
+        goals : list of int
+            A list containing the gridworld's goal states' indeces.
         """
         self.scene.highlight_terminal_starting(terminals, startings, goals)
 
 
 class Grid(QGraphicsScene):
     """
-    This class presents the grid of the gridworld.
+    A class representing the grid of the gridworld.
 
     Parameters
     ----------
-    parent : CentralPanel
+    parent : cobel.misc.gridworld_gui.CentralPanel
         The grid's parent window.
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -437,9 +407,7 @@ class Grid(QGraphicsScene):
         self.symbols_starting: list[QGraphicsTextItem] = []
 
     def draw_grid(self) -> None:
-        """
-        This function draws the grid.
-        """
+        """Draw the grid."""
         pen_lines = QPen(QColorConstants.Gray, self.main_window.border)
         pen_border = QPen(QColorConstants.Black, self.main_window.border)
         # lines parallel to GUI x-axis (vertical)
@@ -485,7 +453,7 @@ class Grid(QGraphicsScene):
 
     def set_visible(self, visible: bool = True) -> None:
         """
-        This function sets the visibility of the grid.
+        Set the visibility of the grid.
 
         Parameters
         ----------
@@ -496,16 +464,14 @@ class Grid(QGraphicsScene):
             line.setVisible(visible)
 
     def delete_grid(self) -> None:
-        """
-        This function deletes the grid.
-        """
+        """Delete the grid."""
         for line in self.lines:
             self.removeItem(line)
         del self.lines[:]
 
     def set_opacity(self, opacity: float) -> None:
         """
-        This function sets the opacity of the grid lines.
+        Set the opacity of the grid lines.
 
         Parameters
         ----------
@@ -517,7 +483,7 @@ class Grid(QGraphicsScene):
 
     def highlight_state(self, x: int, y: int) -> None:
         """
-        This function highlights a state.
+        Highlight a state.
 
         Parameters
         ----------
@@ -544,12 +510,11 @@ class Grid(QGraphicsScene):
         self, terminals: NDArray, startings: NDArray, goals: list[int]
     ) -> None:
         """
-        This function marks states according to whether
-        they are terminal or starting states.
+        Mark states according to whether they are terminal or starting states.
 
         Parameters
         ----------
-        terminals : NDArray
+        terminals : numpy.ndarray
             A numpy array containing the terminal states' indeces.
         goals : list of int
             A list containing the goal states' indeces.
@@ -591,11 +556,11 @@ class Grid(QGraphicsScene):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent | None) -> None:
         """
-        This function determines whether a state has been clicked and if so which.
+        Determine whether a state has been clicked and if so which.
 
         Parameters
         ----------
-        event : QGraphicsSceneMouseEvent or None
+        event : PyQt6.QtWidgets.QGraphicsSceneMouseEvent or None
             The mouse press event.
         """
         assert event is not None
@@ -650,9 +615,9 @@ class Line(QtWidgets.QGraphicsLineItem):
         X-Coordinate of second point of line.
     y2 : int
         Y-Coordinate of second point of line.
-    pen : QPen
+    pen : PyQt6.QtGui.QPen
         The pen that draws the line.
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -667,7 +632,7 @@ class Line(QtWidgets.QGraphicsLineItem):
         self.main_window = main_window
         # determine the transition associated with this line
         self.transition = (0, 0)
-        # vertical line
+        # vertical lineundocumented-param
         if x1 == x2:
             coordX = y1 // self.main_window.height()
             coordY_left = (x1 - self.main_window.border) // self.main_window.width()
@@ -688,12 +653,12 @@ class Line(QtWidgets.QGraphicsLineItem):
 
     def mousePressEvent(self, event: QGraphicsSceneMouseEvent | None) -> None:
         """
-        This function checks if a border has been double clicked.
+        Check if a border has been double clicked.
         Un/highlights the border and edits the WORLD dict accordingly.
 
         Parameters
         ----------
-        event : QGraphicsSceneMouseEvent or None
+        event : PyQt6.QtWidgets.QGraphicsSceneMouseEvent or None
             The mouse press event.
         """
         self.main_window.changed = True
@@ -745,11 +710,11 @@ class GridViewer(QGraphicsView):
 
     Parameters
     ----------
-    scene : Grid
+    scene : cobel.misc.gridworld_gui.Grid
         The grid scene.
-    parent : CentralPanel
+    parent : cobel.misc.gridworld_gui.CentralPanel
         The grid viewer's parent window.
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -771,11 +736,11 @@ class GridViewer(QGraphicsView):
 
     def wheelEvent(self, event: QWheelEvent | None) -> None:
         """
-        This function scales the grid view when the mouse's wheel is scrolled.
+        Scale the grid view when the mouse's wheel is scrolled.
 
         Parameters
         ----------
-        event : QWheelEvent or None
+        event : PyQt6.QtGui.QWheelEvent or None
             This wheel event.
         """
         scene = self.scene()
@@ -803,11 +768,11 @@ class GridViewer(QGraphicsView):
 
     def showEvent(self, event: QShowEvent | None) -> None:
         """
-        This function fits the scene in view as soon as the view is shown.
+        Fit the scene in view as soon as the view is shown.
 
         Parameters
         ----------
-        event : QShowEvent or None
+        event : PyQt6.QtGui.QShowEvent or None
             This show event.
         """
         super().showEvent(event)
@@ -836,9 +801,9 @@ class StateInformation(QWidget):
 
     Parameters
     ----------
-    parent : CentralPanel
+    parent : cobel.misc.gridworld_gui.CentralPanel
         The state information's parent window.
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -897,8 +862,7 @@ class StateInformation(QWidget):
 
     def change_state_information(self, text_coordinates: str, index: int) -> None:
         """
-        This function updates the state information panel
-        according to the selected state.
+        Update the state information panel according to the selected state.
 
         Parameters
         ----------
@@ -923,9 +887,7 @@ class StateInformation(QWidget):
             self.radio_button_none.click()
 
     def update_state(self) -> None:
-        """
-        This function updates the selected state's properties in the WORLD dictionary.
-        """
+        """Update the selected state's properties in the WORLD dictionary."""
         self.main_window.changed = True
         # update terminal status
         self.main_window.world['terminals'][int(self.index)] = int(
@@ -960,9 +922,7 @@ class StateInformation(QWidget):
         )
 
     def open_advanced(self) -> None:
-        """
-        This funcion opens the advanced the setting menu.
-        """
+        """Open the advanced the setting menu."""
         self.main_window.index = int(self.index)
         self.advanced_settings = AdvancedSettingsWindow(self.main_window)
         self.advanced_settings.show()
@@ -974,7 +934,7 @@ class AdvancedSettingsWindow(QMainWindow):
 
     Parameters
     ----------
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -994,7 +954,7 @@ class AdvancedSettingsWidget(QWidget):
 
     Parameters
     ----------
-    main_window : MainWindow
+    main_window : cobel.misc.gridworld_gui.MainWindow
         The gridworld editor's main window.
 
     """
@@ -1037,9 +997,7 @@ class AdvancedSettingsWidget(QWidget):
         layout.addWidget(button_apply)
 
     def apply_changes(self) -> None:
-        """
-        This function closes the advanced settings window and applies the change made
-        """
+        """Close the advanced settings window and applies the change made."""
         # Array to save the changed transition probabilities and
         # check if the entered data is valid - smaller than 1
         transition_probabilities = np.zeros((4, self.main_window.world['states']))
@@ -1062,11 +1020,11 @@ class AdvancedSettingsWidget(QWidget):
 
 class NewDialog(QDialog):
     """
-    This class implements the Gridworld editor's new gridworld dialog.
+    Implements the Gridworld editor's new gridworld dialog.
 
     Parameters
     ----------
-    parent : MainWindow
+    parent : cobel.misc.gridworld_gui.MainWindow
         The new gridworld dialog's parent window.
 
     """
@@ -1109,10 +1067,7 @@ class NewDialog(QDialog):
         self.setLayout(layout)
 
     def apply(self) -> None:
-        """
-        This functions generates a new gridworld with the
-        entered parameters and updates the GUI.
-        """
+        """Generate a new gridworld with the entered parameters and update the GUI."""
         # make gridworld
         width, height = int(self.input_width.text()), int(self.input_height.text())
         world = gwt.make_gridworld(height, width, invalid_transitions=[])
@@ -1145,12 +1100,12 @@ class NewDialog(QDialog):
 
 class TemplateDialog(QDialog):
     """
-    This class implements the Gridworld editor's template dialog.
+    Implements the Gridworld editor's template dialog.
     According to the choice of template the dialog is generated dynamically.
 
     Parameters
     ----------
-    parent : MainWindow
+    parent : cobel.misc.gridworld_gui.MainWindow
         The template dialog's parent window.
     maze : str
         The template type (i.e., 't_maze', 'double_t_maze',
@@ -1308,10 +1263,7 @@ class TemplateDialog(QDialog):
         self.setLayout(layout)
 
     def apply(self) -> None:
-        """
-        This functions generates a new gridworld from a
-        selected template and updates the GUI.
-        """
+        """Generate a new gridworld from a selected template and update the GUI."""
         # retrieve parameters
         params = {}
         for param in self.params:
@@ -1357,7 +1309,7 @@ class UnsavedChangesDialog(QDialog):
 
     Parameters
     ----------
-    parent : MainWindow
+    parent : cobel.misc.gridworld_gui.MainWindow
         The unsaved changes dialog's parent window.
 
     """
@@ -1388,7 +1340,7 @@ class UnsavedChangesDialog(QDialog):
 
     def save_current_file(self) -> None:
         """
-        This function saves the gridworld in its currently selected file.
+        Save the gridworld in its currently selected file.
         If none is currently selected the user will be asked to choose one.
         """
         parent = self.parent()
@@ -1407,7 +1359,7 @@ class InfoDialog(QDialog):
 
     Parameters
     ----------
-    parent : MainWindow
+    parent : cobel.misc.gridworld_gui.MainWindow
         The info dialog's parent window.
 
     """
@@ -1431,6 +1383,7 @@ class InfoDialog(QDialog):
 
 
 def main() -> None:
+    """The main function."""  # noqa: D401
     app = QApplication(sys.argv)
     a = MainWindow()
     a.show()

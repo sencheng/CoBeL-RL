@@ -1,12 +1,13 @@
 """
-This demo simulation trains a DQN agent moving in a continuous 2D environment.
+A demo simulation that trains a DQN agent moving in a continuous 2D environment.
 The agent (marked in red) starts at a fixed location and has to reach a goal
 (marked green) to receive a reward. The agent can move in step mode, i.e.,
 moving in the four cardinal directions, or in a wheel mode, i.e., it behaves
 like a differential wheel and can move either or both of its wheels.
-The current coordinates serve as observation in step mode and the current orientation
-is included when in wheel mode. Per default the step mode is used but the mode
-can be specified by providing it via the command line arguments 'step' and 'wheel'.
+The current coordinates serve as observation in step mode and
+the current orientation is included when in wheel mode. Per default the step mode
+is used but the mode can bespecified by providing it via the
+command line arguments '--robot-type step' and '--robot-type wheel'.
 The location and observation (left plot) as well as the environment and the
 agent's current location (center plot) are visualized.
 Furthermore, the EscapeLatencyMonitor tracks the steps taken in each trial
@@ -14,29 +15,32 @@ and visualizes them (right plot). Per default an open field environment with
 three obstacles is used in which the agent starts at a random location and
 the goal is located in the upper right corner. The demo simulation can be run
 using different environments by providing the appropriate command line arguments:
-t-maze:
+--env t-maze:
     A T-maze environment in which the goal is located at the end of the right
     arm and the agent starts at the beginning of the maze's stem.
-double-t-maze:
+--env double-t-maze:
     A double T-maze environment in which the goal is located at the end of the
     right-most arm and the agent starts at the beginning of the maze's stem.
-two-sided-t-maze:
+--env two-sided-t-maze:
     A two-sided T-maze environment in which the goal is located at the end of the
     lower right arm and the agent starts at the beginning of the maze's stem.
-eight-maze:
+--env eight-maze:
     An eigh-maze environment in which the goal is located at the center
     of the right lap and the agent starts at the center of the maze.
 """
 
 # basic imports
-import sys
+import os
+import argparse
 import numpy as np
 import shapely as sh  # type: ignore
 import pyqtgraph as qg  # type: ignore
+
 # torch
 from torch import Tensor, set_num_threads
 from torch.nn import Module, Linear
 from torch.nn.functional import tanh
+
 # CoBel-RL framework
 from cobel.agent import DQN
 from cobel.policy import EpsilonGreedy
@@ -52,11 +56,12 @@ from cobel.misc.continuous_tools import (
     make_circle,
     make_triangle,
 )
+
 # typing
 from typing import Literal
 
 
-class Model(Module):
+class Model(Module):  # noqa: D101
     def __init__(self, input_size: int | tuple, number_of_actions: int) -> None:
         super().__init__()
         input_units: int
@@ -69,7 +74,7 @@ class Model(Module):
         self.layer_output = Linear(in_features=64, out_features=number_of_actions)
         self.double()
 
-    def forward(self, layer_input: Tensor) -> Tensor:
+    def forward(self, layer_input: Tensor) -> Tensor:  # noqa: D102
         x = self.layer_dense_1(layer_input)
         x = tanh(x)
         x = self.layer_dense_2(x)
@@ -80,9 +85,30 @@ class Model(Module):
 
 
 def simulation() -> None:
-    """
-    Represents one simulation run.
-    """
+    """Perform one simulation run."""
+    nb_cores: int = os.cpu_count()  # type: ignore
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--env',
+        type=str,
+        default='open-field',
+        choices=(
+            'open-field',
+            't-maze',
+            'dobule-t-maze',
+            'two-sided-t-maze',
+            'eight-maze',
+        ),
+    )
+    parser.add_argument(
+        '--threads', type=int, default=1, choices=range(1, nb_cores + 1)
+    )
+    parser.add_argument(
+        '--robot-type', type=str, default='step', choices=('step', 'wheel')
+    )
+    args = parser.parse_args()
+    # prevent overuse of threads for simple model
+    set_num_threads(args.threads)
     main_window = qg.GraphicsLayoutWidget(title='Demo: DQN & Continuous 2D Interface')
     main_window.show()
     # define reward locations
@@ -104,24 +130,18 @@ def simulation() -> None:
         make_circle(np.array([0.9, 0.1]), 0.05),
         make_triangle(np.array([0.1, 0.9]), 0.1, 0.1),
     ]
-    maze = ''
-    mazes = {'t-maze', 'double-t-maze', 'two-sided-t-maze', 'eight-maze'}
-    if len(set(sys.argv).intersection(mazes)) == 1:
-        maze = list(set(sys.argv).intersection(mazes))[0]
-    if maze == 't-maze':
+    if args.env == 't-maze':
         room, spawn, obstacles, rewards = make_t_maze(0.4, 0.2, 0.1, reward=10)
-    elif maze == 'double-t-maze':
+    elif args.env == 'double-t-maze':
         room, spawn, obstacles, rewards = make_double_t_maze(0.4, 0.2, 0.1, reward=10)
-    elif maze == 'two-sided-t-maze':
+    elif args.env == 'two-sided-t-maze':
         room, spawn, obstacles, rewards = make_two_sided_t_maze(
             0.4, 0.2, 0.1, reward=10
         )
-    elif maze == 'eight-maze':
+    elif args.env == 'eight-maze':
         room, spawn, obstacles, rewards = make_eight_maze(0.4, 0.3, 0.1, reward=10)
     # define robot type
-    robot_type: Literal['step', 'wheel'] = 'step'
-    if 'wheel' in sys.argv:
-        robot_type = 'wheel'
+    robot_type: Literal['step', 'wheel'] = args.robot_type
     actions = 4 if robot_type == 'step' else 3
     # a dictionary that contains all employed modules
     env = Continuous2D(robot_type, room, spawn, obstacles, rewards, None, main_window)
@@ -152,6 +172,4 @@ def simulation() -> None:
 
 
 if __name__ == '__main__':
-    # prevent overuse of threads for simple model
-    set_num_threads(1)
     simulation()

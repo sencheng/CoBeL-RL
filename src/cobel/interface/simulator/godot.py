@@ -7,8 +7,10 @@ import json
 import cv2
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .simulator import Simulator, ImageInfo, Pose
+
 # typing
 from typing import Any
 from numpy.typing import NDArray
@@ -25,7 +27,7 @@ class GodotSimulator(Simulator):
     ----------
     scene : str
         The name of the Godot scene that should loaded initially.
-    executable : str of Node or None, optional
+    executable : str or None, optional
         The path to the Godot executable.
     ports : 3-tuple of int, default=(5000, 5001, 5002)
         The ports used for control, video and data connections.
@@ -36,13 +38,28 @@ class GodotSimulator(Simulator):
 
     Attributes
     ----------
+    control_socket : socket.socket
+        Socket used for sending commands to the simulator.
+    video_socket : socket.socket
+        Socket used for retrieving video data from the simulator.
+    data_socket : socket.socket
+        Socket used for sending and receiving data to and from the simulator.
+    agent_pose : cobel.interface.topology.Pose
+        The agent's current pose.
+    observation_space : gymnasium.spaces.Space
+        The observation space.
+    eod_string : str
+        A string indicating the end of data that was
+        sent via a web socket.
+    agent_pose : cobel.interface.topology.Pose
+        The agent's current pose.
     objects : dict
         A dictionary containing information, e.g., object IDs,
         about available simulation objects.
     actor_id : int
         ID of the object which represents the agent
         in the simulation.
-    image_info : ImageInfo
+    image_info : cobel.interface.simulator.simulator.ImageInfo
         A dictionary containing information about the image
         size and format.
     resize : 2-tuple of int or None
@@ -50,12 +67,11 @@ class GodotSimulator(Simulator):
 
     Examples
     --------
-
     If the appropriate environmental variable was set the
     Godot simulator can easily be started. To properly
-    stop simulator calls the stop method.::
+    stop simulator calls the stop method. ::
 
-        >>> from cobel.interface.simulator.godot import GodotSimulator
+        >>> from cobel.interface import GodotSimulator
         >>> sim = GodotSimulator('room.tscn')
         >>> sim.stop()
 
@@ -135,7 +151,7 @@ class GodotSimulator(Simulator):
 
     def receive(self, socket: socket.socket, data_size: int) -> bytes:
         """
-        This function reads data with a specified size from a socket.
+        Read data with a specified size from a socket.
 
         Parameters
         ----------
@@ -162,7 +178,7 @@ class GodotSimulator(Simulator):
 
     def receive_in_chunks(self, socket: socket.socket, chunk_size: int) -> bytes:
         """
-        This function reads data in chunks from a socket.
+        Read data in chunks from a socket.
 
         Parameters
         ----------
@@ -189,24 +205,23 @@ class GodotSimulator(Simulator):
 
     def get_observation(self, pose: Pose) -> Observation:
         """
-        This function returns the observation at a given pose.
+        Return the observation at a given pose.
 
         Parameters
         ----------
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The global pose that the agent is moved to.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation at the given pose.
         """
         return self.move_agent(pose[0], pose[1], pose[3])[1]
 
     def move_agent(self, x: float, y: float, yaw: float) -> tuple[NDArray, NDArray]:
         """
-        This function propels the simulation. It uses teleportation to
-        guide the agent/robot directly by means of global x, y, yaw values.
+        Change the pose of a specified object.
 
         Parameters
         ----------
@@ -219,9 +234,9 @@ class GodotSimulator(Simulator):
 
         Returns
         -------
-        pose_data : NDArray
+        pose_data : numpy.ndarray
             The pose observation received from the simulation.
-        image_data : NDArray
+        image_data : numpy.ndarray
             The image observation received from the simulation.
         """
         # send the actuation command to the virtual robot/agent
@@ -267,13 +282,13 @@ class GodotSimulator(Simulator):
 
     def move_object(self, object_id: int | str, pose: Pose) -> None:
         """
-        This function changes the pose of a specified object.
+        Change the pose of a specified object.
 
         Parameters
         ----------
         object_id : int or str
             The name/ID of the object.
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The object's new pose.
         """
         send_str = json.dumps({'command': 'set_pose', 'param': [object_id, pose]})
@@ -282,13 +297,13 @@ class GodotSimulator(Simulator):
 
     def set_illumination(self, light_source: int | str, color: NDArray) -> None:
         """
-        This function sets the color of a specified light source.
+        Set the color of a specified light source.
 
         Parameters
         ----------
         light_source : int or str
             The name/ID of the light source to change.
-        color : NDArray
+        color : numpy.ndarray
             The RGB values of the light source (as [red, green, blue]).
         """
         # send the request for illumination change to Godot
@@ -303,7 +318,7 @@ class GodotSimulator(Simulator):
 
     def get_illumination(self, light_source: int | str) -> NDArray:
         """
-        This function gets the color of a specified light source.
+        Get the color of a specified light source.
 
         Parameters
         ----------
@@ -312,7 +327,7 @@ class GodotSimulator(Simulator):
 
         Returns
         -------
-        color : NDArray
+        color : numpy.ndarray
             The RGB values of the light source (as [red, green, blue]).
         """
         # send the request for illumination information to Godot
@@ -329,7 +344,7 @@ class GodotSimulator(Simulator):
 
     def get_objects(self) -> dict[str, Any]:
         """
-        This function retrieves information about all object present in the simulation.
+        Retrieve information about all object present in the simulation.
 
         Returns
         -------
@@ -352,13 +367,13 @@ class GodotSimulator(Simulator):
 
     def get_image_info(self) -> ImageInfo:
         """
-        This function retrieves image information from the simulation.
+        Retrieve image information from the simulation.
 
         Returns
         -------
-        image_info : ImageInfo
+        image_info : cobel.interface.simulator.simulator.ImageInfo
             A dictionary containing information about the images
-            rendered by Godot (i.e. dimensions, channels, format).
+            rendered by Godot (i.e., dimensions, channels, format).
         """
         # send the request for image information change to Godot
         self.control_socket.send(
@@ -375,7 +390,7 @@ class GodotSimulator(Simulator):
 
     def change_scene(self, scene_name: str) -> None:
         """
-        This function changes the current scene.
+        Change the current scene.
 
         Parameters
         ----------
@@ -389,7 +404,7 @@ class GodotSimulator(Simulator):
 
     def set_texture(self, mesh: int | str, texture: str, surface: int = -1) -> None:
         """
-        This function changes the albedo texture of a given mesh object's material.
+        Change the albedo texture of a given mesh object's material.
 
         Parameters
         ----------
@@ -416,9 +431,8 @@ class GodotSimulator(Simulator):
         surface: int = -1,
     ) -> None:
         """
-        This function changes the albedo color of a given
-        mesh object's material. Note: This color will be multiplied
-        with any image texture already applied.
+        Change the albedo color of a given mesh object's material.
+        Note: This color will be multiplied with any image texture already applied.
 
         Parameters
         ----------
@@ -440,7 +454,7 @@ class GodotSimulator(Simulator):
 
     def echo(self, message: str) -> None:
         """
-        This function sends a message to the godot simulation.
+        Send a message to the godot simulation.
 
         Parameters
         ----------
@@ -453,9 +467,7 @@ class GodotSimulator(Simulator):
         self.control_socket.recv(50)
 
     def stop(self) -> None:
-        """
-        This function shuts down Godot.
-        """
+        """Shut down Godot."""
         try:
             self.control_socket.send(
                 json.dumps({'command': 'stop', 'param': []}).encode('utf-8')
@@ -465,11 +477,11 @@ class GodotSimulator(Simulator):
 
     def hex_color(self, color: NDArray) -> str:
         """
-        This function converts RGB to hex.
+        Convert RGB to hex.
 
         Parameters
         ----------
-        color_rgb : NDArray
+        color : numpy.ndarray
             The color in RGB.
 
         Returns

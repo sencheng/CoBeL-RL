@@ -6,8 +6,10 @@ import multiprocessing as mp
 from os import listdir
 from os.path import isfile, join
 from itertools import product
+
 # framework imports
 from .optimizer import Optimizer
+
 # typing
 from typing import Any, Literal
 from .optimizer import Simulation, FitLoss, Fit
@@ -27,7 +29,7 @@ class GridSearchOptimizer(Optimizer):
     nb_runs : int, default=1
         The number of model instances that will be run per task
         in each parameter combination.
-    order : 'nested', 'shuffled' or 'systematic', default='nested'
+    order : {"nested", "shuffled", "systematic"}, default="nested"
         The order in which parameter combinations are written to
         `parameters_combinations`: 'nested' (nested in order of values),
         'shuffled' (like nested but values are shuffled before) and
@@ -49,7 +51,7 @@ class GridSearchOptimizer(Optimizer):
     nb_runs : int
         The number of model instances that will be run per task
         in each parameter combination.
-    order : str
+    order : {"nested", "shuffled", "systematic"}
         The order in which parameter combinations are written to
         `parameters_combinations`: 'nested' (nested in order of values),
         'shuffled' (like nested but values are shuffled before) and
@@ -62,7 +64,6 @@ class GridSearchOptimizer(Optimizer):
 
     Examples
     --------
-
     The grid search optimizer fits a given set of parameters
     for different variants of a simulation ("tasks").
     The example show below define one task ("task_1"). ::
@@ -112,9 +113,8 @@ class GridSearchOptimizer(Optimizer):
         self, parameters: dict, order: str = 'nested'
     ) -> None:
         """
-        This function prepares a dictionary containing the
-        different parameter combinations. Parameter combinations can be
-        written to the dictionary in different orders.
+        Prepare a dictionary containing the different parameter combinations.
+        Parameter combinations can be written to the dictionary in different orders.
 
         Parameters
         ----------
@@ -181,31 +181,31 @@ class GridSearchOptimizer(Optimizer):
         pool: None | mp.pool.Pool = None,
     ) -> Fit:
         """
-        This function fits a given model to behavioral data.
+        Fit a given model to behavioral data.
 
         Parameters
         ----------
-        simulation : Simulation
+        simulation : cobel.optimizer.optimizer.Simulation
             The python function representing one simulation run.
         tasks : dict
             A dictionary containing different tasks (e.g., trial sequences)
             that the model has to be run for.
         data : dict
             A dictionary containing behavioral data for the different tasks.
-        loss : FitLoss
+        loss : cobel.optimizer.optimizer.FitLoss
             The loss function that is used for computing the fit.
         overwrite : bool, default=False
             If true, simulations are run for all parameter combinations
             even when stored simulation data was found.
         store_simulation_data : bool, default=False
             If true, simulation data is stored along with the fit.
-        pool : mp.pool.Pool or None, optional
+        pool : multiprocessing.pool.Pool or None, optional
             Optional worker pool for multiprocessing. If none is
             given simulations are run sequentially.
 
         Returns
         -------
-        fitness : Fit
+        fitness : cobel.optimizer.optimizer.Fit
             A dictionary containing the fitness values for all parameter combinations.
         """
         assert tasks.keys() == data.keys(), 'Task mismatch!'
@@ -265,14 +265,13 @@ class GridSearchOptimizer(Optimizer):
         self, data: dict[str, Any], loss: FitLoss, overwrite: bool = False
     ) -> Fit:
         """
-        This function recomputes the fit.
-        Assumes that the simulation data was stored.
+        Recompute the fit. Assumes that the simulation data was stored.
 
         Parameters
         ----------
         data : dict
             A dictionary containing behavioral data for the different tasks.
-        loss : FitLoss
+        loss : cobel.optimizer.optimizer.FitLoss
             The loss function that is used for computing the fit.
         overwrite : bool, default=False
             If true, simulations are run for all parameter combinations
@@ -280,7 +279,7 @@ class GridSearchOptimizer(Optimizer):
 
         Returns
         -------
-        fitness : Fit
+        fitness : cobel.optimizer.optimizer.Fit
             A dictionary containing the fitness values for all parameter combinations.
         """
         # try loading the fit

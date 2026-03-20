@@ -3,6 +3,7 @@ import copy
 from itertools import product
 import numpy as np
 import shapely as sh  # type: ignore
+
 # typing
 from typing import Literal
 from ..interface.topology import Node, NodeID
@@ -18,7 +19,7 @@ def linear_track(
     location: Literal['left', 'right'] = 'right',
 ) -> tuple[dict[NodeID, Node], list[NodeID]]:
     """
-    This function generates topology nodes for a linear track environment.
+    Generate topology nodes for a linear track environment.
 
     Parameters
     ----------
@@ -30,15 +31,15 @@ def linear_track(
         The spacing between nodes.
     reward : float, default=1.
         The reward received when the end of the track is reached.
-    location : str, default='right'
+    location : {"left", "right"}, default="right"
         The reward location, i.e., left or right.
         The starting state will be located on the opposite side.
 
     Returns
     -------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         The topology nodes.
-    starting_nodes : list of NodeID
+    starting_nodes : list of cobel.interface.topology.NodeID
         The starting nodes.
     """
     assert nb_nodes_track > 1, 'Track has to be at least 2 states long!'
@@ -106,7 +107,7 @@ def grid(
     location: None | NodeID = None,
 ) -> tuple[dict[NodeID, Node], list[NodeID]]:
     """
-    This function generates topology nodes for a grid graph environment.
+    Generate topology nodes for a grid graph environment.
 
     Parameters
     ----------
@@ -118,15 +119,15 @@ def grid(
         Can be a simple tuple (same limits fo both sides) or tuple of tuples.
     reward : float, default=1.
         The reward received when the end of the goal node is reached.
-    location : NodeID or None, optional
+    location : cobel.interface.topology.NodeID or None, optional
         The goal node. If none or invalid the top right node
         becomes the goal node. All other nodes become possible starting nodes.
 
     Returns
     -------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         The topology nodes.
-    starting_nodes : list of NodeID
+    starting_nodes : list of cobel.interface.topology.NodeID
         The starting nodes.
     """
     # prepare nodes and environment limits, and validate them
@@ -178,7 +179,7 @@ def hexagonal(
     location: None | NodeID = None,
 ) -> tuple[dict[NodeID, Node], list[NodeID]]:
     """
-    This function generates topology nodes for a hexagonal graph environment.
+    Generate topology nodes for a hexagonal graph environment.
 
     Parameters
     ----------
@@ -188,15 +189,15 @@ def hexagonal(
         The coordinate ranges.
     reward : float, default=1.
         The reward received when the end of the goal node is reached.
-    location : NodeID or None, optional
+    location : cobel.interface.topology.NodeID or None, optional
         The goal node. If none or invalid the top right node
         becomes the goal node. All other nodes become possible starting nodes.
 
     Returns
     -------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         The topology nodes.
-    starting_nodes : list of NodeID
+    starting_nodes : list of cobel.interface.topology.NodeID
         The starting nodes.
     """
     assert nb_nodes > 1, 'Invalid number of nodes!'
@@ -280,7 +281,7 @@ def t_maze(
     location: Literal['left', 'right'] = 'right',
 ) -> tuple[dict[NodeID, Node], list[NodeID]]:
     """
-    This function generates topology nodes for a hexagonal graph environment.
+    Generate topology nodes for a hexagonal graph environment.
 
     Parameters
     ----------
@@ -294,15 +295,15 @@ def t_maze(
         The spacing between nodes.
     reward : float, default=1.
         The reward received when the end of the goal node is reached.
-    location : str, default='right'
+    location : {"left", "right"}, default="right"
         The goal node. If none or invalid the top right node
         becomes the goal node. All other nodes become possible starting nodes.
 
     Returns
     -------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         The topology nodes.
-    starting_nodes : list of NodeID
+    starting_nodes : list of cobel.interface.topology.NodeID
         The starting nodes.
     """
     assert nb_nodes_arm > 0, 'Invalid arm length!'
@@ -376,7 +377,7 @@ def cross(
     nb_nodes_arm: int, nb_nodes_width: int, spacing: float = 1.0, rotation: float = 0.0
 ) -> tuple[dict[NodeID, Node], list[NodeID]]:
     """
-    This function generates topology nodes for a cross arena environment.
+    Generate topology nodes for a cross arena environment.
 
     Parameters
     ----------
@@ -391,9 +392,9 @@ def cross(
 
     Returns
     -------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         The topology nodes.
-    starting_nodes : list of NodeID
+    starting_nodes : list of cobel.interface.topology.NodeID
         The starting nodes.
     """
     assert nb_nodes_arm > 0, 'The arm must be at least 1 node long!'
@@ -472,23 +473,23 @@ def remove_obstructed_neighbors(
     nodes: dict[NodeID, Node], obstacles: list[sh.Polygon], buffer_distance: float = 0.0
 ) -> dict[NodeID, Node]:
     """
-    This function removes the edges of a provided topology graph
+    Remove the edges of a provided topology graph
     which are obstructed by a given set of obstacles.
     Note: Due to the use of shapely this function ignores
     the z-coordinate (height) of nodes and obstacles.
 
     Parameters
     ----------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         A dictionary containing the topology graph nodes.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing environmental obstacles.
     buffer_distance : float, default=0.
         Additional buffer distance applied to the obstacles.
 
     Returns
     -------
-    nodes_updated : dict of Node
+    nodes_updated : dict of cobel.interface.topology.Node
         A dictionary containg the updated topology graph nodes.
     """
     assert buffer_distance >= 0, 'The buffer distance has to be non-negative!'

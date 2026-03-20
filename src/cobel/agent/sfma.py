@@ -2,12 +2,14 @@
 import copy
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from .agent import Callbacks
 from ..memory.sfma import SFMAMemory, Experience
 from ..policy.policy import Policy
 from ..interface.interface import Interface
+
 # typing
 from numpy.typing import NDArray, ArrayLike
 from .agent import CallbackDict, Logs
@@ -20,21 +22,21 @@ class SFMA(Agent):
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    policy : Policy
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    memory : SFMAMemory
+    memory : cobel.memory.sfma.SFMAMemory
         The agent's memory module.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
     learning_rate : float, default=0.99
         The agent's learning rate.
     gamma : float, default=0.99
         The agent's discount factor.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -42,27 +44,29 @@ class SFMA(Agent):
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.gym.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.gym.Space
         The agent's action space.
-    policy : Policy
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    policy : cobel.policy.policy.Policy
         The agent's action selection policy used during training.
-    policy_test : Policy or None, optional
+    policy_test : cobel.policy.policy.Policy or None, optional
         The agent's action selection policy used during testing.
         If none was provided in `policy_test` then `policy` will be used here as well.
     gamma : float
         The agent's discount factor.
     learning_rate : float
         The agent's learning rate.
-    Q : NDArray
+    Q : numpy.ndarray
         A 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents the agent's Q-function.
         The Q-function is initialized to all zeros.
-    M : SFMAMemory
+    M : cobel.memory.sfma.SFMAMemory
         The memory module used by the Dyna-Q agent for storing
         environmental transitions.
-    action_mask : NDArray
+    action_mask : numpy.ndarray
         A boolean 2D NumPy array of shape (`observation_space.n`, `action_space.n`)
         which represents an action mask that can be applied during action selection.
     mask_actions : bool
@@ -96,7 +100,6 @@ class SFMA(Agent):
 
     Examples
     --------
-
     Here we initialize the SFMA agent for a discrete
     environment with 16 states and 4 actions. ::
 
@@ -121,9 +124,9 @@ class SFMA(Agent):
 
         Parameters
         ----------
-        agent : Agent
+        agent : cobel.agent.agent.Agent
             Reference to the RL agent.
-        custom_callbacks : CallbackDict or None, optional
+        custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
             The custom callbacks defined by the user.
 
         """
@@ -135,17 +138,17 @@ class SFMA(Agent):
 
         def on_replay_begin(self, logs: Logs) -> Logs:
             """
-            The following function is called whenever experiences are replayed,
-            and executes callbacks defined by the user.
+            Call whenever experiences are replayed,
+            and execute callbacks defined by the user.
 
             Parameters
             ----------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The replay log dictionary.
 
             Returns
             -------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The updated replay log dictionary.
             """
             replay_logs: dict = copy.copy(logs)
@@ -160,17 +163,17 @@ class SFMA(Agent):
 
         def on_replay_end(self, logs: Logs) -> Logs:
             """
-            The following function is called whenever experiences are replayed,
-            and executes callbacks defined by the user.
+            Call whenever experiences are replayed,
+            and execute callbacks defined by the user.
 
             Parameters
             ----------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The replay log dictionary.
 
             Returns
             -------
-            logs : Logs
+            logs : cobel.agent.agent.Logs
                 The updated replay log dictionary.
             """
             replay_logs: dict = copy.copy(logs)
@@ -208,10 +211,10 @@ class SFMA(Agent):
         self.callbacks = self.CallbacksSFMA(self, custom_callbacks)
         self.learning_rate = learning_rate
         self.gamma = gamma
-        self.Q = np.zeros((observation_space.n, action_space.n))
+        self.Q = np.zeros((int(observation_space.n), int(action_space.n)))
         self.M = memory
         self.action_mask: NDArray = np.ones(
-            (observation_space.n, action_space.n)
+            (int(observation_space.n), int(action_space.n))
         ).astype(bool)
         self.mask_actions: bool = False
         # replays per trial
@@ -236,11 +239,11 @@ class SFMA(Agent):
         no_replay: bool = False,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -326,11 +329,11 @@ class SFMA(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -388,7 +391,7 @@ class SFMA(Agent):
 
     def replay(self, batch_size: int, state: None | int = None) -> list[Experience]:
         """
-        This function replays experiences to update the Q-function.
+        Replay experiences to update the Q-function.
 
         Parameters
         ----------
@@ -399,7 +402,7 @@ class SFMA(Agent):
 
         Returns
         -------
-        replay_batch : list of dict
+        replay_batch : list of cobel.memory.sfma.Experience
             The batch of replayed experiences.
         """
         # sample batch of experiences
@@ -419,18 +422,18 @@ class SFMA(Agent):
 
     def update_q(self, experience: Experience, no_update: bool = False) -> Experience:
         """
-        This function updates the Q-function with a given experience.
+        Update the Q-function with a given experience.
 
         Parameters
         ----------
-        experience : dict
+        experience : cobel.memory.sfma.Experience
             A dictionary containing the experience tuple.
         no_update : bool, default=False
             If true, the Q-function is not updated.
 
         Returns
         -------
-        experience : dict
+        experience : cobel.memory.sfma.Experience
             A dictionary containing the experience tuple and the TD-error.
         """
         # make mask
@@ -456,7 +459,7 @@ class SFMA(Agent):
 
     def predict_on_batch(self, batch: ArrayLike) -> NDArray:
         """
-        This function retrieves Q-values for a batch of states.
+        Retrieve Q-values for a batch of states.
 
         Parameters
         ----------
@@ -465,7 +468,7 @@ class SFMA(Agent):
 
         Returns
         -------
-        predictions : NDArray
+        predictions : numpy.ndarray
             The batch of Q-value predictions.
         """
         return self.Q[np.array(batch).astype(int)]

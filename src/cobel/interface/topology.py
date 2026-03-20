@@ -3,9 +3,11 @@ import copy
 import numpy as np
 import PyQt6 as qt
 import pyqtgraph as pg  # type: ignore
-import gymnasium as gym
+from gymnasium.spaces import Space, Box, Discrete
+
 # framework imports
 from .interface import Interface
+
 # typing
 from typing import TypedDict
 from numpy.typing import NDArray
@@ -16,7 +18,7 @@ Pose = tuple[float, float, float, float, float, float]
 NodeID = str
 
 
-class Node(TypedDict):
+class Node(TypedDict):  # noqa: D101
     id: NodeID
     pose: Pose
     reward: float
@@ -26,17 +28,17 @@ class Node(TypedDict):
 
 class Topology(Interface):
     """
-    This class implements a generic topology interface.
+    Implements a generic topology interface.
 
     Parameters
     ----------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         A dictionary containing the topology nodes.
-    starting_nodes : list of Node or None, optional
+    starting_nodes : list of cobel.interface.topology.Node or None, optional
         An optional list containing the starting nodes.
-    simulator : Simulator or None, optional
+    simulator : cobel.interface.simulator.simulator.Simulator or None, optional
         An optional simulator which overwrites observations for all nodes.
-    widget : pg.GraphicsLayoutWidget or None, optional
+    widget : pyqtgraph.GraphicsLayoutWidget or None, optional
         An optional widget. If provided the environment will be visualized.
     rng : numpy.random.Generator or None, optional
         An optional random number generator instance.
@@ -44,33 +46,34 @@ class Topology(Interface):
 
     Attributes
     ----------
-    nodes : dict of Node
+    nodes : dict of cobel.interface.topology.Node
         A dictionary containing the topology nodes.
-    starting_nodes : list of Node
+    starting_nodes : list of cobel.interface.topology.Node
         An optional list containing the starting nodes.
         If none were provided in `starting_nodes` all non-terminal
         nodes become starting nodes.
-    current_node : NodeID
+    current_node : cobel.interface.topology.NodeID
         The ID of the current node.
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space associated with the topology environment.
         Per default `observation_space` is gym.spaces.Box and represents
         a node's pose, i.e., position + rotation.
         If a simulator was provided then the `observation_space` will
         be overwritten.
-    action_space : gym.spaces.Discrete
+    action_space : gymnasium.spaces.Discrete
         The action space associated with the topology environment.
-    simulator : Simulator or None
+    simulator : cobel.interface.simulator.simulator.Simulator or None
         An optional simulator which overwrites observations for all nodes.
-    observation : Observation
+    observation : cobel.interface.interface.Observation
         The current observation.
+    widget : pyqtgraph.GraphicsLayoutWidget or None
+        An optional widget. If provided the environment will be visualized.
     rng : numpy.random.Generator
         A random number generator instance used for
         probablistic action selection.
 
     Examples
     --------
-
     Topology environments can be easily set up using
     the various template functions provided by CoBeL-RL. ::
 
@@ -104,13 +107,13 @@ class Topology(Interface):
             self.starting_nodes = starting_nodes
         self.current_node: NodeID
         self.current_node = self.rng.choice(self.starting_nodes)
-        self.action_space = gym.spaces.Discrete(
+        self.action_space: Discrete = Discrete(
             len(self.nodes[self.current_node]['neighbors'])
         )
         self.simulator = simulator
-        self.observation_space: gym.spaces.Space
+        self.observation_space: Space
         if self.simulator is None:
-            self.observation_space = gym.spaces.Box(
+            self.observation_space = Box(
                 low=np.array([-np.inf, -np.inf, -np.inf, 0.0, 0.0, 0.0]),
                 high=np.array([np.inf, np.inf, np.inf, 360.0, 360.0, 360.0]),
                 dtype=np.float64,
@@ -122,16 +125,17 @@ class Topology(Interface):
 
     def step(self, action: Action) -> StepTuple:
         """
-        The interface's step function (compatible with Gymnasium's step function).
+        Perform one simulation step in the environment
+        (compatible with Gymnasium's step function).
 
         Parameters
         ----------
-        action : Action
+        action : cobel.interface.interface.Action
             The action selected by the agent.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         reward : float
             The reward received.
@@ -154,11 +158,11 @@ class Topology(Interface):
 
     def reset(self) -> ResetTuple:
         """
-        The interface's reset function (compatible with Gymnasium's reset function).
+        Reset the environment (compatible with Gymnasium's reset function).
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation of the new current state.
         logs : dict
             The (empty) logs dictionary.
@@ -169,16 +173,16 @@ class Topology(Interface):
 
     def get_observation(self, pose: Pose) -> Observation:
         """
-        This function retrieves the observation for the current node's pose.
+        Retrieve the observation for the current node's pose.
 
         Parameters
         ----------
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The current node's pose.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation at the current node.
         """
         if self.simulator is None:
@@ -190,23 +194,21 @@ class Topology(Interface):
 
     def get_position(self) -> NDArray:
         """
-        This function returns the agent's position in the environment.
+        Return the agent's position in the environment.
 
         Returns
         -------
-        position : NDArray
+        position : numpy.ndarray
             A numpy array containing the agent's position.
         """
         return np.array(self.nodes[self.current_node]['pose'])
 
     def init_visualization(self) -> None:
-        """
-        This function initializes the visualization of the interface.
-        """
+        """Initialize the visualization of the interface."""
         if self.widget is not None:
             # check if observations can be visualized
             self.observation_type = 'unknown'
-            if type(self.observation_space) is gym.spaces.Box:
+            if type(self.observation_space) is Box:
                 if len(self.observation_space.shape) == 1:
                     self.observation_type = 'sensor'
                 elif len(self.observation_space.shape) == 2:
@@ -303,9 +305,7 @@ class Topology(Interface):
             self.panel_behavior.addItem(self.graph)
 
     def update_visualization(self) -> None:
-        """
-        This function updates the visualization of the interface.
-        """
+        """Update the visualization of the interface."""
         if self.widget is not None:
             # update state information panel
             self.info_state.setText(self.current_node)
@@ -328,7 +328,7 @@ class Topology(Interface):
                     )
                 self.info_observation.setImage(np.flip(obs_data, axis=0))
                 self.info_observation.setRect(
-                    qt.QtCore.QRectF(
+                    qt.QtCore.QRectF(  # type: ignore
                         0.0,
                         0.52 - obs_data.shape[0] / obs_data.shape[1],
                         1.0,

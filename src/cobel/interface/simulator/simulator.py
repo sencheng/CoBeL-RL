@@ -3,13 +3,14 @@ import os
 import abc
 import socket
 import gymnasium as gym
+
 # typing
 from typing import Any, TypedDict
 from numpy.typing import NDArray
 from ..interface import Observation
 
 
-class ImageInfo(TypedDict):
+class ImageInfo(TypedDict):  # noqa: D101
     width: int
     height: int
     channels: int
@@ -27,7 +28,7 @@ class Simulator(abc.ABC):
     ----------
     scene : str
         The name of the scene that should loaded initially.
-    executable : str of Node or None, optional
+    executable : str or None, optional
         The path to the simulator executable.
 
     Attributes
@@ -38,10 +39,15 @@ class Simulator(abc.ABC):
         Socket used for retrieving video data from the simulator.
     data_socket : socket.socket
         Socket used for sending and receiving data to and from the simulator.
-    agent_pose : Pose
+    agent_pose : cobel.interface.topology.Pose
         The agent's current pose.
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The observation space.
+    eod_string : str
+        A string indicating the end of data that was
+        sent via a web socket.
+    agent_pose : cobel.interface.topology.Pose
+        The agent's current pose.
 
     """
 
@@ -74,7 +80,7 @@ class Simulator(abc.ABC):
 
     def connect_socket(self, connection_socket: socket.socket, port: int) -> None:
         """
-        This function starts a connection for a specified socket.
+        Start a connection for a specified socket.
 
         Parameters
         ----------
@@ -95,7 +101,7 @@ class Simulator(abc.ABC):
 
     def receive(self, socket: socket.socket, data_size: int) -> bytes:
         """
-        This function reads data with a specified size from a specified socket.
+        Read data with a specified size from a specified socket.
 
         Parameters
         ----------
@@ -122,7 +128,7 @@ class Simulator(abc.ABC):
 
     def receive_in_chunks(self, socket: socket.socket, chunk_size: int) -> bytes:
         """
-        This function reads data in chunks from a specified socket.
+        Read data in chunks from a specified socket.
 
         Parameters
         ----------
@@ -151,16 +157,16 @@ class Simulator(abc.ABC):
 
     def get_observation(self, pose: Pose) -> Observation:
         """
-        This function returns the observation at a given pose.
+        Return the observation at a given pose.
 
         Parameters
         ----------
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The global pose that the agent is moved to.
 
         Returns
         -------
-        observation : Observation
+        observation : cobel.interface.interface.Observation
             The observation at the given pose.
         """
         return self.move_agent(pose[0], pose[1], pose[3])[1]
@@ -168,7 +174,7 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def move_agent(self, x: float, y: float, yaw: float) -> tuple[NDArray, NDArray]:
         """
-        This function changes the position and orientation of the agent.
+        Change the position and orientation of the agent.
 
         Parameters
         ----------
@@ -181,9 +187,9 @@ class Simulator(abc.ABC):
 
         Returns
         -------
-        pose : NDArray
+        pose : numpy.ndarray
             The agent's new pose.
-        image : NDArray
+        image : numpy.ndarray
             The image data at the agent's new pose.
         """
         pass
@@ -191,28 +197,27 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def move_object(self, object_id: str, pose: Pose) -> None:
         """
-        This function changes the pose of a specified object.
+        Change the pose of a specified object.
 
         Parameters
         ----------
         object_id : str
             The name/ID of the object.
-        pose : Pose
+        pose : cobel.interface.topology.Pose
             The object's new pose.
-        None
         """
         pass
 
     @abc.abstractmethod
     def set_illumination(self, light_source: str, color: NDArray) -> None:
         """
-        This function sets the color of a specified light source.
+        Set the color of a specified light source.
 
         Parameters
         ----------
         light_source : str
             The name/ID of the light source.
-        color : NDArray
+        color : numpy.ndarray
             The new color values.
         """
         pass
@@ -220,7 +225,7 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def get_objects(self) -> dict[str, Any]:
         """
-        This function retrieves information about all objects present in the simulation.
+        Retrieve information about all objects present in the simulation.
 
         Returns
         -------
@@ -232,7 +237,7 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def get_illumination(self, light_source: str) -> NDArray:
         """
-        This function retrieves the color of a specified light source.
+        Retrieve the color of a specified light source.
 
         Parameters
         ----------
@@ -241,7 +246,7 @@ class Simulator(abc.ABC):
 
         Returns
         -------
-        color : NDArray
+        color : numpy.ndarray
             The retrieved color values.
         """
         pass
@@ -249,11 +254,11 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def get_image_info(self) -> ImageInfo:
         """
-        This function changes the current scene.
+        Change the current scene.
 
         Returns
         -------
-        image_info : ImageInfo
+        image_info : cobel.interface.simulator.simulator.ImageInfo
             The dictionary containing information about the images rendered.
         """
         pass
@@ -261,7 +266,7 @@ class Simulator(abc.ABC):
     @abc.abstractmethod
     def change_scene(self, scene: str) -> None:
         """
-        This function changes the current scene.
+        Change the current scene.
 
         Parameters
         ----------
@@ -272,7 +277,5 @@ class Simulator(abc.ABC):
 
     @abc.abstractmethod
     def stop(self) -> None:
-        """
-        This function shuts down the simulator.
-        """
+        """Shut down the simulator."""
         pass

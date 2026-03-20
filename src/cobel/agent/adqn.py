@@ -1,11 +1,13 @@
 # basic imports
 import numpy as np
 import gymnasium as gym
+
 # framework imports
 from .agent import Agent
 from ..memory.adqn import ADQNMemory, Experience
 from ..network.network import Network
 from ..interface.interface import Interface
+
 # typing
 from numpy.typing import NDArray, ArrayLike
 from .agent import CallbackDict
@@ -15,28 +17,30 @@ StateBatch = NDArray | list[NDArray] | dict[str, NDArray]
 
 class ADQN(Agent):
     """
-    This class implements a simplified DQN agent which learns US-CS associations.
+    Implements a simplified DQN agent which learns US-CS associations.
 
     Parameters
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    model : Network
+    model : cobel.network.network.Network
         The network model used by the agent.
-    memory : DQNMemory or None, optional
+    memory : cobel.memory.adqn.ADQNMemory or None, optional
         The memory module used for storing experiences.
-    custom_callbacks : CallbackDict or None, optional
+    custom_callbacks : cobel.agent.agent.CallbackDict or None, optional
         The custom callbacks defined by the user.
 
     Attributes
     ----------
-    observation_space : gym.Space
+    observation_space : gymnasium.spaces.Space
         The agent's observation space.
-    action_space : gym.Space
+    action_space : gymnasium.spaces.Space
         The agent's action space.
-    model : Network
+    callbacks : cobel.agent.agent.Callbacks
+        The custom callbacks defined by the user.
+    model : cobel.network.network.Network
         The agent's network.
-    M : PrioritizedMemory
+    M : cobel.memory.adqn.ADQNMemory
         The memory module used for storing experiences.
         If none was provided an instance with default
         parameters is created.
@@ -52,7 +56,6 @@ class ADQN(Agent):
 
     Examples
     --------
-
     Here we initialize the ADQN agent for unimodal
     observations. ::
 
@@ -98,11 +101,11 @@ class ADQN(Agent):
         nb_replays: int = 1,
     ) -> None:
         """
-        This function is called to train the agent.
+        Train the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is trained.
@@ -161,11 +164,11 @@ class ADQN(Agent):
 
     def test(self, interface: gym.Env | Interface, trials: int, steps: int) -> None:
         """
-        This function is called to test the agent.
+        Test the agent.
 
         Parameters
         ----------
-        interface : gym.Env or Interface
+        interface : gymnasium.Env or cobel.interface.interface.Interface
             The environment that the agent interacts with.
         trials : int
             The number of trials that the agent is tested.
@@ -217,7 +220,7 @@ class ADQN(Agent):
 
     def replay(self, batch_size: int = 32, nb_replays: int = 1) -> None:
         """
-        This function replays experiences to update the Q-function.
+        Replay experiences to update the Q-function.
 
         Parameters
         ----------
@@ -234,27 +237,39 @@ class ADQN(Agent):
 
     def retrieve_v(self, state: StateBatch) -> NDArray:
         """
-        This function retrieves the value for a given observation.
-        """
-        if isinstance(state, np.ndarray):
-            return self.predict_on_batch(np.array([state]))
-        if isinstance(state, list):
-            return self.predict_on_batch([np.array([o]) for o in state])
-        assert isinstance(state, dict)
-        return self.predict_on_batch({m: np.array([o]) for m, o in state.items()})
-
-    def predict_on_batch(self, batch: ArrayLike | StateBatch) -> NDArray:
-        """
-        This function retrieve the values for a batch of observations.
+        Retrieve the value for a given observation.
 
         Parameters
         ----------
-        batch: ArrayLike
+        state : cobel.agent.adqn.StateBatch
+            The given observation.
+
+        Returns
+        -------
+        prediction : numpy.ndarray
+            The predicted value.
+        """
+        if isinstance(state, np.ndarray):
+            return self.predict_on_batch(np.array([state])).flatten()
+        if isinstance(state, list):
+            return self.predict_on_batch([np.array([o]) for o in state]).flatten()
+        assert isinstance(state, dict)
+        return self.predict_on_batch(
+            {m: np.array([o]) for m, o in state.items()}
+        ).flatten()
+
+    def predict_on_batch(self, batch: ArrayLike | StateBatch) -> NDArray:
+        """
+        Retrieve the values for a batch of observations.
+
+        Parameters
+        ----------
+        batch : ArrayLike or cobel.agent.adqn.StateBatch
             The batch of observations for which values should be retrieved.
 
         Returns
         -------
-        predictions: NDArray
+        predictions : numpy.ndarray
             The batch of predictions.
         """
         assert isinstance(batch, (np.ndarray | dict | list))

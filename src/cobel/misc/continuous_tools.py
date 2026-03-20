@@ -2,6 +2,7 @@
 import numpy as np
 import shapely as sh  # type: ignore
 from shapely.affinity import rotate, translate  # type: ignore
+
 # typing
 from typing import Literal
 from numpy.typing import NDArray
@@ -17,7 +18,7 @@ def make_t_maze(
     reward: float = 1,
 ) -> ContinuousTemplate:
     """
-    This function builds a T-maze environment.
+    Build a T-maze environment.
 
     Parameters
     ----------
@@ -27,20 +28,20 @@ def make_t_maze(
         The T-maze's arm length.
     corridor_width : float
         The T-maze's corridor width.
-    goal_arm : str, default='right'
+    goal_arm : {"left", "right", "none"}, default="right"
         The rewarded arm (left, right, none).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    room : sh.Polygon
+    room : shapely.Polygon
         A polygon representing the environmental borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing the environment's obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         A numpy array encoding the reward positions and magnitudes.
     """
     assert corridor_width > 0, 'Corridor width must be positive!'
@@ -93,7 +94,7 @@ def make_double_t_maze(
     reward: float = 1,
 ) -> ContinuousTemplate:
     """
-    This function builds a double T-maze environment.
+    Build a double T-maze environment.
 
     Parameters
     ----------
@@ -103,22 +104,22 @@ def make_double_t_maze(
         The T-maze's arm length.
     corridor_width : float
         The T-maze's corridor width.
-    goal_arm : str, default='right-right'
+    goal_arm : {"left-left", "left-right", "right-left", "right-right", "none"}, default="right-right"
         The rewarded arm (left-left, left-right, right-left, right-right, none).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    room : sh.Polygon
+    room : shapely.Polygon
         A polygon representing the environmental borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing the environment's obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         A numpy array encoding the reward positions and magnitudes.
-    """
+    """  # noqa: E501
     assert corridor_width > 0, 'Corridor width must be positive!'
     # ensure that stem and arm are at least as long as the corridor is wide
     stem_length = max(corridor_width, stem_length)
@@ -187,7 +188,7 @@ def make_two_sided_t_maze(
     reward: float = 1,
 ) -> ContinuousTemplate:
     """
-    This function builds a two-sided T-maze environment.
+    Build a two-sided T-maze environment.
 
     Parameters
     ----------
@@ -197,22 +198,22 @@ def make_two_sided_t_maze(
         The T-maze's arm length.
     corridor_width : float
         The T-maze's corridor width.
-    goal_arm : str, default='right-right'
+    goal_arm : {"left-left", "left-right", "right-left", "right-right", "none"}, default="right-right"
         The rewarded arm (left-left, left-right, right-left, right-right, none).
     reward : float, default=1.
         The reward provided at the rewarded arm.
 
     Returns
     -------
-    room : sh.Polygon
+    room : shapely.Polygon
         A polygon representing the environmental borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing the environment's obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         A numpy array encoding the reward positions and magnitudes.
-    """
+    """  # noqa: E501
     assert corridor_width > 0, 'Corridor width must be positive!'
     # ensure that stem and arm are at least as long as the corridor is wide
     stem_length = max(corridor_width, stem_length)
@@ -272,7 +273,7 @@ def make_eight_maze(
     reward: float = 1,
 ) -> ContinuousTemplate:
     """
-    This function builds an 8-maze environment.
+    Build an 8-maze environment.
 
     Parameters
     ----------
@@ -282,20 +283,20 @@ def make_eight_maze(
         The 8-maze's lap width.
     corridor_width : float
         The 8-maze's corridor width.
-    goal_arm : str, default='right'
+    goal_arm : {"left", "right"}, default="right"
         The rewarded lap (left, right, none).
     reward : float, default=1.
         The reward provided at the rewarded lap.
 
     Returns
     -------
-    room : sh.Polygon
+    room : shapely.Polygon
         A polygon representing the environmental borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing the environment's obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         A numpy array encoding the reward positions and magnitudes.
     """
     assert corridor_width > 0, 'Corridor width must be positive!'
@@ -358,7 +359,7 @@ def make_cross_maze(
     rotation: float = 0.0,
 ) -> ContinuousTemplate:
     """
-    This function builds an cross environment.
+    Build an cross environment.
 
     Parameters
     ----------
@@ -366,8 +367,8 @@ def make_cross_maze(
         The 8-maze's center length.
     corridor_width : float
         The 8-maze's corridor width.
-    goal_arm : str, default='right'
-        The rewarded lap (left, right, top, bottom, none).
+    goal_arm : {"left", "top", "right", "bottom"}, default="right"
+        The rewarded lap (left, right, top, bottom).
     reward : float, default=1.
         The reward provided at the rewarded lap.
     rotation : float, default=0.
@@ -375,13 +376,13 @@ def make_cross_maze(
 
     Returns
     -------
-    room : sh.Polygon
+    room : shapely.Polygon
         A polygon representing the environmental borders.
-    spawn : sh.Polygon
+    spawn : shapely.Polygon
         A polygon representing the agent's starting area.
-    obstacles : list of sh.Polygon
+    obstacles : list of shapely.Polygon
         A list of polygons representing the environment's obstacles.
-    rewards : NDArray
+    rewards : numpy.ndarray
         A numpy array encoding the reward positions and magnitudes.
     """
     assert arm_length > 0, 'The arm length must be positive!'
@@ -438,11 +439,11 @@ def make_rectangle(
     location: NDArray, width: float, height: float, orientation: float = 0.0
 ) -> sh.Polygon:
     """
-    This function builds a rectangular obstacle.
+    Build a rectangular obstacle.
 
     Parameters
     ----------
-    location : NDArray
+    location : numpy.ndarray
         The location of the rectangular obstacle.
     width : float
         The rectangle's width.
@@ -453,7 +454,7 @@ def make_rectangle(
 
     Returns
     -------
-    obstacle : sh.Polygon
+    obstacle : shapely.Polygon
         A polygon representing the rectangular obstacle.
     """
     h, w = height / 2, width / 2
@@ -466,18 +467,18 @@ def make_rectangle(
 
 def make_circle(location: NDArray, radius: float) -> sh.Polygon:
     """
-    This function builds a circular obstacle.
+    Build a circular obstacle.
 
     Parameters
     ----------
-    location : NDArray
+    location : numpy.ndarray
         The location of the circular obstacle.
     radius : float
         The circle's radius.
 
     Returns
     -------
-    obstacle : sh.Polygon
+    obstacle : shapely.Polygon
         A polygon representing the rectangular obstacle.
     """
     obstacle = sh.Point(location)
@@ -494,11 +495,11 @@ def make_triangle(
     orientation: float = 0.0,
 ) -> sh.Polygon:
     """
-    This function builds a triangular obstacle.
+    Build a triangular obstacle.
 
     Parameters
     ----------
-    location : NDArray
+    location : numpy.ndarray
         The location of the triangle with points ABC.
     width : float
         The length of the triangle's base AB.
@@ -511,7 +512,7 @@ def make_triangle(
 
     Returns
     -------
-    obstacle : sh.Polygon
+    obstacle : shapely.Polygon
         A polygon representing the rectangular obstacle.
     """
     obstacle = sh.Polygon(

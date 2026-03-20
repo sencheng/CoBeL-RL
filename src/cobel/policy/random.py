@@ -1,7 +1,9 @@
 # basic imports
 import numpy as np
+
 # framework imports
 from .policy import Policy
+
 # typing
 from numpy.typing import NDArray
 from numpy.random import Generator
@@ -10,7 +12,7 @@ from .policy import Action
 
 class RandomDiscrete(Policy):
     """
-    This class implements a random action policy.
+    Implements a random action policy.
 
     Parameters
     ----------
@@ -24,6 +26,9 @@ class RandomDiscrete(Policy):
     ----------
     actions : int
         The probability of taking a random action.
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -34,37 +39,37 @@ class RandomDiscrete(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function returns a random discrete action.
+        Return a random discrete action.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         return int(self.rng.integers(self.actions))
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         return np.full(self.actions, 1.0 / self.actions)
@@ -72,7 +77,7 @@ class RandomDiscrete(Policy):
 
 class RandomUniform(Policy):
     """
-    This class implements a random continuous (uniform) policy.
+    Implements a random continuous (uniform) policy.
 
     Parameters
     ----------
@@ -90,6 +95,9 @@ class RandomUniform(Policy):
         The minimum value(s) of the action(s).
     action_max : float or tuple of float
         The maximum value(s) of the action(s).
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -108,37 +116,37 @@ class RandomUniform(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function returns a random continuous (uniform) action.
+        Return a random continuous (uniform) action.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         return self.rng.uniform(self.action_min, self.action_max)
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         return np.array([], dtype='float')
@@ -146,7 +154,7 @@ class RandomUniform(Policy):
 
 class RandomGaussian(Policy):
     """
-    This class implements a random continuous (gaussian) policy.
+    Implements a random continuous (gaussian) policy.
 
     Parameters
     ----------
@@ -172,6 +180,9 @@ class RandomGaussian(Policy):
         The minimum value(s) of the action(s).
     action_max : float, tuple of float or None
         The maximum value(s) of the action(s).
+    rng : numpy.random.Generator
+        A random number generator instance used for
+        probablistic action selection.
 
     """
 
@@ -194,18 +205,18 @@ class RandomGaussian(Policy):
 
     def select_action(self, v: NDArray, mask: None | NDArray = None) -> Action:
         """
-        This function returns a random continuous (gaussian) action.
+        Return a random continuous (gaussian) action.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        action : Action
+        action : cobel.interface.interface.Action
             The selected action.
         """
         if self.action_max is None and self.action_min is None:
@@ -219,19 +230,19 @@ class RandomGaussian(Policy):
 
     def get_action_probs(self, v: NDArray, mask: None | NDArray = None) -> NDArray:
         """
-        This function computes the action selection
+        Compute the action selection
         probabilities for a given set of Q-values.
 
         Parameters
         ----------
-        v : NDArray
+        v : numpy.ndarray
             The Q-value(s).
-        mask : NDArray or None, optional
+        mask : numpy.ndarray or None, optional
             An optional action mask.
 
         Returns
         -------
-        probs : NDArray
+        probs : numpy.ndarray
             The action selection probabilities.
         """
         return np.array([], dtype='float')
